@@ -286,28 +286,38 @@ Confirm and retain non-secret evidence for every item before arming the seam:
    `3fd3cd769d5d372e6757d0ec208a74f2`. It differs from the protected dev ID above,
    and its inventory is empty: no Workers, Secrets Store, R2 buckets, D1 databases
    or Workflows. A brand-new account can return HTTP 404 from the read-only
-   `/workers/subdomain` endpoint until its first Worker exists. Record that result;
-   it is the expected unresolved baseline, not permission to infer a subdomain.
-3. The dedicated token is restricted under Account Resources to that disposable
+   `/workers/subdomain` endpoint before Workers onboarding. Record that result; it
+   is the expected unresolved baseline, not permission to infer a subdomain or run
+   bootstrap. Cloudflare rejects the first Worker deployment while this endpoint
+   remains unresolved.
+3. After the empty baseline is recorded, the owner opens the disposable account's
+   Workers dashboard once and completes only the free `workers.dev` onboarding.
+   This manual account-initialization mutation must be explicitly included in the
+   approved boundary. Stop on any paid-plan, custom-domain or unrelated-resource
+   prompt. Re-query `/workers/subdomain`, require a successful single-label result,
+   and record the exact `https://alchemy-state-store.<subdomain>.workers.dev`
+   origin before arming the seam.
+4. The dedicated token is restricted under Account Resources to that disposable
    account only. It has Workers Scripts Write and Account Secrets Store Edit, no
    zone permissions and no access to the protected dev account. The token is
    loaded only from a hidden prompt or secret manager into the command environment.
-4. No other operator or automation can write to the disposable account during the
+5. No other operator or automation can write to the disposable account during the
    rehearsal. The cost ledger is EUR 0 actual/EUR 0 reserved and the account is on
    the free plan. Any upgrade, payment or charge prompt is a hard stop.
-5. The one-use profile, its credential directory and the clone-local bootstrap
+6. The one-use profile, its credential directory and the clone-local bootstrap
    stage do not exist. Record a SHA-256 digest (or `absent`) for the protected dev
    state credential before the experiment; never copy or print that credential.
    Set `umask 077` before creating the clone, profile, logs or state artifacts.
-6. The approval covers exactly one induced bootstrap failure, one identical replay,
-   deletion of the named disposable resources and deletion of the disposable
-   account. It does not authorize dev/personal mutation or application deployment.
+7. The approval covers the dashboard initialization in prerequisite 3, exactly one
+   induced bootstrap failure, one identical replay, deletion of the named disposable
+   resources and deletion of the disposable account. It does not authorize
+   dev/personal mutation or application deployment.
 
 Use a new clone under a mode-`0700` temporary root and copy the tracked declaration
 to its ignored path. Replace only the random profile suffix before the first run.
-Keep `stateStoreOrigin` at its exact `pending-first-worker` sentinel until the first
-Worker makes the account subdomain observable. The probe pins both account IDs and
-the purpose. Do not put a token in this file:
+Keep `stateStoreOrigin` at its exact `pending-workers-dev-initialization` sentinel
+through the initial local preflight and empty remote inventory. The probe pins both
+account IDs and the purpose. Do not put a token in this file:
 
 ```sh
 umask 077
@@ -332,9 +342,9 @@ profile and disposable account ID for the rehearsal process. The source-only pro
 performs no network requests: it validates the closed schema, pinned disposable
 account, protected-account separation, exact environment identity, restrictive
 process umask, the single-provider `env` profile and the absence of both local
-experiment artifacts. `preflight` and `arm` accept the exact pending sentinel;
-checkpoint assertion, disarm and recovery assertion require it to have been
-replaced by the read-only verified Worker origin.
+experiment artifacts. `preflight` accepts the exact pending sentinel, but `arm`
+and every later command require it to have been replaced by the read-only verified
+Worker origin.
 
 ```sh
 TRIGO_RECOVERY_CONFIG=config/cloud/issue-29-interrupt.json
@@ -355,6 +365,38 @@ disposable ID, cannot see the protected dev account and every inventory listed i
 prerequisite 2 is empty. The local probe cannot establish token scope or remote
 emptiness and must not be treated as that evidence.
 
+At this point, and only with the additional approval in prerequisite 3, the owner
+completes the disposable account's free Workers onboarding in the Cloudflare
+dashboard. The API token cannot perform this account-level initialization. After
+the owner confirms completion, resolve and pin the origin without putting the token
+in process arguments:
+
+```sh
+TRIGO_SUBDOMAIN_RESPONSE="$TRIGO_RECOVERY_ROOT/workers-subdomain.json"
+printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" | \
+  curl --fail-with-body --silent --show-error --header @- \
+    "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+    >"$TRIGO_SUBDOMAIN_RESPONSE"
+TRIGO_WORKERS_SUBDOMAIN="$(jq -er \
+  'select(.success == true) | .result.subdomain | select(type == "string" and length > 0)' \
+  "$TRIGO_SUBDOMAIN_RESPONSE")"
+TRIGO_STATE_STORE_ORIGIN="https://alchemy-state-store.$TRIGO_WORKERS_SUBDOMAIN.workers.dev"
+TRIGO_RECOVERY_CONFIG_NEXT="${TRIGO_RECOVERY_CONFIG}.next"
+jq --arg origin "$TRIGO_STATE_STORE_ORIGIN" \
+  '.stateStoreOrigin = $origin' "$TRIGO_RECOVERY_CONFIG" \
+  >"$TRIGO_RECOVERY_CONFIG_NEXT"
+chmod 600 "$TRIGO_RECOVERY_CONFIG_NEXT"
+mv "$TRIGO_RECOVERY_CONFIG_NEXT" "$TRIGO_RECOVERY_CONFIG"
+
+mise exec -- bun scripts/cloud-bootstrap-interruption.ts preflight \
+  --config "$TRIGO_RECOVERY_CONFIG"
+```
+
+Stop if the lookup still fails, returns an invalid subdomain, or the second
+preflight rejects the exact origin. Never guess it or derive it from another
+account. Re-check that Workers and Secrets Store inventories are still empty before
+arming; dashboard onboarding must not have created either resource.
+
 ### Induce, observe and replay
 
 Arm the local collision and run bootstrap once. Capture its status and log without
@@ -372,35 +414,17 @@ TRIGO_INTERRUPTED_STATUS=$?
 set -e
 test "$TRIGO_INTERRUPTED_STATUS" -ne 0
 
-TRIGO_SUBDOMAIN_RESPONSE="$TRIGO_RECOVERY_ROOT/workers-subdomain.json"
-printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" | \
-  curl --fail-with-body --silent --show-error --header @- \
-    "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
-    >"$TRIGO_SUBDOMAIN_RESPONSE"
-TRIGO_WORKERS_SUBDOMAIN="$(jq -er \
-  'select(.success == true) | .result.subdomain | select(type == "string" and length > 0)' \
-  "$TRIGO_SUBDOMAIN_RESPONSE")"
-TRIGO_STATE_STORE_ORIGIN="https://alchemy-state-store.$TRIGO_WORKERS_SUBDOMAIN.workers.dev"
-TRIGO_RECOVERY_CONFIG_NEXT="${TRIGO_RECOVERY_CONFIG}.next"
-jq --arg origin "$TRIGO_STATE_STORE_ORIGIN" \
-  '.stateStoreOrigin = $origin' "$TRIGO_RECOVERY_CONFIG" \
-  >"$TRIGO_RECOVERY_CONFIG_NEXT"
-chmod 600 "$TRIGO_RECOVERY_CONFIG_NEXT"
-mv "$TRIGO_RECOVERY_CONFIG_NEXT" "$TRIGO_RECOVERY_CONFIG"
-
 mise exec -- bun scripts/cloud-bootstrap-interruption.ts assert-interrupted \
   --config "$TRIGO_RECOVERY_CONFIG"
 ```
 
 The failed run is valid only when the error is the expected attempt to write the
-directory-backed credential path. After that failure, the formerly unavailable
-read-only subdomain lookup must succeed and the resulting exact state-store origin
-must replace the sentinel before `assert-interrupted` runs. Stop if the lookup still
-fails, returns an invalid subdomain, or the assertion rejects the origin; never
-guess or derive it from another account. The probe parses but never prints the
-secret-bearing state. It requires mode-private local state, a stack output
-containing the verified origin and a non-empty bearer token, all resource rows in
-settled `created`/`updated` states, and these pinned logical IDs:
+directory-backed credential path and `assert-interrupted` passes. A missing
+`workers.dev` subdomain or any other provider failure is invalid: do not disarm or
+replay, and follow the partial-failure procedure below. The probe parses but never
+prints the secret-bearing state. It requires mode-private local state, a stack
+output containing the verified origin and a non-empty bearer token, all resource
+rows in settled `created`/`updated` states, and these pinned logical IDs:
 `StateStoreSecrets`, `StateStoreAuthTokenValue`, `AlchemyStateStoreToken`,
 `StateStoreEncryptionKeyValue`, `StateStoreEncryptionKey` and `Api`. Record its
 sanitized JSON summary plus the remote Worker/store/secret IDs. The remote account
@@ -440,11 +464,35 @@ deployment...` followed by the ready message;
 
 ### Cleanup and retained evidence
 
-Cleanup remains part of the approved destructive boundary, but perform it only
-after the recovery assertions and an exact inventory review. Preserve sanitized
-evidence first; never preserve the local state files, stack output, credential
-cache, full environment or unreviewed logs because they contain or may contain
-state secrets.
+Preserve sanitized evidence before either cleanup path; never preserve the local
+state files, stack output, credential cache, full environment or unreviewed logs
+because they contain or may contain state secrets.
+
+For an unexpected first-run provider error or incomplete local checkpoint, stop
+the rehearsal without disarming or replaying. Use only read-only calls to compare
+the current Worker, Store and per-Store secret inventories with the recorded empty
+baseline, and inspect local rows only for logical ID, resource type and status. A
+partial cleanup is permitted only when all these facts hold:
+
+- the selected account/profile still match the pinned disposable identity and the
+  protected dev credential digest is unchanged;
+- the baseline was empty, sole-writer control remained continuous and the current
+  inventory contains no foreign resource;
+- every remote resource is an expected state-store resource created by this
+  attempt, with its exact ID and expected name recorded; and
+- the owner-approved boundary explicitly includes marker-owned cleanup.
+
+If any fact is missing, preserve sanitized evidence and request owner direction
+without deleting anything. Otherwise delete only the recorded
+`alchemy-state-store` Worker if present, then only the recorded
+`AlchemyStateStoreToken` and `AlchemyStateStoreEncryptionKey` secret IDs. Re-read
+the Store and delete its exact ID only after proving it empty. Verify zero Workers
+and zero Stores, clear only the one-use local profile, move the throwaway root to
+Trash, re-check the protected dev credential digest, and stop. Do not treat this
+cleanup as recovery acceptance or run another bootstrap under the same approval.
+
+Normal cleanup remains part of the approved destructive boundary, but perform it
+only after the recovery assertions and an exact inventory review:
 
 1. Confirm the selected account is still the disposable ID and the inventory still
    contains only the one Worker, one store and two named secrets recorded above.
@@ -464,10 +512,12 @@ error class, sanitized probe summaries, the two expected replay log lines,
 `/version` result, unchanged protected-dev credential digest, zero-cost ledger and
 account-deletion confirmation.
 
-Stop immediately and preserve evidence on any ID/profile mismatch, a token that
-can see the protected account, non-empty baseline inventory, pre-existing local
-artifact, unexpected first-run success/error, incomplete local checkpoint, replay
-without the `Resuming` branch, planned deletion/replacement, changed remote IDs,
-foreign cleanup target, changed dev credential digest, provider/billing prompt or
-non-zero cost. Do not recover by using `--force`, changing the worker name,
-deleting uncertain resources or switching to the dev profile.
+Stop the rehearsal immediately and preserve evidence on any ID/profile mismatch, a
+token that can see the protected account, non-empty baseline inventory,
+pre-existing local artifact, unexpected first-run success/error, incomplete local
+checkpoint, replay without the `Resuming` branch, planned deletion/replacement,
+changed remote IDs, foreign cleanup target, changed dev credential digest,
+provider/billing prompt or non-zero cost. An unexpected partial failure may enter
+only the exact cleanup path above; it never authorizes replay. Do not recover by
+using `--force`, changing the worker name, deleting uncertain resources or
+switching to the dev profile.

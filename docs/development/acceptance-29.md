@@ -59,17 +59,36 @@ repository.
   ledger remained EUR 0 actual and EUR 0 reserved; no paid ASR or other provider
   probe ran. Cloudflare dashboard billing was not independently queried.
 
-## Remaining owner-gated live evidence
+## Disposable rehearsal evidence and remaining acceptance
 
-The isolated disposable-account interrupted-bootstrap experiment remains unrun.
-It deliberately interrupts and replays cloud mutation and therefore still requires
-the separately approved destructive boundary established by the parent plan. Its
-fail-closed local seam and assertions are implemented in
-`scripts/cloud-bootstrap-interruption.ts`; they do not call Cloudflare or expose a
-destructive action through the project wrapper. The approved free-tier disposable
-account is `Trigo Recovery Disposable`
-(`3fd3cd769d5d372e6757d0ec208a74f2`). Execution still waits for its dedicated
-account-restricted credential and sole-writer handoff.
+The owner approved the isolated interrupted-bootstrap boundary for the free-tier
+`Trigo Recovery Disposable` account
+(`3fd3cd769d5d372e6757d0ec208a74f2`) and handed off a dedicated account-restricted
+credential plus sole-writer control. The initial read-only inventory contained zero
+Workers and zero Secrets Stores; `/workers/subdomain` returned HTTP 404 / Cloudflare
+code 10007 because Workers onboarding had never been opened.
+
+The first bootstrap attempt at reviewed commit `6a40b8b27d00e60f6c9cee7d76baa33dda69137f`
+therefore stopped before the designed credential-write seam. Cloudflare rejected
+the `Api` Worker while its local row was `creating`; the other five rows were
+settled. The attempt had created only Secrets Store `333ff281ac394d7b98044fa351e0c91e`
+and the two expected secrets: `AlchemyStateStoreEncryptionKey`
+(`e9b1a6bdeaa04259a47b576806854877`) and `AlchemyStateStoreToken`
+(`ed765cc787e84f63b1912191e639fa60`). Both secrets and then the proven-empty store
+were deleted by exact ID. Read-only cleanup inspection again reported zero Workers
+and zero Stores. The one-use local profile was cleared, its throwaway root moved to
+Trash, and the protected dev credential digest remained
+`6c2523e328c8be462c6f461cd58aea65af0d772cea80446524204bed3734b548`.
+
+The owner then opened the disposable Workers dashboard and completed its free
+onboarding without creating a project or encountering a paid-plan prompt. A direct
+API re-read returned subdomain `trigo-recovery-disposable` and exact state-store
+origin `https://alchemy-state-store.trigo-recovery-disposable.workers.dev`; Workers
+and Secrets Store inventories remained empty. The local guard now permits the
+unresolved sentinel only for initial `preflight` and blocks `arm` until that exact
+post-onboarding origin is configured. The designed EISDIR checkpoint, identical
+resume, version-7 check and final cleanup remain required before issue #29 is
+accepted.
 
 The exact operator commands and recovery boundaries are in
 [Cloud operations](cloud.md). Do not mark issue #29 accepted, deploy personal,
