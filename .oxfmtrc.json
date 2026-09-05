@@ -1,0 +1,14 @@
+{
+  "ignorePatterns": [
+    "**/src/generated/**",
+    "**/.build/**",
+    "**/*.xcodeproj/**",
+    "**/.alchemy/**",
+    "**/DerivedData/**",
+    "**/dist/**",
+    "**/.local/**",
+    "**/Package.resolved",
+    "**/fixtures/**",
+    "**/Sources/TrigoContracts/Resources/**"
+  ]
+}

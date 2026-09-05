@@ -15,6 +15,11 @@ read `docs/agents/issue-tracker.md`.
 Use the five default triage labels. Before triaging issues,
 read `docs/agents/triage-labels.md`.
 
+### Development workflow
+
+Before refining or implementing a ticket, preparing a PR, or deploying,
+read `docs/agents/development-workflow.md`.
+
 ### Domain docs
 
 Use a single-context layout. Before exploring the codebase,

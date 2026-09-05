@@ -1,0 +1,396 @@
+[
+  {
+    "name": "retained-unicode",
+    "kind": "CallDocument",
+    "document": "retained-unicode.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": null
+  },
+  {
+    "name": "valid-revision",
+    "kind": "TranscriptRevision",
+    "document": "valid-revision.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "valid-no-speech",
+    "kind": "TranscriptRevision",
+    "document": "valid-no-speech.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "valid-audio",
+    "kind": "AudioManifest",
+    "document": "valid-audio.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "application-muted",
+    "kind": "CallDocument",
+    "document": "application-muted.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "semantics"
+  },
+  {
+    "name": "interval-gap",
+    "kind": "CallDocument",
+    "document": "interval-gap.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "semantics"
+  },
+  {
+    "name": "duplicate-role",
+    "kind": "CallDocument",
+    "document": "duplicate-role.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "semantics"
+  },
+  {
+    "name": "version",
+    "kind": "CallDocument",
+    "document": "version.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "missing-null",
+    "kind": "CallDocument",
+    "document": "missing-null.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "extra-field",
+    "kind": "CallDocument",
+    "document": "extra-field.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "bad-uuid",
+    "kind": "CallDocument",
+    "document": "bad-uuid.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "fractional-time",
+    "kind": "CallDocument",
+    "document": "fractional-time.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "unsafe-version",
+    "kind": "CallDocument",
+    "document": "unsafe-version.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "zero-version",
+    "kind": "CallDocument",
+    "document": "zero-version.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "nonutc",
+    "kind": "CallDocument",
+    "document": "nonutc.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "bad-date",
+    "kind": "CallDocument",
+    "document": "bad-date.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "negative-word",
+    "kind": "TranscriptRevision",
+    "document": "negative-word.json",
+    "references": {},
+    "expected": "structure"
+  },
+  {
+    "name": "bad-confidence",
+    "kind": "TranscriptRevision",
+    "document": "bad-confidence.json",
+    "references": {},
+    "expected": "structure"
+  },
+  {
+    "name": "reversed-word",
+    "kind": "TranscriptRevision",
+    "document": "reversed-word.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "word-outside-turn",
+    "kind": "TranscriptRevision",
+    "document": "word-outside-turn.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "cross-track-speaker",
+    "kind": "TranscriptRevision",
+    "document": "cross-track-speaker.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "missing-speaker",
+    "kind": "TranscriptRevision",
+    "document": "missing-speaker.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "duplicate-turn",
+    "kind": "TranscriptRevision",
+    "document": "duplicate-turn.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "bad-channel",
+    "kind": "AudioManifest",
+    "document": "bad-channel.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "duplicate-object",
+    "kind": "AudioManifest",
+    "document": "duplicate-object.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "object-bounds",
+    "kind": "AudioManifest",
+    "document": "object-bounds.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "orphan-name",
+    "kind": "CallDocument",
+    "document": "orphan-name.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "checksum",
+    "kind": "CallDocument",
+    "document": "checksum.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "checksum"
+  },
+  {
+    "name": "active-reference",
+    "kind": "CallDocument",
+    "document": "active-reference.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "semantics"
+  },
+  {
+    "name": "missing-reference",
+    "kind": "CallDocument",
+    "document": "missing-reference.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "foreign-audio-track",
+    "kind": "CallDocument",
+    "document": "foreign-audio-track.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "wrong-track-audio.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "valid-command",
+    "kind": "CommandIdentity",
+    "document": "valid-command.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "valid-error",
+    "kind": "ErrorEnvelope",
+    "document": "valid-error.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "valid-microphone-mute",
+    "kind": "CallDocument",
+    "document": "valid-microphone-mute.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": null
+  },
+  {
+    "name": "valid-interrupted-gap",
+    "kind": "CallDocument",
+    "document": "valid-interrupted-gap.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json"
+    },
+    "expected": null
+  },
+  {
+    "name": "valid-recording",
+    "kind": "CallDocument",
+    "document": "valid-recording.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "valid-zero-duration",
+    "kind": "CallDocument",
+    "document": "valid-zero-duration.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "malformed-json",
+    "kind": "TranscriptRevision",
+    "document": "malformed.json",
+    "references": {},
+    "expected": "structure"
+  },
+  {
+    "name": "invalid-utf8",
+    "kind": "TranscriptRevision",
+    "document": "invalid-utf8.bin",
+    "references": {},
+    "expected": "structure"
+  },
+  {
+    "name": "malformed-reference",
+    "kind": "CallDocument",
+    "document": "malformed-reference.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "malformed.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json"
+    },
+    "expected": "structure"
+  },
+  {
+    "name": "reused-speaker",
+    "kind": "CallDocument",
+    "document": "reused-speaker.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json",
+      "00000000-0000-4000-8000-000000000030": "reused-speaker-revision.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "reused-turn",
+    "kind": "CallDocument",
+    "document": "reused-turn.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json",
+      "00000000-0000-4000-8000-000000000030": "reused-turn-revision.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "valid-fresh-transcription",
+    "kind": "CallDocument",
+    "document": "valid-fresh-transcription.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json",
+      "00000000-0000-4000-8000-000000000030": "valid-fresh-transcription-revision.json"
+    },
+    "expected": null
+  }
+]

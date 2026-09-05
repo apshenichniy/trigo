@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "archiveId": "00000000-0000-4000-8000-000000000012",
+  "callId": "00000000-0000-4000-8000-000000000001",
+  "documentVersion": 2,
+  "startedAt": "2026-09-05T10:00:00Z",
+  "endedAt": "2026-09-05T10:00:01Z",
+  "durationMs": 1000,
+  "captureState": "stopped",
+  "interruptionReason": null,
+  "source": {
+    "applicationName": "Google Chrome",
+    "bundleId": "com.google.Chrome",
+    "processId": 123,
+    "windowId": null,
+    "windowTitle": null
+  },
+  "tracks": [
+    {
+      "trackId": "00000000-0000-4000-8000-000000000002",
+      "role": "microphone",
+      "inputDevice": null,
+      "mediaProfileId": "pending-nova3-gate",
+      "intervals": [
+        {
+          "startMs": 0,
+          "endMs": 1000,
+          "state": "recorded",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "trackId": "00000000-0000-4000-8000-000000000003",
+      "role": "application",
+      "inputDevice": null,
+      "mediaProfileId": "pending-nova3-gate",
+      "intervals": [
+        {
+          "startMs": 0,
+          "endMs": 1000,
+          "state": "recorded",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "audioManifest": {
+    "manifestId": "00000000-0000-4000-8000-000000000004",
+    "sha256": "d32fefde139bebaf57e1e55cf95999d9a212b97c4c4e616a74b7640e83bd921d"
+  },
+  "revisions": [],
+  "activeRevisionId": null,
+  "speakerNames": {}
+}

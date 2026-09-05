@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "error": {
+    "code": "document_conflict",
+    "retry": "after_correction",
+    "message": "Refresh the server version.",
+    "requestId": "00000000-0000-4000-8000-000000000022"
+  }
+}
