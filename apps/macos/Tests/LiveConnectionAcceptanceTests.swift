@@ -79,6 +79,11 @@ struct LiveConnectionAcceptanceTests {
     }
 
     try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: handoff.path)
+    let valid = try readValidatedHandoff(
+      at: handoff, expectedTarget: .fixture, expectedGeneration: 3)
+    #expect(valid.target == .fixture)
+    #expect(valid.expectedGeneration == 3)
+
     try FileManager.default.createSymbolicLink(at: symbolicLink, withDestinationURL: handoff)
     #expect(throws: LiveAcceptanceError.unsafeHandoff) {
       try readValidatedHandoff(at: symbolicLink, expectedTarget: .fixture, expectedGeneration: 3)
@@ -90,6 +95,36 @@ struct LiveConnectionAcceptanceTests {
           accountId: String(repeating: "f", count: 32), databaseName: "trigo-dev-catalog",
           deploymentIdentity: "trigo-dev-api:different"),
         expectedGeneration: 3)
+    }
+  }
+
+  @Test func protectedHandoffReaderMatchesProductionTimestampAndUUIDRules() throws {
+    let root = FileManager.default.temporaryDirectory.appending(
+      path: "trigo-live-handoff-schema-\(UUID())", directoryHint: .isDirectory)
+    let handoff = root.appending(path: "handoff.json")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    for timestamp in ["2026-09-05T00:00:00Z", "2026-09-05T00:00:00.123Z"] {
+      try validHandoffData(createdAt: timestamp).write(to: handoff, options: .atomic)
+      try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: handoff.path)
+      #expect(
+        try readValidatedHandoff(
+          at: handoff, expectedTarget: .fixture, expectedGeneration: 3
+        ).createdAt == timestamp)
+    }
+
+    try validHandoffData(operationId: "00000000-0000-1000-8000-000000000031")
+      .write(to: handoff, options: .atomic)
+    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: handoff.path)
+    #expect(throws: LiveAcceptanceError.invalidHandoff) {
+      try readValidatedHandoff(at: handoff, expectedTarget: .fixture, expectedGeneration: 3)
+    }
+
+    try validHandoffData(createdAt: "2026-09-05T00:00:00z").write(to: handoff, options: .atomic)
+    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: handoff.path)
+    #expect(throws: LiveAcceptanceError.invalidHandoff) {
+      try readValidatedHandoff(at: handoff, expectedTarget: .fixture, expectedGeneration: 3)
     }
   }
 }
@@ -124,7 +159,10 @@ extension OwnerHandoffTarget {
     deploymentIdentity: "trigo-dev-api:0000000000000000")
 }
 
-private func validHandoffData() throws -> Data {
+private func validHandoffData(
+  operationId: String = "00000000-0000-4000-8000-000000000031",
+  createdAt: String = "2026-09-05T00:00:00Z"
+) throws -> Data {
   try JSONSerialization.data(
     withJSONObject: [
       "schemaVersion": 1,
@@ -134,8 +172,8 @@ private func validHandoffData() throws -> Data {
         "databaseName": OwnerHandoffTarget.fixture.databaseName,
         "deploymentIdentity": OwnerHandoffTarget.fixture.deploymentIdentity,
       ],
-      "operationId": "00000000-0000-4000-8000-000000000031",
-      "createdAt": "2026-09-05T00:00:00Z",
+      "operationId": operationId,
+      "createdAt": createdAt,
       "action": "rotate",
       "expectedGeneration": 3,
       "token": "trigo_v1_\(String(repeating: "0", count: 64))",
@@ -143,7 +181,7 @@ private func validHandoffData() throws -> Data {
 }
 
 private let canonicalUUIDPattern =
-  "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+  "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 
 private func readValidatedHandoff(
   at url: URL, expectedTarget: OwnerHandoffTarget, expectedGeneration: Int
@@ -168,9 +206,7 @@ private func readValidatedHandoff(
   else { throw LiveAcceptanceError.invalidHandoff }
 
   let handoff = try JSONDecoder().decode(OwnerHandoff.self, from: data)
-  let timestamp = ISO8601DateFormatter()
-  timestamp.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-  let hasValidTimestamp = timestamp.date(from: handoff.createdAt) != nil
+  let hasValidTimestamp = isValidUTCTimestamp(handoff.createdAt)
   guard handoff.schemaVersion == 1, handoff.stage == "dev", handoff.action == "rotate",
     handoff.expectedGeneration == expectedGeneration, expectedGeneration >= 1,
     handoff.target == expectedTarget,
@@ -182,6 +218,16 @@ private func readValidatedHandoff(
     handoff.token.range(of: "^trigo_v1_[0-9a-f]{64}$", options: .regularExpression) != nil
   else { throw LiveAcceptanceError.invalidHandoff }
   return handoff
+}
+
+private func isValidUTCTimestamp(_ value: String) -> Bool {
+  guard value.hasSuffix("Z") else { return false }
+  let wholeSeconds = ISO8601DateFormatter()
+  wholeSeconds.formatOptions = [.withInternetDateTime]
+  if wholeSeconds.date(from: value) != nil { return true }
+  let fractionalSeconds = ISO8601DateFormatter()
+  fractionalSeconds.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  return fractionalSeconds.date(from: value) != nil
 }
 
 extension ConnectionHealth {
