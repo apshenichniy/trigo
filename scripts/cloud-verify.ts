@@ -1,14 +1,18 @@
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Config, Console, Effect, Redacted, Schema } from "effect";
-import { FetchHttpClient, HttpClient } from "effect/unstable/http";
+import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
+import { validateDocument } from "../packages/contracts/src/index.ts";
 import type { CloudTarget } from "./cloud.ts";
 import { cloudDeploymentIdentity, cloudTargetFor } from "./cloud.ts";
+import type { OwnerHandoff } from "./cloud-owner.ts";
+import { readOwnerHandoff } from "./cloud-owner.ts";
 
 export type CloudVerification =
   | { readonly stage: "dev"; readonly mode: "inspect" }
-  | { readonly stage: "dev"; readonly mode: "seed" | "verify"; readonly fixtureId: string };
+  | { readonly stage: "dev"; readonly mode: "seed" | "verify"; readonly fixtureId: string }
+  | { readonly stage: "dev"; readonly mode: "owner"; readonly handoffPath: string };
 
 export class CloudVerificationError extends Schema.TaggedError<CloudVerificationError>()(
   "CloudVerificationError",
@@ -42,11 +46,56 @@ export function parseCloudVerification(args: readonly string[]): CloudVerificati
     throw new Error("Cloud verification requires --stage dev");
   if (args.length === 2) return { stage: "dev", mode: "inspect" };
   const flag = args[2];
-  const fixtureId = args[3];
+  const value = args[3];
+  if (args.length === 4 && flag === "--owner-handoff" && value !== undefined) {
+    if (!isAbsolute(value)) throw new Error("Pass an absolute path after --owner-handoff");
+    return { stage: "dev", mode: "owner", handoffPath: value };
+  }
+  const fixtureId = value;
   if (args.length !== 4 || (flag !== "--seed" && flag !== "--verify") || fixtureId === undefined)
-    throw new Error("Use test:cloud --stage dev, --seed <fixture-id>, or --verify <fixture-id>");
+    throw new Error(
+      "Use test:cloud --stage dev, --seed <fixture-id>, --verify <fixture-id>, or --owner-handoff <absolute-path>",
+    );
   return { stage: "dev", mode: flag === "--seed" ? "seed" : "verify", fixtureId };
 }
+
+export interface CloudOwnerStatusBoundary {
+  readonly status: (
+    ownerToken: string,
+  ) => Effect.Effect<{ readonly status: number; readonly body: unknown }, CloudVerificationError>;
+}
+
+export const verifyCloudOwnerStatus = Effect.fn("CloudVerifier.ownerStatus")(function* (
+  stage: "dev",
+  handoff: OwnerHandoff,
+  boundary: CloudOwnerStatusBoundary,
+) {
+  if (handoff.stage !== stage)
+    return yield* cloudVerificationError(`Owner handoff stage mismatch: expected ${stage}`);
+  if (handoff.action === "revoke")
+    return yield* cloudVerificationError("A revoked owner handoff cannot authenticate status");
+  const response = yield* boundary.status(handoff.token);
+  if (response.status < 200 || response.status >= 300)
+    return yield* cloudVerificationError(
+      `Authenticated owner status failed with HTTP ${response.status}`,
+    );
+  const status = yield* Effect.try({
+    try: () => validateDocument("StatusResponse", response.body),
+    catch: (cause) => cloudVerificationError("Owner status does not match StatusResponse", cause),
+  });
+  if (status.stage !== stage)
+    return yield* cloudVerificationError(`Owner status stage mismatch: expected ${stage}`);
+  if (handoff.action === "initialize" && status.archiveId !== handoff.archiveId)
+    return yield* cloudVerificationError("Owner status returned an unexpected archive identity");
+  if (
+    status.readiness.archive !== "ready" ||
+    status.readiness.ownerAuthentication !== "ready" ||
+    status.readiness.transcription !== "not_verified" ||
+    status.readiness.callOperations !== "unavailable"
+  )
+    return yield* cloudVerificationError("Owner status returned unexpected issue #30 readiness");
+  return status;
+});
 
 export interface CloudInspectionBoundary {
   readonly workerDeployment: Effect.Effect<string, CloudVerificationError>;
@@ -380,6 +429,23 @@ const main = Effect.gen(function* () {
     Effect.provide(FetchHttpClient.layer),
     Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
   );
+  const ownerStatusBoundary: CloudOwnerStatusBoundary = {
+    status: (ownerToken) =>
+      HttpClient.execute(
+        HttpClientRequest.get(`${apiUrl}/v1/status`).pipe(
+          HttpClientRequest.bearerToken(ownerToken),
+        ),
+      ).pipe(
+        Effect.flatMap((response) =>
+          response.json.pipe(Effect.map((body) => ({ status: response.status, body }))),
+        ),
+        Effect.mapError((cause) =>
+          cloudVerificationError(`Cloud owner status request failed: ${apiUrl}`, cause),
+        ),
+        Effect.provide(FetchHttpClient.layer),
+        Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
+      ),
+  };
   const boundary = makeWranglerBoundary(
     target,
     productionWranglerRunner(root, {
@@ -390,15 +456,30 @@ const main = Effect.gen(function* () {
   );
   const infrastructure = yield* inspectCloudInfrastructure(target, accountId, apiUrl, boundary);
   const fixture =
-    verification.mode === "inspect"
+    verification.mode === "inspect" || verification.mode === "owner"
       ? undefined
       : verification.mode === "seed"
         ? yield* seedCloudFixture(target, verification.fixtureId, boundary).pipe(
             Effect.andThen(verifyCloudFixture(target, verification.fixtureId, boundary)),
           )
         : yield* verifyCloudFixture(target, verification.fixtureId, boundary);
+  const owner =
+    verification.mode === "owner"
+      ? yield* readOwnerHandoff(verification.handoffPath, verification.stage).pipe(
+          Effect.mapError((cause) =>
+            cloudVerificationError("Cannot load owner handoff for status verification", cause),
+          ),
+          Effect.andThen((handoff) =>
+            verifyCloudOwnerStatus(verification.stage, handoff, ownerStatusBoundary),
+          ),
+        )
+      : undefined;
   yield* Console.log(
-    encodePrettyJson({ infrastructure, ...(fixture === undefined ? {} : { fixture }) }),
+    encodePrettyJson({
+      infrastructure,
+      ...(fixture === undefined ? {} : { fixture }),
+      ...(owner === undefined ? {} : { owner }),
+    }),
   );
 });
 

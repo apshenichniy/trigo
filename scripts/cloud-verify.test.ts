@@ -6,10 +6,11 @@ import {
   makeWranglerBoundary,
   parseCloudVerification,
   seedCloudFixture,
+  verifyCloudOwnerStatus,
   verifyCloudFixture,
 } from "./cloud-verify.ts";
 
-it("parses explicit inspect, seed, and verify modes", () => {
+it("parses explicit inspect, fixture, and owner-status modes", () => {
   expect(parseCloudVerification(["--stage", "dev"])).toEqual({
     stage: "dev",
     mode: "inspect",
@@ -28,7 +29,95 @@ it("parses explicit inspect, seed, and verify modes", () => {
     mode: "verify",
     fixtureId: "00000000-0000-4000-8000-000000000029",
   });
+  expect(
+    parseCloudVerification(["--stage", "dev", "--owner-handoff", "/tmp/trigo-owner.json"]),
+  ).toEqual({
+    stage: "dev",
+    mode: "owner",
+    handoffPath: "/tmp/trigo-owner.json",
+  });
 });
+
+it.effect("verifies authenticated status without exposing the handoff token", () =>
+  Effect.gen(function* () {
+    const token = "trigo_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const observed: Array<string> = [];
+    const status = yield* verifyCloudOwnerStatus(
+      "dev",
+      {
+        schemaVersion: 1,
+        action: "initialize",
+        stage: "dev",
+        operationId: "00000000-0000-4000-8000-000000000301",
+        archiveId: "00000000-0000-4000-8000-000000000030",
+        token,
+        createdAt: "2026-09-05T22:00:00.000Z",
+      },
+      {
+        status: (ownerToken) =>
+          Effect.sync(() => {
+            observed.push(ownerToken);
+            return {
+              status: 200,
+              body: {
+                schemaVersion: 1,
+                apiVersion: 1,
+                archiveId: "00000000-0000-4000-8000-000000000030",
+                stage: "dev",
+                readiness: {
+                  archive: "ready",
+                  ownerAuthentication: "ready",
+                  transcription: "not_verified",
+                  callOperations: "unavailable",
+                },
+                errors: [
+                  {
+                    code: "asr_not_verified",
+                    retry: "after_correction",
+                    message:
+                      "Nova-3 readiness has not been verified; complete issue #13 before transcription.",
+                  },
+                  {
+                    code: "call_operations_unavailable",
+                    retry: "after_correction",
+                    message: "Call operations are unavailable until issue #17.",
+                  },
+                ],
+              },
+            };
+          }),
+      },
+    );
+
+    expect(observed).toEqual([token]);
+    expect(status).not.toHaveProperty("token");
+    expect(status).toEqual({
+      schemaVersion: 1,
+      apiVersion: 1,
+      archiveId: "00000000-0000-4000-8000-000000000030",
+      stage: "dev",
+      readiness: {
+        archive: "ready",
+        ownerAuthentication: "ready",
+        transcription: "not_verified",
+        callOperations: "unavailable",
+      },
+      errors: [
+        {
+          code: "asr_not_verified",
+          retry: "after_correction",
+          message:
+            "Nova-3 readiness has not been verified; complete issue #13 before transcription.",
+        },
+        {
+          code: "call_operations_unavailable",
+          retry: "after_correction",
+          message: "Call operations are unavailable until issue #17.",
+        },
+      ],
+    });
+  }),
+);
 
 it.effect("inspects the deployed dev infrastructure without invoking AI or fixtures", () =>
   Effect.gen(function* () {

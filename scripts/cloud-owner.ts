@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { closeSync, openSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { Config, Console, Effect, Redacted, Schema } from "effect";
+import { Config, Console, DateTime, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
 import type { OwnerOperation, OwnerOperationResult } from "../apps/server/src/owner-state.ts";
 import { hashOwnerToken, ownerOperationQueries } from "../apps/server/src/owner-state.ts";
@@ -28,7 +28,7 @@ const Uuid = Schema.String.check(
   Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
 );
 const OwnerToken = Schema.String.check(Schema.isPattern(/^trigo_v1_[0-9a-f]{64}$/));
-const PositiveGeneration = Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1));
+const PositiveGeneration = Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1));
 
 const OwnerHandoffSchema = Schema.Union([
   Schema.Struct({
@@ -80,7 +80,7 @@ export interface CloudflareOwnerTransport {
 }
 
 const CloudflareError = Schema.Struct({
-  code: Schema.Number,
+  code: Schema.Finite,
   message: Schema.String,
 });
 const CloudflareDatabaseList = Schema.Struct({
@@ -106,12 +106,15 @@ const OwnerStateRow = Schema.Struct({
   archive_id: Uuid,
   generation: PositiveGeneration,
   operation_id: Uuid,
-  revoked: Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 1 })),
+  revoked: Schema.Finite.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 1 })),
 });
 
 const decodeCloudflareDatabaseList = Schema.decodeUnknownEffect(CloudflareDatabaseList);
 const decodeCloudflareQueryResponse = Schema.decodeUnknownEffect(CloudflareQueryResponse);
 const decodeOwnerStateRow = Schema.decodeUnknownEffect(OwnerStateRow);
+const encodeUnknownJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
+const encodePrettyJson = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown, { space: 2 }));
+const isOwnerCommandError = Schema.is(OwnerCommandError);
 
 function cloudflareFailure(
   operation: string,
@@ -174,7 +177,7 @@ export const applyRemoteOwnerOperation = Effect.fn("CloudOwner.applyRemoteOperat
     cloudflareRequest(queryUrl, apiToken, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ batch: ownerOperationQueries(operation) }),
+      body: encodeUnknownJson({ batch: ownerOperationQueries(operation) }),
     }),
   );
   const query = yield* decodeCloudflareQueryResponse(queryResponse.body).pipe(
@@ -238,9 +241,7 @@ export const liveCloudflareOwnerTransport: CloudflareOwnerTransport = {
       return { status: response.status, body: responseBody };
     }).pipe(
       Effect.mapError((cause) =>
-        cause instanceof OwnerCommandError
-          ? cause
-          : commandError("Cloudflare owner request failed", cause),
+        isOwnerCommandError(cause) ? cause : commandError("Cloudflare owner request failed", cause),
       ),
       Effect.provide(FetchHttpClient.layer),
       Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
@@ -296,12 +297,12 @@ function ownerToken(): string {
   return `trigo_v1_${hex}`;
 }
 
-function newHandoff(command: OwnerCommand): OwnerHandoff {
+function newHandoff(command: OwnerCommand, createdAt: string): OwnerHandoff {
   const common = {
     schemaVersion: 1 as const,
     stage: command.stage,
     operationId: randomUUID(),
-    createdAt: new Date().toISOString(),
+    createdAt,
   };
   if (command.action === "initialize")
     return {
@@ -335,35 +336,59 @@ function assertHandoffMatches(command: OwnerCommand, handoff: OwnerHandoff): voi
     throw new Error("Existing owner handoff does not match --expected-generation");
 }
 
-const decodeOwnerHandoff = Schema.decodeUnknownSync(OwnerHandoffSchema);
+const decodeOwnerHandoff = Schema.decodeUnknownSync(Schema.fromJsonString(OwnerHandoffSchema));
+
+function loadOwnerHandoff(handoffPath: string): OwnerHandoff {
+  const mode = statSync(handoffPath).mode & 0o777;
+  if (mode !== 0o600)
+    throw new Error(
+      `Owner handoff permissions must be 0600, found ${mode.toString(8).padStart(4, "0")}`,
+    );
+  return decodeOwnerHandoff(readFileSync(handoffPath, "utf8"));
+}
+
+export const readOwnerHandoff = Effect.fn("CloudOwner.readHandoff")(
+  (handoffPath: string, stage: CloudStage) =>
+    Effect.try({
+      try: () => {
+        const handoff = loadOwnerHandoff(handoffPath);
+        if (handoff.stage !== stage)
+          throw new Error(`Owner handoff stage mismatch: expected ${stage}`);
+        return handoff;
+      },
+      catch: (cause) => commandError(`Cannot read owner handoff: ${handoffPath}`, cause),
+    }),
+);
 
 export const prepareOwnerHandoff = Effect.fn("CloudOwner.prepareHandoff")((command: OwnerCommand) =>
-  Effect.try({
-    try: () => {
-      try {
-        const mode = statSync(command.handoffPath).mode & 0o777;
-        if (mode !== 0o600)
-          throw new Error(
-            `Owner handoff permissions must be 0600, found ${mode.toString(8).padStart(4, "0")}`,
-          );
-        const handoff = decodeOwnerHandoff(JSON.parse(readFileSync(command.handoffPath, "utf8")));
-        assertHandoffMatches(command, handoff);
-        return handoff;
-      } catch (cause) {
-        if (typeof cause !== "object" || cause === null || Reflect.get(cause, "code") !== "ENOENT")
-          throw cause;
-      }
+  Effect.gen(function* () {
+    const createdAt = DateTime.formatIso(yield* DateTime.now);
+    return yield* Effect.try({
+      try: () => {
+        try {
+          const handoff = loadOwnerHandoff(command.handoffPath);
+          assertHandoffMatches(command, handoff);
+          return handoff;
+        } catch (cause) {
+          if (
+            typeof cause !== "object" ||
+            cause === null ||
+            Reflect.get(cause, "code") !== "ENOENT"
+          )
+            throw cause;
+        }
 
-      const handoff = newHandoff(command);
-      const descriptor = openSync(command.handoffPath, "wx", 0o600);
-      try {
-        writeFileSync(descriptor, `${JSON.stringify(handoff, undefined, 2)}\n`, "utf8");
-      } finally {
-        closeSync(descriptor);
-      }
-      return handoff;
-    },
-    catch: (cause) => commandError(`Cannot prepare owner handoff: ${command.handoffPath}`, cause),
+        const handoff = newHandoff(command, createdAt);
+        const descriptor = openSync(command.handoffPath, "wx", 0o600);
+        try {
+          writeFileSync(descriptor, `${encodePrettyJson(handoff)}\n`, "utf8");
+        } finally {
+          closeSync(descriptor);
+        }
+        return handoff;
+      },
+      catch: (cause) => commandError(`Cannot prepare owner handoff: ${command.handoffPath}`, cause),
+    });
   }),
 );
 
@@ -424,16 +449,12 @@ if (import.meta.main) {
         liveCloudflareOwnerTransport,
       );
       yield* Console.log(
-        JSON.stringify(
-          {
-            action: handoff.action,
-            stage: handoff.stage,
-            handoff: command.handoffPath,
-            ...result,
-          },
-          undefined,
-          2,
-        ),
+        encodePrettyJson({
+          action: handoff.action,
+          stage: handoff.stage,
+          handoff: command.handoffPath,
+          ...result,
+        }),
       );
     });
     await Effect.runPromise(program);

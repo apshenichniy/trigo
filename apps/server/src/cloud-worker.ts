@@ -29,6 +29,7 @@ function errorResponse(
 ): Response {
   const body = {
     schemaVersion: 1,
+    // oxlint-disable-next-line effecttsgo/crypto-random-uuid -- Web Crypto owns Worker request IDs at this platform boundary.
     error: { code, retry, message, requestId: crypto.randomUUID() },
   } satisfies ErrorEnvelope;
   return Response.json(body, { status });
