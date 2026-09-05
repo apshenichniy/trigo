@@ -180,8 +180,23 @@ must fail, never opt into Alchemy's remote fallback.
 `~/Library/Application Support/<namespace>/`. Preferences use the namespace as
 suite name; Keychain uses `<namespace>.connection-token`. Personal uses its bundle
 ID; development appends the build's worktree identifier. Test namespaces are
-UUID-based disposable locations. Actual archive persistence, token storage and
-connection setup belong to #14/#12. The shell requests no capture permissions.
+UUID-based disposable locations. The shell requests no capture permissions.
+
+The app's Archive connection screen accepts an HTTPS origin and owner token. A
+successful authenticated status check establishes the archive binding before local
+recording becomes eligible. `connection.json` stores only the canonical server
+origin, archive ID, stage and an opaque Keychain account reference; the token is a
+generic password in the namespace-specific Keychain service. URL/token replacement
+is allowed only when status reports the already-bound archive. Later network,
+authentication or compatibility failures preserve the binding and local-recording
+eligibility while blocking server operations. Use **Retry saved connection** to
+validate the persisted Keychain credential without re-entering it.
+
+Interrupted metadata/Keychain transactions are recovered on launch and before a
+new candidate is attempted. Do not edit `connection.json`, copy a token between
+namespaces or use a personal handoff with the development app. The opt-in production
+adapter demonstration and its required explicit selectors are documented in
+[Issue #31 acceptance](acceptance-31.md).
 
 Set `TRIGO_SIGNING_TEAM` to an existing Apple Development team for regular installed
 capture development; the corresponding certificate must exist in Keychain.
