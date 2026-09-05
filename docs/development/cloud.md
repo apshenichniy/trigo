@@ -250,7 +250,7 @@ run only in a newly created free Cloudflare account named
 it must never run in the working dev account
 `27940cd0d92bb3f03943a5378ccf68d3`, a personal account or a shared account. The
 owner has approved that boundary and the account exists with free-tier defaults,
-but execution remains blocked until a dedicated account-restricted token and
+but execution may begin only after a dedicated account-restricted token and
 sole-writer control are handed to the operator. Stop before accepting a paid plan,
 adding a payment method or incurring any charge.
 
@@ -459,7 +459,7 @@ deployment...` followed by the ready message;
 - the state-store `/version` endpoint reports contract version 7;
 - the local experiment stage is gone only after replay succeeds; and
 - the regenerated credential cache is a regular file bound to the disposable
-  account and exact post-first-Worker verified state-store origin, with no group/other
+  account and exact post-onboarding verified state-store origin, with no group/other
   access. The probe reports these last two facts without returning its bearer token.
 
 ### Cleanup and retained evidence
