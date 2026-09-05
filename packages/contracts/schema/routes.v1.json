@@ -3,7 +3,12 @@
   "errorSchema": "v1.schema.json#/$defs/ErrorEnvelope",
   "commandIdentitySchema": "v1.schema.json#/$defs/CommandIdentity",
   "routes": [
-    { "method": "GET", "path": "/v1/status", "ownerIssue": 12 },
+    {
+      "method": "GET",
+      "path": "/v1/status",
+      "documentSchema": "v1.schema.json#/$defs/StatusResponse",
+      "ownerIssue": 12
+    },
     {
       "method": "POST",
       "path": "/v1/calls",

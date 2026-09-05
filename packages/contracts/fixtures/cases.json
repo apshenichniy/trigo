@@ -392,5 +392,33 @@
       "00000000-0000-4000-8000-000000000030": "valid-fresh-transcription-revision.json"
     },
     "expected": null
+  },
+  {
+    "name": "valid-status",
+    "kind": "StatusResponse",
+    "document": "valid-status.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "bad-status-api-version",
+    "kind": "StatusResponse",
+    "document": "bad-status-api-version.json",
+    "references": {},
+    "expected": "structure"
+  },
+  {
+    "name": "bad-status-archive",
+    "kind": "StatusResponse",
+    "document": "bad-status-archive.json",
+    "references": {},
+    "expected": "structure"
+  },
+  {
+    "name": "bad-status-readiness",
+    "kind": "StatusResponse",
+    "document": "bad-status-readiness.json",
+    "references": {},
+    "expected": "structure"
   }
 ]

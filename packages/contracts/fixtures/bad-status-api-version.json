@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": 2,
+  "archiveId": "00000000-0000-4000-8000-000000000030",
+  "stage": "dev",
+  "readiness": {
+    "archive": "ready",
+    "ownerAuthentication": "ready",
+    "transcription": "not_verified",
+    "callOperations": "unavailable"
+  },
+  "errors": []
+}

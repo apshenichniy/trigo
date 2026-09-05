@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": 1,
+  "archiveId": "00000000-0000-4000-8000-000000000030",
+  "stage": "dev",
+  "readiness": {
+    "archive": "ready",
+    "ownerAuthentication": "ready",
+    "transcription": "not_verified",
+    "callOperations": "unavailable"
+  },
+  "errors": [
+    {
+      "code": "asr_not_verified",
+      "retry": "after_correction",
+      "message": "Nova-3 readiness has not been verified; complete issue #13 before transcription."
+    },
+    {
+      "code": "call_operations_unavailable",
+      "retry": "after_correction",
+      "message": "Call operations are unavailable until issue #17."
+    }
+  ]
+}
