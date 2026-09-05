@@ -5,11 +5,21 @@ import { Effect, Result } from "effect";
 import { beforeEach, vi } from "vitest";
 import ownerIdentityMigration from "../migrations/0001_owner_identity.sql?raw";
 import cloudWorker, { type CloudEnvironmentProbe } from "../src/cloud-worker.ts";
-import { applyOwnerOperation, authenticateOwner, hashOwnerToken } from "../src/owner-state.ts";
+import {
+  applyOwnerOperation,
+  ArchiveId,
+  authenticateOwner,
+  hashOwnerToken,
+  OwnerOperationId,
+  OwnerToken,
+  type OwnerToken as OwnerTokenType,
+} from "../src/owner-state.ts";
 
-function token(): string {
+function token(): OwnerTokenType {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return `trigo_v1_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  return OwnerToken.make(
+    `trigo_v1_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`,
+  );
 }
 
 function cloudBindings(): CloudEnvironmentProbe {
@@ -51,8 +61,8 @@ it.effect("initializes one archive identity and safely replays the same operatio
     const ownerToken = token();
     const input = {
       kind: "initialize" as const,
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000301"),
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       verifierSha256: yield* hashOwnerToken(ownerToken),
       now: "2026-09-05T21:30:00.000Z",
     };
@@ -79,8 +89,8 @@ it.effect("rejects an operation ID replayed with different initialization conten
     const ownerToken = token();
     const input = {
       kind: "initialize" as const,
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000301"),
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       verifierSha256: yield* hashOwnerToken(ownerToken),
       now: "2026-09-05T21:30:00.000Z",
     };
@@ -88,7 +98,7 @@ it.effect("rejects an operation ID replayed with different initialization conten
 
     const failure = yield* applyOwnerOperation(env.CATALOG, {
       ...input,
-      archiveId: "00000000-0000-4000-8000-000000000031",
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000031"),
     }).pipe(Effect.flip);
     expect(failure).toMatchObject({ _tag: "OwnerState.OwnerOperationConflict" });
   }),
@@ -99,15 +109,21 @@ it.effect("commits exactly one concurrent owner-token replacement", () =>
     const initialToken = token();
     yield* applyOwnerOperation(env.CATALOG, {
       kind: "initialize",
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000301"),
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       verifierSha256: yield* hashOwnerToken(initialToken),
       now: "2026-09-05T21:30:00.000Z",
     });
 
     const candidates = [
-      { operationId: "00000000-0000-4000-8000-000000000302", token: token() },
-      { operationId: "00000000-0000-4000-8000-000000000303", token: token() },
+      {
+        operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000302"),
+        token: token(),
+      },
+      {
+        operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000303"),
+        token: token(),
+      },
     ];
     const replacements = yield* Effect.forEach(
       candidates,
@@ -149,14 +165,14 @@ it.effect("revokes idempotently and permits an operator-authorized replacement",
     const initialToken = token();
     yield* applyOwnerOperation(env.CATALOG, {
       kind: "initialize",
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000301"),
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       verifierSha256: yield* hashOwnerToken(initialToken),
       now: "2026-09-05T21:30:00.000Z",
     });
     const revoke = {
       kind: "revoke" as const,
-      operationId: "00000000-0000-4000-8000-000000000304",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000304"),
       expectedGeneration: 1,
       now: "2026-09-05T21:32:00.000Z",
     };
@@ -164,7 +180,7 @@ it.effect("revokes idempotently and permits an operator-authorized replacement",
     const first = yield* applyOwnerOperation(env.CATALOG, revoke);
     const replay = yield* applyOwnerOperation(env.CATALOG, revoke);
     expect(first).toEqual({
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       generation: 2,
       operationId: revoke.operationId,
       state: "revoked",
@@ -174,7 +190,7 @@ it.effect("revokes idempotently and permits an operator-authorized replacement",
     const replacementToken = token();
     const replacement = yield* applyOwnerOperation(env.CATALOG, {
       kind: "rotate",
-      operationId: "00000000-0000-4000-8000-000000000305",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000305"),
       expectedGeneration: 2,
       verifierSha256: yield* hashOwnerToken(replacementToken),
       now: "2026-09-05T21:33:00.000Z",
@@ -189,8 +205,8 @@ it.effect("authenticates status with the current owner token and returns the sha
     const wrongToken = token();
     yield* applyOwnerOperation(env.CATALOG, {
       kind: "initialize",
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000301"),
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       verifierSha256: yield* hashOwnerToken(ownerToken),
       now: "2026-09-05T21:30:00.000Z",
     });
@@ -229,7 +245,7 @@ it.effect("authenticates status with the current owner token and returns the sha
     ).toEqual({
       schemaVersion: 1,
       apiVersion: 1,
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       stage: "dev",
       readiness: {
         archive: "ready",
@@ -291,8 +307,8 @@ it.effect("rejects malformed persisted owner rows with a typed persistence error
     const ownerToken = token();
     yield* applyOwnerOperation(env.CATALOG, {
       kind: "initialize",
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000301"),
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       verifierSha256: yield* hashOwnerToken(ownerToken),
       now: "2026-09-05T21:30:00.000Z",
     });
@@ -321,13 +337,13 @@ it.effect("rejects rotated and revoked tokens without caching authorization resu
     const replacementToken = token();
     yield* applyOwnerOperation(env.CATALOG, {
       kind: "initialize",
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000301"),
+      archiveId: ArchiveId.make("00000000-0000-4000-8000-000000000030"),
       verifierSha256: yield* hashOwnerToken(initialToken),
       now: "2026-09-05T21:30:00.000Z",
     });
     const bindings = cloudBindings();
-    const status = Effect.fn("OwnerStateTest.status")(function* (ownerToken: string) {
+    const status = Effect.fn("OwnerStateTest.status")(function* (ownerToken: OwnerTokenType) {
       return yield* fetchWorker(
         new Request("https://trigo.invalid/v1/status", {
           headers: { authorization: `Bearer ${ownerToken}` },
@@ -339,7 +355,7 @@ it.effect("rejects rotated and revoked tokens without caching authorization resu
     expect((yield* status(initialToken)).status).toBe(200);
     const rotation = {
       kind: "rotate" as const,
-      operationId: "00000000-0000-4000-8000-000000000302",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000302"),
       expectedGeneration: 1,
       verifierSha256: yield* hashOwnerToken(replacementToken),
       now: "2026-09-05T21:31:00.000Z",
@@ -371,7 +387,7 @@ it.effect("rejects rotated and revoked tokens without caching authorization resu
 
     yield* applyOwnerOperation(env.CATALOG, {
       kind: "revoke",
-      operationId: "00000000-0000-4000-8000-000000000304",
+      operationId: OwnerOperationId.make("00000000-0000-4000-8000-000000000304"),
       expectedGeneration: 2,
       now: "2026-09-05T21:32:00.000Z",
     });

@@ -18,12 +18,15 @@ fresh-checkout observations that require explicit owner authorization.
   after revocation, current-token authentication, immediate rejection of replaced
   and revoked tokens, and deny-by-default owner routes.
 - The operator boundary creates an exclusive mode-`0600` handoff, reuses it after
-  an uncertain result, rejects mismatched or unsafe handoffs, and sends the shared
+  an uncertain result, binds replay to the selected account/database/deployment
+  identity, rejects mismatched or unsafe handoffs, and sends the shared
   parameterized operation plan through the Cloudflare D1 API. Its routine output
   contains only non-secret identifiers and state.
 - Authenticated status reads the current primary through the D1 binding for every
   request. The prepared-statement cache contains statements, not authorization
-  results. Status does not invoke R2, Workflow or Workers AI.
+  results. Persisted rows are runtime-decoded before they become owner context, and
+  transient D1 failures produce a retryable storage error rather than an incorrect
+  initialization instruction. Status does not invoke R2, Workflow or Workers AI.
 - Ordinary `check`, `check:server`, tests and builds remain offline. No cloud
   mutation is part of CI.
 

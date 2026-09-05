@@ -3,6 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Config, Console, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
+import type { OwnerToken } from "../apps/server/src/owner-state.ts";
 import { validateDocument } from "../packages/contracts/src/index.ts";
 import type { CloudTarget } from "./cloud.ts";
 import { cloudDeploymentIdentity, cloudTargetFor } from "./cloud.ts";
@@ -61,7 +62,7 @@ export function parseCloudVerification(args: readonly string[]): CloudVerificati
 
 export interface CloudOwnerStatusBoundary {
   readonly status: (
-    ownerToken: string,
+    ownerToken: OwnerToken,
   ) => Effect.Effect<{ readonly status: number; readonly body: unknown }, CloudVerificationError>;
 }
 
@@ -401,7 +402,7 @@ function productionWranglerRunner(
 }
 
 function liveOwnerStatusBoundary(apiUrl: string): CloudOwnerStatusBoundary {
-  const status = Effect.fn("CloudVerifier.liveOwnerStatus")(function* (ownerToken: string) {
+  const status = Effect.fn("CloudVerifier.liveOwnerStatus")(function* (ownerToken: OwnerToken) {
     const response = yield* HttpClient.execute(
       HttpClientRequest.get(`${apiUrl}/v1/status`).pipe(HttpClientRequest.bearerToken(ownerToken)),
     ).pipe(
