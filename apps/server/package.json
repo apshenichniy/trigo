@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@effect/sql-d1": "4.0.0-rc.112",
     "@trigo/contracts": "workspace:*",
     "effect": "4.0.0-rc.112"
   }

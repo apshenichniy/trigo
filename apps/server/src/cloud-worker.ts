@@ -1,5 +1,12 @@
 import { WorkflowEntrypoint } from "cloudflare:workers";
+import type { ErrorEnvelope, StatusResponse } from "@trigo/contracts";
 import { Effect } from "effect";
+import {
+  authenticateOwner,
+  type OwnerContext,
+  OwnerAuthenticationError,
+  OwnerPersistenceError,
+} from "./owner-state.ts";
 
 export interface PendingArchiveWorkflowInput {
   readonly operationId: string;
@@ -7,12 +14,69 @@ export interface PendingArchiveWorkflowInput {
 
 export interface CloudEnvironmentProbe {
   readonly ARCHIVE: { readonly get: unknown };
-  readonly CATALOG: { readonly prepare: unknown };
+  readonly CATALOG: Pick<D1Database, "prepare">;
   readonly ARCHIVE_WORKFLOW: { readonly create: unknown };
   readonly AI: { readonly run: unknown };
-  readonly DEPLOYMENT_STAGE: string;
+  readonly DEPLOYMENT_STAGE: "dev" | "personal";
   readonly DEPLOYMENT_IDENTITY: string;
 }
+
+function errorResponse(
+  status: number,
+  code: string,
+  retry: "never" | "after_correction" | "retryable",
+  message: string,
+): Response {
+  const body = {
+    schemaVersion: 1,
+    error: { code, retry, message, requestId: crypto.randomUUID() },
+  } satisfies ErrorEnvelope;
+  return Response.json(body, { status });
+}
+
+function statusResponse(context: OwnerContext, stage: "dev" | "personal"): Response {
+  const body = {
+    schemaVersion: 1,
+    apiVersion: 1,
+    archiveId: context.archiveId,
+    stage,
+    readiness: {
+      archive: "ready",
+      ownerAuthentication: "ready",
+      transcription: "not_verified",
+      callOperations: "unavailable",
+    },
+    errors: [
+      {
+        code: "asr_not_verified",
+        retry: "after_correction",
+        message: "Nova-3 readiness has not been verified; complete issue #13 before transcription.",
+      },
+      {
+        code: "call_operations_unavailable",
+        retry: "after_correction",
+        message: "Call operations are unavailable until issue #17.",
+      },
+    ],
+  } satisfies StatusResponse;
+  return Response.json(body);
+}
+
+const ownerResponse = Effect.fn("CloudWorker.ownerResponse")(function* (
+  request: Request,
+  env: CloudEnvironmentProbe,
+) {
+  const context = yield* authenticateOwner(env.CATALOG, request);
+  const url = new URL(request.url);
+  if (request.method === "GET" && url.pathname === "/v1/status")
+    return statusResponse(context, env.DEPLOYMENT_STAGE);
+  return errorResponse(
+    501,
+    "operation_unavailable",
+    "after_correction",
+    "This owner operation is not implemented yet.",
+  );
+});
 
 export class PendingArchiveWorkflow extends WorkflowEntrypoint<
   CloudEnvironmentProbe,
@@ -44,11 +108,34 @@ const infrastructureResponse = Effect.fn("CloudWorker.infrastructure")((
 export default {
   fetch(request: Request, env: CloudEnvironmentProbe): Response | Promise<Response> {
     const url = new URL(request.url);
-    if (request.method !== "GET") return new Response(null, { status: 405 });
-    if (url.pathname === "/__trigo/infrastructure")
+    if (request.method === "GET" && url.pathname === "/__trigo/infrastructure")
       return Effect.runPromise(infrastructureResponse(env));
     if (url.pathname.startsWith("/v1/"))
-      return Response.json({ error: "owner_setup_unavailable", issue: 30 }, { status: 503 });
+      return Effect.runPromise(
+        ownerResponse(request, env).pipe(
+          Effect.catchTags({
+            "OwnerState.OwnerAuthenticationError": (_error: OwnerAuthenticationError) =>
+              Effect.succeed(
+                errorResponse(
+                  401,
+                  "owner_unauthorized",
+                  "after_correction",
+                  "Provide the current Trigo owner token.",
+                ),
+              ),
+            "OwnerState.OwnerPersistenceError": (_error: OwnerPersistenceError) =>
+              Effect.succeed(
+                errorResponse(
+                  503,
+                  "owner_setup_unavailable",
+                  "retryable",
+                  "Owner identity is unavailable; run the operator initialization command.",
+                ),
+              ),
+          }),
+        ),
+      );
+    if (request.method !== "GET") return new Response(null, { status: 405 });
     return new Response(null, { status: 404 });
   },
 };

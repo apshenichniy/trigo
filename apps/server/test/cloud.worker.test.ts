@@ -1,3 +1,4 @@
+import { validateDocument } from "@trigo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import cloudWorker from "../src/cloud-worker.ts";
 
@@ -7,7 +8,7 @@ function cloudBindings() {
     CATALOG: { prepare: vi.fn() },
     ARCHIVE_WORKFLOW: { create: vi.fn() },
     AI: { run: vi.fn() },
-    DEPLOYMENT_STAGE: "dev",
+    DEPLOYMENT_STAGE: "dev" as const,
     DEPLOYMENT_IDENTITY: "trigo-dev-api:9236f745b86ef20f",
   };
 }
@@ -37,13 +38,19 @@ describe("cloud Worker boundary", () => {
     expect(env.AI.run).not.toHaveBeenCalled();
   });
 
-  it("keeps product routes unavailable until owner authentication is implemented", async () => {
+  it("protects product routes before any unavailable operation is revealed", async () => {
     const response = await cloudWorker.fetch(
       new Request("https://trigo.invalid/v1/status"),
       cloudBindings(),
     );
 
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: "owner_setup_unavailable", issue: 30 });
+    expect(response.status).toBe(401);
+    expect(validateDocument("ErrorEnvelope", await response.json())).toMatchObject({
+      schemaVersion: 1,
+      error: {
+        code: "owner_unauthorized",
+        retry: "after_correction",
+      },
+    });
   });
 });

@@ -1,0 +1,304 @@
+import { D1Client } from "@effect/sql-d1";
+import { Effect, Option, Schema } from "effect";
+import * as Reactivity from "effect/unstable/reactivity/Reactivity";
+
+const Sha256Digest = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/));
+const AuthorizationHeader = Schema.String.check(Schema.isPattern(/^Bearer trigo_v1_[0-9a-f]{64}$/));
+const decodeSha256Digest = Schema.decodeUnknownOption(Sha256Digest);
+const decodeAuthorizationHeader = Schema.decodeUnknownOption(AuthorizationHeader);
+
+export interface InitializeOwnerOperation {
+  readonly kind: "initialize";
+  readonly operationId: string;
+  readonly archiveId: string;
+  readonly verifierSha256: string;
+  readonly now: string;
+}
+
+export interface RotateOwnerOperation {
+  readonly kind: "rotate";
+  readonly operationId: string;
+  readonly expectedGeneration: number;
+  readonly verifierSha256: string;
+  readonly now: string;
+}
+
+export interface RevokeOwnerOperation {
+  readonly kind: "revoke";
+  readonly operationId: string;
+  readonly expectedGeneration: number;
+  readonly now: string;
+}
+
+export type OwnerOperation = InitializeOwnerOperation | RotateOwnerOperation | RevokeOwnerOperation;
+
+export interface OwnerOperationResult {
+  readonly archiveId: string;
+  readonly generation: number;
+  readonly operationId: string;
+  readonly state: "active" | "revoked";
+}
+
+export class OwnerOperationConflict extends Schema.TaggedError<OwnerOperationConflict>()(
+  "OwnerState.OwnerOperationConflict",
+  {
+    operationId: Schema.String,
+    message: Schema.String,
+  },
+) {}
+
+export class OwnerPersistenceError extends Schema.TaggedError<OwnerPersistenceError>()(
+  "OwnerState.OwnerPersistenceError",
+  {
+    operation: Schema.String,
+    cause: Schema.Defect(),
+  },
+) {}
+
+export class OwnerAuthenticationError extends Schema.TaggedError<OwnerAuthenticationError>()(
+  "OwnerState.OwnerAuthenticationError",
+  {
+    message: Schema.String,
+  },
+) {}
+
+export interface OwnerContext {
+  readonly archiveId: string;
+  readonly credentialGeneration: number;
+}
+
+export const hashOwnerToken = Effect.fn("OwnerState.hashToken")(function* (token: string) {
+  const bytes = new TextEncoder().encode(token);
+  const digest = yield* Effect.promise(() => crypto.subtle.digest("SHA-256", bytes));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+});
+
+interface OwnerAuthenticationRow {
+  readonly archive_id: string;
+  readonly generation: number;
+}
+
+export const authenticateOwner = Effect.fn("OwnerState.authenticateOwner")(function* (
+  db: Pick<D1Database, "prepare">,
+  request: Request,
+) {
+  const authorization = decodeAuthorizationHeader(request.headers.get("authorization"));
+  if (Option.isNone(authorization))
+    return yield* new OwnerAuthenticationError({
+      message: "Provide the current Trigo owner token.",
+    });
+  const token = authorization.value.slice("Bearer ".length);
+  const verifierSha256 = yield* hashOwnerToken(token);
+  const result = yield* Effect.tryPromise({
+    try: () =>
+      db
+        .prepare(
+          `SELECT identity.archive_id, state.generation
+           FROM trigo_archive_identity AS identity
+           JOIN trigo_owner_credential_state AS state USING (singleton)
+           WHERE identity.singleton = 1
+             AND state.revoked = 0
+             AND state.verifier_sha256 = ?`,
+        )
+        .bind(verifierSha256)
+        .all<OwnerAuthenticationRow>(),
+    catch: (cause) =>
+      new OwnerPersistenceError({
+        operation: "OwnerState.authenticateOwner",
+        cause,
+      }),
+  });
+  const row = result.results[0];
+  if (row === undefined)
+    return yield* new OwnerAuthenticationError({
+      message: "Provide the current Trigo owner token.",
+    });
+  return {
+    archiveId: row.archive_id,
+    credentialGeneration: row.generation,
+  } satisfies OwnerContext;
+});
+
+interface OwnerStateRow {
+  readonly archive_id: string;
+  readonly generation: number;
+  readonly operation_id: string;
+  readonly revoked: number;
+}
+
+export const applyOwnerOperation = Effect.fn("OwnerState.applyOperation")(function* (
+  db: D1Database,
+  input: OwnerOperation,
+) {
+  if (input.kind !== "revoke" && Option.isNone(decodeSha256Digest(input.verifierSha256)))
+    return yield* new OwnerOperationConflict({
+      operationId: input.operationId,
+      message: "Owner verifier must be a lowercase SHA-256 digest",
+    });
+
+  const program = Effect.gen(function* () {
+    const sql = yield* D1Client.make({ db });
+    const persistenceError = (cause: unknown) =>
+      new OwnerPersistenceError({
+        operation: "OwnerState.applyOperation",
+        cause,
+      });
+    const rows =
+      input.kind === "initialize"
+        ? yield* sql
+            .batch([
+              sql`INSERT OR IGNORE INTO trigo_archive_identity
+              (singleton, archive_id, created_at)
+            VALUES (1, ${input.archiveId}, ${input.now})`,
+              sql`INSERT OR IGNORE INTO trigo_owner_credential_state
+              (singleton, generation, verifier_sha256, revoked, current_operation_id, updated_at)
+            SELECT 1, 1, ${input.verifierSha256}, 0, ${input.operationId}, ${input.now}
+            FROM trigo_archive_identity
+            WHERE singleton = 1 AND archive_id = ${input.archiveId}`,
+              sql`INSERT OR IGNORE INTO trigo_owner_credential_operations
+              (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
+            SELECT ${input.operationId}, 'initialize', archive_id, 1,
+                   ${input.verifierSha256}, ${input.now}
+            FROM trigo_archive_identity
+            JOIN trigo_owner_credential_state USING (singleton)
+            WHERE singleton = 1
+              AND archive_id = ${input.archiveId}
+              AND generation = 1
+              AND verifier_sha256 = ${input.verifierSha256}
+              AND revoked = 0
+              AND current_operation_id = ${input.operationId}`,
+              sql<OwnerStateRow>`SELECT identity.archive_id, state.generation,
+              state.current_operation_id AS operation_id, state.revoked
+            FROM trigo_archive_identity AS identity
+            JOIN trigo_owner_credential_state AS state USING (singleton)
+            JOIN trigo_owner_credential_operations AS operation
+              ON operation.operation_id = state.current_operation_id
+            WHERE identity.singleton = 1
+              AND operation.kind = 'initialize'
+              AND operation.archive_id = ${input.archiveId}
+              AND operation.verifier_sha256 = ${input.verifierSha256}
+              AND operation.operation_id = ${input.operationId}`,
+            ] as const)
+            .pipe(
+              Effect.map(([, , , rows]) => rows),
+              Effect.mapError(persistenceError),
+            )
+        : input.kind === "rotate"
+          ? yield* sql
+              .batch([
+                sql`UPDATE trigo_owner_credential_state
+            SET generation = ${input.expectedGeneration + 1},
+                verifier_sha256 = ${input.verifierSha256},
+                revoked = 0,
+                current_operation_id = ${input.operationId},
+                updated_at = ${input.now}
+            WHERE singleton = 1
+              AND (
+                (
+                  generation = ${input.expectedGeneration}
+                  AND NOT EXISTS (
+                    SELECT 1 FROM trigo_owner_credential_operations
+                    WHERE operation_id = ${input.operationId}
+                  )
+                )
+                OR (
+                  generation = ${input.expectedGeneration + 1}
+                  AND verifier_sha256 = ${input.verifierSha256}
+                  AND revoked = 0
+                  AND current_operation_id = ${input.operationId}
+                )
+              )`,
+                sql`INSERT OR IGNORE INTO trigo_owner_credential_operations
+              (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
+            SELECT ${input.operationId}, 'rotate', identity.archive_id,
+                   state.generation, state.verifier_sha256, ${input.now}
+            FROM trigo_archive_identity AS identity
+            JOIN trigo_owner_credential_state AS state USING (singleton)
+            WHERE identity.singleton = 1
+              AND state.generation = ${input.expectedGeneration + 1}
+              AND state.verifier_sha256 = ${input.verifierSha256}
+              AND state.revoked = 0
+              AND state.current_operation_id = ${input.operationId}`,
+                sql<OwnerStateRow>`SELECT identity.archive_id, state.generation,
+              state.current_operation_id AS operation_id, state.revoked
+            FROM trigo_archive_identity AS identity
+            JOIN trigo_owner_credential_state AS state USING (singleton)
+            JOIN trigo_owner_credential_operations AS operation
+              ON operation.operation_id = state.current_operation_id
+            WHERE identity.singleton = 1
+              AND operation.kind = 'rotate'
+              AND operation.generation = ${input.expectedGeneration + 1}
+              AND operation.verifier_sha256 = ${input.verifierSha256}
+              AND operation.operation_id = ${input.operationId}`,
+              ] as const)
+              .pipe(
+                Effect.map(([, , rows]) => rows),
+                Effect.mapError(persistenceError),
+              )
+          : yield* sql
+              .batch([
+                sql`UPDATE trigo_owner_credential_state
+            SET generation = ${input.expectedGeneration + 1},
+                verifier_sha256 = NULL,
+                revoked = 1,
+                current_operation_id = ${input.operationId},
+                updated_at = ${input.now}
+            WHERE singleton = 1
+              AND (
+                (
+                  generation = ${input.expectedGeneration}
+                  AND NOT EXISTS (
+                    SELECT 1 FROM trigo_owner_credential_operations
+                    WHERE operation_id = ${input.operationId}
+                  )
+                )
+                OR (
+                  generation = ${input.expectedGeneration + 1}
+                  AND verifier_sha256 IS NULL
+                  AND revoked = 1
+                  AND current_operation_id = ${input.operationId}
+                )
+              )`,
+                sql`INSERT OR IGNORE INTO trigo_owner_credential_operations
+              (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
+            SELECT ${input.operationId}, 'revoke', identity.archive_id,
+                   state.generation, NULL, ${input.now}
+            FROM trigo_archive_identity AS identity
+            JOIN trigo_owner_credential_state AS state USING (singleton)
+            WHERE identity.singleton = 1
+              AND state.generation = ${input.expectedGeneration + 1}
+              AND state.verifier_sha256 IS NULL
+              AND state.revoked = 1
+              AND state.current_operation_id = ${input.operationId}`,
+                sql<OwnerStateRow>`SELECT identity.archive_id, state.generation,
+              state.current_operation_id AS operation_id, state.revoked
+            FROM trigo_archive_identity AS identity
+            JOIN trigo_owner_credential_state AS state USING (singleton)
+            JOIN trigo_owner_credential_operations AS operation
+              ON operation.operation_id = state.current_operation_id
+            WHERE identity.singleton = 1
+              AND operation.kind = 'revoke'
+              AND operation.generation = ${input.expectedGeneration + 1}
+              AND operation.verifier_sha256 IS NULL
+              AND operation.operation_id = ${input.operationId}`,
+              ] as const)
+              .pipe(
+                Effect.map(([, , rows]) => rows),
+                Effect.mapError(persistenceError),
+              );
+    const row = rows[0];
+    if (row === undefined)
+      return yield* new OwnerOperationConflict({
+        operationId: input.operationId,
+        message: "Owner operation conflicts with the current credential generation or content",
+      });
+    return {
+      archiveId: row.archive_id,
+      generation: row.generation,
+      operationId: row.operation_id,
+      state: row.revoked === 0 ? ("active" as const) : ("revoked" as const),
+    };
+  }).pipe(Effect.provide(Reactivity.layer));
+
+  return yield* Effect.scoped(program);
+});
