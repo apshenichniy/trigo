@@ -502,15 +502,28 @@ only after the recovery assertions and an exact inventory review:
 3. Re-run the read-only account inventories and retain their zero-resource result.
 4. Clear only the one-use Alchemy profile and its credential cache, remove the
    throwaway clone, and prove the protected dev credential digest is unchanged.
-5. Have the owner delete `Trigo Recovery Disposable` in Cloudflare and retain the
-   account-deletion confirmation. Finish with EUR 0 actual/EUR 0 reserved.
+5. Have the owner attempt the exact `Trigo Recovery Disposable` account cleanup and
+   retain the outcome. In the issue #29 live rehearsal, **Leave account** refused to
+   proceed until another Super Administrator existed; do not invite a second user
+   solely to bypass that observed boundary. Cloudflare separately documents that a
+   Super Administrator
+   [cannot delete the individual account](https://developers.cloudflare.com/fundamentals/manage-members/manage/#super-administrator-access).
+   Its self-service deletion flow
+   [deletes the user profile](https://developers.cloudflare.com/fundamentals/user-profiles/delete-account/)
+   and accounts where that user is the last active member, so it is forbidden when
+   the same profile owns the protected dev account. If individual account deletion
+   is unavailable, keep the proven-empty account, revoke the disposable token,
+   delete its secret-manager entry, clear the clipboard and mark acceptance
+   `needs-info` until the owner accepts that residual account as the maximum safe
+   cleanup. Finish with EUR 0 actual/EUR 0 reserved.
 
 Retain the reviewed commit SHA and tool versions, the owner's exact boundary
 approval, disposable account name/ID, a token-scope screenshot with no token,
 before/interrupted/replayed/cleaned inventory IDs, the induced exit status and
 error class, sanitized probe summaries, the two expected replay log lines,
 `/version` result, unchanged protected-dev credential digest, zero-cost ledger and
-account-deletion confirmation.
+either account-deletion confirmation or the exact platform refusal plus token
+revocation proof.
 
 Stop the rehearsal immediately and preserve evidence on any ID/profile mismatch, a
 token that can see the protected account, non-empty baseline inventory,
