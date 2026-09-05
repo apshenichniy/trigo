@@ -241,3 +241,208 @@ of the remote state Worker, its data or its encryption key is not equivalent to 
 fresh checkout and is not solved by this runbook. Do not improvise an Alchemy v1
 password recipe, deploy personal, or replace stable resources; issue #32 owns that
 recovery gate.
+
+## Disposable interrupted-bootstrap rehearsal
+
+This issue #29 acceptance experiment is destructive and account-scoped. It must
+run only in a newly created free Cloudflare account named
+`Trigo Recovery Disposable`, account `3fd3cd769d5d372e6757d0ec208a74f2`;
+it must never run in the working dev account
+`27940cd0d92bb3f03943a5378ccf68d3`, a personal account or a shared account. The
+owner has approved that boundary and the account exists with free-tier defaults,
+but execution remains blocked until a dedicated account-restricted token and
+sole-writer control are handed to the operator. Stop before accepting a paid plan,
+adding a payment method or incurring any charge.
+
+The project bootstrap wrapper intentionally remains limited to `dev` and
+`personal`, rejects forwarded flags and does not expose state-store teardown or a
+worker-name override. This rehearsal invokes only the pinned Alchemy CLI from a
+throwaway clone. Pinned Alchemy fixes its profile registry and credential caches at
+`~/.alchemy`; it does not provide an alternate config root. Isolation therefore
+uses all three supported namespaces without changing `HOME` or `CODEX_HOME`:
+
+- a one-use `trigo-cloud-issue-29-interrupt-<suffix>` environment profile;
+- the ignored `config/cloud/issue-29-interrupt.json` account declaration; and
+- the clone-local `.alchemy/state/CloudflareStateStore/<profile>_alchemy-state-store`
+  stage in a new temporary clone.
+
+The deterministic interruption is a marker-owned directory at
+`~/.alchemy/credentials/<profile>/cloudflare-state-store.json`. In beta.76,
+`deploy()` settles each resource and writes `__stack_output__.json` before
+returning. Only then does bootstrap write this credential cache; version waiting,
+login, state hoist and local-stack deletion all happen later. A directory at the
+file path makes that write fail consistently at the completed local stack output
+checkpoint. This is not a timed signal, a patched dependency or a remote failure.
+Removing only the marked directory and replaying the identical command exercises
+the native `Resuming Cloudflare State Store ...` branch.
+
+### Action-time prerequisites
+
+Confirm and retain non-secret evidence for every item before arming the seam:
+
+1. The current checkout is the reviewed issue #29 PR head with Bun 1.3.13,
+   Alchemy 2.0.0-beta.76 and Wrangler 4.124.0 installed from the lockfile.
+2. The selected account is exactly `Trigo Recovery Disposable`, ID
+   `3fd3cd769d5d372e6757d0ec208a74f2`. It differs from the protected dev ID above,
+   and its inventory is empty: no Workers, Secrets Store, R2 buckets, D1 databases
+   or Workflows. Read the account's `workers.dev` subdomain without mutation and
+   record the exact `https://alchemy-state-store.<subdomain>.workers.dev` origin.
+3. The dedicated token is restricted under Account Resources to that disposable
+   account only. It has Workers Scripts Write and Account Secrets Store Edit, no
+   zone permissions and no access to the protected dev account. The token is
+   loaded only from a hidden prompt or secret manager into the command environment.
+4. No other operator or automation can write to the disposable account during the
+   rehearsal. The cost ledger is EUR 0 actual/EUR 0 reserved and the account is on
+   the free plan. Any upgrade, payment or charge prompt is a hard stop.
+5. The one-use profile, its credential directory and the clone-local bootstrap
+   stage do not exist. Record a SHA-256 digest (or `absent`) for the protected dev
+   state credential before the experiment; never copy or print that credential.
+   Set `umask 077` before creating the clone, profile, logs or state artifacts.
+6. The approval covers exactly one induced bootstrap failure, one identical replay,
+   deletion of the named disposable resources and deletion of the disposable
+   account. It does not authorize dev/personal mutation or application deployment.
+
+Use a new clone under a mode-`0700` temporary root and copy the tracked declaration
+to its ignored path. Replace the random profile suffix and state-store origin with
+the read-only verified values; the probe pins both account IDs and the purpose. Do
+not put a token in this file:
+
+```sh
+umask 077
+TRIGO_RECOVERY_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/trigo-issue-29.XXXXXX")"
+chmod 700 "$TRIGO_RECOVERY_ROOT"
+TRIGO_SOURCE_REPOSITORY="$(git rev-parse --show-toplevel)"
+TRIGO_REVIEWED_COMMIT="$(git rev-parse HEAD)"
+
+git clone --no-local "$TRIGO_SOURCE_REPOSITORY" "$TRIGO_RECOVERY_ROOT/trigo"
+cd "$TRIGO_RECOVERY_ROOT/trigo"
+git checkout --detach "$TRIGO_REVIEWED_COMMIT"
+mise trust
+mise install
+mise exec -- bun install --frozen-lockfile
+
+cp config/cloud/issue-29-interrupt.example.json \
+  config/cloud/issue-29-interrupt.json
+```
+
+Configure exactly that profile with Cloudflare method `env`, then export the same
+profile and disposable account ID for the rehearsal process. The source-only probe
+performs no network requests: it validates the closed schema, pinned disposable
+account and verified Worker origin, protected-account separation, exact environment
+identity, restrictive process umask, the single-provider `env` profile and the
+absence of both local experiment artifacts.
+
+```sh
+TRIGO_RECOVERY_CONFIG=config/cloud/issue-29-interrupt.json
+TRIGO_RECOVERY_PROFILE="$(jq -r '.profile' "$TRIGO_RECOVERY_CONFIG")"
+export CLOUDFLARE_ACCOUNT_ID="$(jq -r '.accountId' "$TRIGO_RECOVERY_CONFIG")"
+export ALCHEMY_PROFILE="$TRIGO_RECOVERY_PROFILE"
+
+mise exec -- bun --bun infra/node_modules/alchemy/bin/alchemy.js login \
+  --configure --profile "$TRIGO_RECOVERY_PROFILE"
+
+mise exec -- bun scripts/cloud-bootstrap-interruption.ts preflight \
+  --config "$TRIGO_RECOVERY_CONFIG"
+```
+
+Separately run the pinned Wrangler `whoami --account <disposable-id> --json` check
+and inspect the account inventory read-only. Stop unless the token sees the exact
+disposable ID, cannot see the protected dev account and every inventory listed in
+prerequisite 2 is empty. The local probe cannot establish token scope or remote
+emptiness and must not be treated as that evidence.
+
+### Induce, observe and replay
+
+Arm the local collision and run bootstrap once. Capture its status and log without
+printing environment values:
+
+```sh
+mise exec -- bun scripts/cloud-bootstrap-interruption.ts arm \
+  --config "$TRIGO_RECOVERY_CONFIG"
+
+set +e
+mise exec -- bun --bun infra/node_modules/alchemy/bin/alchemy.js \
+  cloudflare bootstrap --profile "$TRIGO_RECOVERY_PROFILE" \
+  >bootstrap-interrupted.log 2>&1
+TRIGO_INTERRUPTED_STATUS=$?
+set -e
+test "$TRIGO_INTERRUPTED_STATUS" -ne 0
+
+mise exec -- bun scripts/cloud-bootstrap-interruption.ts assert-interrupted \
+  --config "$TRIGO_RECOVERY_CONFIG"
+```
+
+The failed run is valid only when the error is the expected attempt to write the
+directory-backed credential path and `assert-interrupted` passes. The probe parses
+but never prints the secret-bearing state. It requires mode-private local state, a
+stack output containing the verified origin and a non-empty bearer token, all
+resource rows in settled `created`/`updated` states, and these pinned logical IDs:
+`StateStoreSecrets`, `StateStoreAuthTokenValue`, `AlchemyStateStoreToken`,
+`StateStoreEncryptionKeyValue`, `StateStoreEncryptionKey` and `Api`. Record its
+sanitized JSON summary plus the remote Worker/store/secret IDs. The remote account
+must now contain only `alchemy-state-store`, one Secrets Store and exactly the
+`AlchemyStateStoreToken` and `AlchemyStateStoreEncryptionKey` secrets; R2, D1 and
+Workflows remain empty.
+
+Disarm only after that checkpoint passes. The command refuses to remove anything
+unless the collision directory contains its exact `ARMED` marker and nothing else.
+Then replay the same pinned bootstrap command without adding `--force` or
+`--worker-name`:
+
+```sh
+mise exec -- bun scripts/cloud-bootstrap-interruption.ts disarm \
+  --config "$TRIGO_RECOVERY_CONFIG"
+
+mise exec -- bun --bun infra/node_modules/alchemy/bin/alchemy.js \
+  cloudflare bootstrap --profile "$TRIGO_RECOVERY_PROFILE" \
+  >bootstrap-replayed.log 2>&1
+
+mise exec -- bun scripts/cloud-bootstrap-interruption.ts assert-recovered \
+  --config "$TRIGO_RECOVERY_CONFIG"
+```
+
+Replay acceptance requires all of the following:
+
+- the log contains `Resuming Cloudflare State Store 'alchemy-state-store'
+deployment...` followed by the ready message;
+- the same Worker, Secrets Store and two secret IDs are adopted in place, with no
+  duplicate or replacement and no additional account resource;
+- the state-store `/version` endpoint reports contract version 7;
+- the local experiment stage is gone only after replay succeeds; and
+- the regenerated credential cache is a regular file bound to the disposable
+  account and exact pre-verified state-store Worker origin, with no group/other
+  access. The probe reports these last two facts without returning its bearer token.
+
+### Cleanup and retained evidence
+
+Cleanup remains part of the approved destructive boundary, but perform it only
+after the recovery assertions and an exact inventory review. Preserve sanitized
+evidence first; never preserve the local state files, stack output, credential
+cache, full environment or unreviewed logs because they contain or may contain
+state secrets.
+
+1. Confirm the selected account is still the disposable ID and the inventory still
+   contains only the one Worker, one store and two named secrets recorded above.
+2. Delete the `alchemy-state-store` Worker, then delete only the two recorded
+   state-store secrets. Delete the Secrets Store only after a read proves it is
+   empty. Stop instead of deleting if any foreign resource or secret appears.
+3. Re-run the read-only account inventories and retain their zero-resource result.
+4. Clear only the one-use Alchemy profile and its credential cache, remove the
+   throwaway clone, and prove the protected dev credential digest is unchanged.
+5. Have the owner delete `Trigo Recovery Disposable` in Cloudflare and retain the
+   account-deletion confirmation. Finish with EUR 0 actual/EUR 0 reserved.
+
+Retain the reviewed commit SHA and tool versions, the owner's exact boundary
+approval, disposable account name/ID, a token-scope screenshot with no token,
+before/interrupted/replayed/cleaned inventory IDs, the induced exit status and
+error class, sanitized probe summaries, the two expected replay log lines,
+`/version` result, unchanged protected-dev credential digest, zero-cost ledger and
+account-deletion confirmation.
+
+Stop immediately and preserve evidence on any ID/profile mismatch, a token that
+can see the protected account, non-empty baseline inventory, pre-existing local
+artifact, unexpected first-run success/error, incomplete local checkpoint, replay
+without the `Resuming` branch, planned deletion/replacement, changed remote IDs,
+foreign cleanup target, changed dev credential digest, provider/billing prompt or
+non-zero cost. Do not recover by using `--force`, changing the worker name,
+deleting uncertain resources or switching to the dev profile.

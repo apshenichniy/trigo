@@ -63,8 +63,13 @@ repository.
 
 The isolated disposable-account interrupted-bootstrap experiment remains unrun.
 It deliberately interrupts and replays cloud mutation and therefore still requires
-the separate destructive-experiment approval established by the parent plan. Do
-not infer that approval from the non-destructive dev authorization.
+the separately approved destructive boundary established by the parent plan. Its
+fail-closed local seam and assertions are implemented in
+`scripts/cloud-bootstrap-interruption.ts`; they do not call Cloudflare or expose a
+destructive action through the project wrapper. The approved free-tier disposable
+account is `Trigo Recovery Disposable`
+(`3fd3cd769d5d372e6757d0ec208a74f2`). Execution still waits for its dedicated
+account-restricted credential and sole-writer handoff.
 
 The exact operator commands and recovery boundaries are in
 [Cloud operations](cloud.md). Do not mark issue #29 accepted, deploy personal,
