@@ -298,6 +298,25 @@ struct ServerConnectionTests {
     #expect(restored.recordingEligibility == .eligible(archiveId: archiveA))
   }
 
+  @Test func keychainReadFailureIsNotReportedAsANetworkOutage() async {
+    let record = StoredConnection.fixture(
+      archiveId: archiveA, serverURL: "https://dev.example.test", credentialAccount: "saved")
+    let metadata = MemoryConnectionMetadataStore(value: ConnectionMetadata(committed: record))
+    let credentials = MemoryCredentialStore(values: ["saved": "token"])
+    await credentials.failNextLoad()
+    let status = StubStatusClient()
+    let connection = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
+      statusClient: status)
+
+    let restored = await connection.restore()
+
+    #expect(restored.binding?.archiveId == archiveA)
+    #expect(restored.health == .blocked(.credentialMissing))
+    #expect(restored.recordingEligibility == .eligible(archiveId: archiveA))
+    #expect(await status.requestCount == 0)
+  }
+
   @Test(arguments: ["http://example.test", "https://", "https:///", "https://example.test:70000"])
   func invalidURLNeverReachesTheNetworkOrChangesTheBinding(serverURL: String) async {
     let status = StubStatusClient()
@@ -414,6 +433,7 @@ private actor MemoryConnectionMetadataStore: ConnectionMetadataStoring {
 
 private actor MemoryCredentialStore: CredentialStoring {
   private var storage: [String: String]
+  private var shouldFailNextLoad = false
   private var shouldFailNextSave = false
   private var shouldFailNextDelete = false
 
@@ -422,7 +442,13 @@ private actor MemoryCredentialStore: CredentialStoring {
   var values: [String] { storage.values.sorted() }
   var count: Int { storage.count }
 
-  func load(account: String) throws -> String? { storage[account] }
+  func load(account: String) throws -> String? {
+    if shouldFailNextLoad {
+      shouldFailNextLoad = false
+      throw TestFailure.injected
+    }
+    return storage[account]
+  }
   func save(token: String, account: String) throws {
     if shouldFailNextSave {
       shouldFailNextSave = false
@@ -437,6 +463,7 @@ private actor MemoryCredentialStore: CredentialStoring {
     }
     storage.removeValue(forKey: account)
   }
+  func failNextLoad() { shouldFailNextLoad = true }
   func failNextSave() { shouldFailNextSave = true }
   func failNextDelete() { shouldFailNextDelete = true }
 }
