@@ -22,6 +22,12 @@ public actor LocalArchive {
   /// A changed manifest must advance `documentVersion`, match this archive's supplied identity,
   /// and resolve every reference to already-published immutable bytes.
   public func publishManifest(_ bytes: Data) throws -> PublicationResult {
+    try publishManifest(bytes, allowedSpeakerNameChange: nil)
+  }
+
+  private func publishManifest(
+    _ bytes: Data, allowedSpeakerNameChange: SpeakerNameChange?
+  ) throws -> PublicationResult {
     let proposed = try Contract.validate("CallDocument", bytes: bytes)
     let metadata = try callMetadata(bytes)
     try requireArchiveIdentity(metadata.archiveID)
@@ -35,6 +41,9 @@ public actor LocalArchive {
         throw LocalPersistenceError.staleDocumentVersion(
           current: currentVersion, proposed: metadata.documentVersion)
       }
+      try validateEvolution(
+        from: current.manifest.storedBytes, to: proposed.storedBytes,
+        allowedSpeakerNameChange: allowedSpeakerNameChange)
     }
 
     let references = try referenceBytes(for: metadata)
@@ -65,7 +74,8 @@ public actor LocalArchive {
     let manifestID = try string(object, key: "manifestId")
     try requireCanonicalIdentifier(callID)
     try requireCanonicalIdentifier(manifestID)
-    _ = try loadCall(callID: callID)
+    let call = try loadCall(callID: callID)
+    try validateAudioManifest(document.storedBytes, against: call.manifest.storedBytes)
     return try publishImmutable(
       bytes, to: audioManifestURL(callID: callID, manifestID: manifestID), identity: manifestID)
   }
@@ -152,7 +162,10 @@ public actor LocalArchive {
     manifest["documentVersion"] = (current.manifest.documentVersion ?? 0) + 1
     let bytes = try JSONSerialization.data(
       withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-    _ = try publishManifest(bytes)
+    _ = try publishManifest(
+      bytes,
+      allowedSpeakerNameChange: SpeakerNameChange(
+        revisionID: revisionID, speakerID: speakerID, name: name))
     return try loadCall(callID: callID)
   }
 
@@ -215,8 +228,105 @@ public actor LocalArchive {
     let bytes = try Data(contentsOf: audioManifestURL(callID: callID, manifestID: manifestID))
     guard Contract.hash(bytes) == expectedHash else { throw ContractError.checksum }
     let audio = try Contract.validate("AudioManifest", bytes: bytes)
-    guard try string(jsonObject(audio.storedBytes), key: "callId") == callID else {
+    let stored = try jsonObject(audio.storedBytes)
+    guard try string(stored, key: "callId") == callID,
+      try string(stored, key: "manifestId") == manifestID
+    else {
       throw ContractError.reference
+    }
+  }
+
+  private func validateAudioManifest(_ audioBytes: Data, against callBytes: Data) throws {
+    let audio = try jsonObject(audioBytes)
+    let call = try jsonObject(callBytes)
+    guard try string(audio, key: "callId") == string(call, key: "callId") else {
+      throw ContractError.reference
+    }
+    let captureState = try string(call, key: "captureState")
+    guard captureState == "stopped" || captureState == "interrupted",
+      let callDuration = (call["durationMs"] as? NSNumber)?.intValue,
+      try integer(audio, key: "durationMs") == callDuration
+    else {
+      throw ContractError.reference
+    }
+    let mediaProfileID = try string(audio, key: "mediaProfileId")
+    let tracks = call["tracks"] as? [[String: Any]] ?? []
+    let trackIDs = Set(try tracks.map { try string($0, key: "trackId") })
+    guard try tracks.allSatisfy({ try string($0, key: "mediaProfileId") == mediaProfileID })
+    else {
+      throw ContractError.reference
+    }
+    let objects = audio["objects"] as? [[String: Any]] ?? []
+    for object in objects {
+      let channels = object["channelMap"] as? [[String: Any]] ?? []
+      guard try channels.allSatisfy({ trackIDs.contains(try string($0, key: "trackId")) })
+      else {
+        throw ContractError.reference
+      }
+    }
+    for trackID in trackIDs {
+      var cursor = 0
+      for object in objects {
+        let channels = object["channelMap"] as? [[String: Any]] ?? []
+        guard channels.contains(where: { $0["trackId"] as? String == trackID }) else {
+          continue
+        }
+        guard try integer(object, key: "startMs") == cursor else {
+          throw ContractError.reference
+        }
+        cursor = try integer(object, key: "endMs")
+      }
+      guard cursor == callDuration else { throw ContractError.reference }
+    }
+  }
+
+  private func validateEvolution(
+    from currentBytes: Data, to proposedBytes: Data,
+    allowedSpeakerNameChange: SpeakerNameChange?
+  ) throws {
+    let current = try jsonObject(currentBytes)
+    let proposed = try jsonObject(proposedBytes)
+    let currentRevisions = current["revisions"] as? [[String: Any]] ?? []
+    let proposedRevisions = proposed["revisions"] as? [[String: Any]] ?? []
+    guard proposedRevisions.count >= currentRevisions.count else {
+      let lostID = try string(currentRevisions[proposedRevisions.count], key: "revisionId")
+      throw LocalPersistenceError.manifestWouldDiscardRevision(lostID)
+    }
+    for (index, retained) in currentRevisions.enumerated() {
+      guard jsonValuesEqual(retained, proposedRevisions[index]) else {
+        throw LocalPersistenceError.manifestWouldDiscardRevision(
+          try string(retained, key: "revisionId"))
+      }
+    }
+
+    if !(current["audioManifest"] is NSNull),
+      !jsonValuesEqual(current["audioManifest"], proposed["audioManifest"])
+    {
+      throw LocalPersistenceError.manifestWouldChangeAudioManifest
+    }
+
+    let currentNames = current["speakerNames"] as? [String: Any] ?? [:]
+    let proposedNames = proposed["speakerNames"] as? [String: Any] ?? [:]
+    guard let allowedSpeakerNameChange else {
+      guard jsonValuesEqual(currentNames, proposedNames) else {
+        throw LocalPersistenceError.manifestWouldChangeSpeakerAnnotations
+      }
+      return
+    }
+
+    let currentWithoutTarget = removingSpeakerName(
+      revisionID: allowedSpeakerNameChange.revisionID,
+      speakerID: allowedSpeakerNameChange.speakerID, from: currentNames)
+    let proposedWithoutTarget = removingSpeakerName(
+      revisionID: allowedSpeakerNameChange.revisionID,
+      speakerID: allowedSpeakerNameChange.speakerID, from: proposedNames)
+    let proposedTarget =
+      (proposedNames[allowedSpeakerNameChange.revisionID] as? [String: Any])?[
+        allowedSpeakerNameChange.speakerID] as? String
+    guard jsonValuesEqual(currentWithoutTarget, proposedWithoutTarget),
+      proposedTarget == allowedSpeakerNameChange.name
+    else {
+      throw LocalPersistenceError.manifestWouldChangeSpeakerAnnotations
     }
   }
 
@@ -259,6 +369,38 @@ public actor LocalArchive {
 
   private func callDirectory(_ callID: String) -> URL {
     root.appendingPathComponent(callID, isDirectory: true)
+  }
+}
+
+private struct SpeakerNameChange {
+  let revisionID: String
+  let speakerID: String
+  let name: String?
+}
+
+private func removingSpeakerName(
+  revisionID: String, speakerID: String, from names: [String: Any]
+) -> [String: Any] {
+  var result = names
+  var revisionNames = result[revisionID] as? [String: Any] ?? [:]
+  revisionNames.removeValue(forKey: speakerID)
+  if revisionNames.isEmpty {
+    result.removeValue(forKey: revisionID)
+  } else {
+    result[revisionID] = revisionNames
+  }
+  return result
+}
+
+private func jsonValuesEqual(_ lhs: Any?, _ rhs: Any?) -> Bool {
+  switch (lhs, rhs) {
+  case (nil, nil): return true
+  case (.some(let lhs), .some(let rhs)):
+    let options: JSONSerialization.WritingOptions = [.sortedKeys, .withoutEscapingSlashes]
+    let left = try? JSONSerialization.data(withJSONObject: [lhs], options: options)
+    let right = try? JSONSerialization.data(withJSONObject: [rhs], options: options)
+    return left != nil && left == right
+  default: return false
   }
 }
 

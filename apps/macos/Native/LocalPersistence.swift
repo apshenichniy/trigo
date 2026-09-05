@@ -7,6 +7,8 @@ public enum PersistenceInterruptionPoint: Sendable, Equatable {
   case afterArchiveAtomicReplacement
   case afterJournalTemporaryFileSynced
   case afterJournalAtomicReplacement
+  case afterLifecycleTemporaryFileSynced
+  case afterLifecycleAtomicReplacement
   case afterJournalIntentPersisted
   case beforeJournalAcknowledgement
   case afterJournalAcknowledgement
@@ -19,11 +21,16 @@ public enum LocalPersistenceError: Error, Sendable, Equatable {
   case archiveIdentityMismatch(expected: String, actual: String)
   case callNotFound(String)
   case immutableConflict(String)
+  case manifestWouldDiscardRevision(String)
+  case manifestWouldChangeSpeakerAnnotations
+  case manifestWouldChangeAudioManifest
   case staleDocumentVersion(current: Int, proposed: Int)
   case invalidSpeakerReference(revisionID: String, speakerID: String)
   case invalidStoredDocument(String)
   case operationNotFound(String)
   case operationConflict(String)
+  case lifecycleNotFound(String)
+  case invalidFailureCode(String)
   case io(String)
 }
 
@@ -50,11 +57,13 @@ public struct ArchiveReconciliationReport: Sendable, Equatable {
 enum PersistenceDomain {
   case archive
   case journal
+  case lifecycle
 
   var temporaryFilePoint: PersistenceInterruptionPoint {
     switch self {
     case .archive: .afterArchiveTemporaryFileSynced
     case .journal: .afterJournalTemporaryFileSynced
+    case .lifecycle: .afterLifecycleTemporaryFileSynced
     }
   }
 
@@ -62,6 +71,7 @@ enum PersistenceDomain {
     switch self {
     case .archive: .afterArchiveAtomicReplacement
     case .journal: .afterJournalAtomicReplacement
+    case .lifecycle: .afterLifecycleAtomicReplacement
     }
   }
 }
