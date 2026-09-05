@@ -13,6 +13,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   APPROVED_DISPOSABLE_ACCOUNT_ID,
+  APPROVED_DISPOSABLE_STATE_STORE_ORIGIN,
   EXPECTED_STATE_STORE_LOGICAL_IDS,
   PROTECTED_DEV_ACCOUNT_ID,
   armBootstrapInterruption,
@@ -25,8 +26,8 @@ import {
 
 const disposableAccountId = APPROVED_DISPOSABLE_ACCOUNT_ID;
 const profile = "trigo-cloud-issue-29-interrupt-a1b2c3";
-const stateStoreOrigin = "https://alchemy-state-store.disposable.workers.dev";
-const pendingStateStoreOrigin = "pending-first-worker";
+const stateStoreOrigin = APPROVED_DISPOSABLE_STATE_STORE_ORIGIN;
+const pendingStateStoreOrigin = "pending-workers-dev-initialization";
 
 function writeConfiguration(directory: string, overrides: Record<string, unknown> = {}): string {
   const path = resolve(directory, "issue-29-interrupt.json");
@@ -105,7 +106,7 @@ describe("issue #29 interrupted bootstrap probe", () => {
     expect(runbook).toContain("## Disposable interrupted-bootstrap rehearsal");
     expect(runbook).toMatch(/completed local stack output\s+checkpoint/);
     expect(runbook).toContain("Resuming Cloudflare State Store");
-    expect(runbook).toContain("pending-first-worker");
+    expect(runbook).toContain("pending-workers-dev-initialization");
     expect(runbook).toContain("/workers/subdomain");
     expect(runbook).toContain(PROTECTED_DEV_ACCOUNT_ID);
     expect(runbook).toContain('git clone --no-local "$TRIGO_SOURCE_REPOSITORY"');
@@ -201,7 +202,7 @@ describe("issue #29 interrupted bootstrap probe", () => {
     }
   });
 
-  it("allows the first-Worker origin sentinel only before observation assertions", () => {
+  it("allows the unresolved origin only for preflight before dashboard initialization", () => {
     const directory = mkdtempSync(resolve(tmpdir(), "trigo-bootstrap-interruption-"));
     const alchemyRoot = resolve(directory, "home-alchemy");
     const workspaceRoot = resolve(directory, "workspace");
@@ -217,16 +218,22 @@ describe("issue #29 interrupted bootstrap probe", () => {
         accountId: disposableAccountId,
         profile,
       });
-      armBootstrapInterruption(config, probe);
-      expect(() => assertInterruptedBootstrap(config, probe)).toThrow(
-        "Resolve stateStoreOrigin after the first Worker deployment",
-      );
-      expect(() => disarmBootstrapInterruption(config, probe)).toThrow(
-        "Resolve stateStoreOrigin after the first Worker deployment",
+      expect(() => armBootstrapInterruption(config, probe)).toThrow(
+        "Resolve stateStoreOrigin after the owner initializes the workers.dev subdomain",
       );
 
       writeConfiguration(directory);
+      armBootstrapInterruption(config, probe);
       writeSettledLocalStack(workspaceRoot);
+      writeConfiguration(directory, { stateStoreOrigin: pendingStateStoreOrigin });
+      expect(() => assertInterruptedBootstrap(config, probe)).toThrow(
+        "Resolve stateStoreOrigin after the owner initializes the workers.dev subdomain",
+      );
+      expect(() => disarmBootstrapInterruption(config, probe)).toThrow(
+        "Resolve stateStoreOrigin after the owner initializes the workers.dev subdomain",
+      );
+
+      writeConfiguration(directory);
       assertInterruptedBootstrap(config, probe);
       disarmBootstrapInterruption(config, probe);
       const credentialDirectory = resolve(alchemyRoot, "credentials", profile);
@@ -241,14 +248,14 @@ describe("issue #29 interrupted bootstrap probe", () => {
       );
       writeConfiguration(directory, { stateStoreOrigin: pendingStateStoreOrigin });
       expect(() => assertRecoveredBootstrap(config, probe)).toThrow(
-        "Resolve stateStoreOrigin after the first Worker deployment",
+        "Resolve stateStoreOrigin after the owner initializes the workers.dev subdomain",
       );
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
   });
 
-  it("rejects malformed state-store origins other than the exact pending sentinel", () => {
+  it("rejects malformed or non-approved state-store origins", () => {
     const directory = mkdtempSync(resolve(tmpdir(), "trigo-bootstrap-interruption-"));
     try {
       expect(() =>
@@ -267,6 +274,13 @@ describe("issue #29 interrupted bootstrap probe", () => {
       ).toThrow(
         "stateStoreOrigin must be the pending sentinel or verified state-store HTTPS origin",
       );
+      expect(() =>
+        readBootstrapInterruptionConfiguration(
+          writeConfiguration(directory, {
+            stateStoreOrigin: "https://alchemy-state-store.disposable.workers.dev",
+          }),
+        ),
+      ).toThrow("stateStoreOrigin must match the approved disposable account origin");
       for (const stateStoreOrigin of [
         "https://alchemy-state-store.disposable.extra.workers.dev",
         "https://alchemy-state-store.disposable.workers.dev:8443",

@@ -13,6 +13,8 @@ import { resolve } from "node:path";
 
 export const PROTECTED_DEV_ACCOUNT_ID = "27940cd0d92bb3f03943a5378ccf68d3";
 export const APPROVED_DISPOSABLE_ACCOUNT_ID = "3fd3cd769d5d372e6757d0ec208a74f2";
+export const APPROVED_DISPOSABLE_STATE_STORE_ORIGIN =
+  "https://alchemy-state-store.trigo-recovery-disposable.workers.dev";
 
 export const EXPECTED_STATE_STORE_LOGICAL_IDS = [
   "StateStoreSecrets",
@@ -25,7 +27,7 @@ export const EXPECTED_STATE_STORE_LOGICAL_IDS = [
 
 const PURPOSE = "issue-29-interrupted-bootstrap" as const;
 const STATE_STORE_SCRIPT = "alchemy-state-store" as const;
-const PENDING_STATE_STORE_ORIGIN = "pending-first-worker" as const;
+const PENDING_STATE_STORE_ORIGIN = "pending-workers-dev-initialization" as const;
 const MARKER = "ARMED" as const;
 const PLACEHOLDER_PROFILE = "trigo-cloud-issue-29-interrupt-replace-me" as const;
 const STATE_STORE_ORIGIN_ERROR =
@@ -135,6 +137,10 @@ export function readBootstrapInterruptionConfiguration(
     )
       throw new Error(STATE_STORE_ORIGIN_ERROR);
     stateStoreOrigin = verifiedStateStoreOrigin.origin;
+    if (stateStoreOrigin !== APPROVED_DISPOSABLE_STATE_STORE_ORIGIN)
+      throw new Error(
+        `stateStoreOrigin must match the approved disposable account origin ${APPROVED_DISPOSABLE_STATE_STORE_ORIGIN}`,
+      );
   }
   if (!Array.isArray(value.protectedAccountIds))
     throw new Error("protectedAccountIds must be an array of Cloudflare account IDs");
@@ -204,7 +210,7 @@ function expectedMarker(configuration: BootstrapInterruptionConfiguration): stri
 function requireStateStoreOrigin(configuration: BootstrapInterruptionConfiguration): string {
   if (configuration.stateStoreOrigin === PENDING_STATE_STORE_ORIGIN)
     throw new Error(
-      "Resolve stateStoreOrigin after the first Worker deployment before asserting its checkpoint",
+      "Resolve stateStoreOrigin after the owner initializes the workers.dev subdomain",
     );
   return configuration.stateStoreOrigin;
 }
@@ -299,6 +305,7 @@ export function armBootstrapInterruption(
   environment = defaultEnvironment(),
 ): BootstrapInterruptionSummary & { readonly credentialCollisionPath: string } {
   const configuration = assertConfiguredIdentity(configPath, environment);
+  requireStateStoreOrigin(configuration);
   const summary = assertCleanInterruptionSeam(configuration, environment);
   const collision = credentialPath(configuration, environment);
   if (existsSync(collision))

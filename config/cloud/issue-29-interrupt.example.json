@@ -2,6 +2,6 @@
   "purpose": "issue-29-interrupted-bootstrap",
   "accountId": "3fd3cd769d5d372e6757d0ec208a74f2",
   "profile": "trigo-cloud-issue-29-interrupt-replace-me",
-  "stateStoreOrigin": "pending-first-worker",
+  "stateStoreOrigin": "pending-workers-dev-initialization",
   "protectedAccountIds": ["27940cd0d92bb3f03943a5378ccf68d3"]
 }
