@@ -1,5 +1,8 @@
 import { exports } from "cloudflare:workers";
-import { expect, it } from "vitest";
+import { expect, it, beforeAll } from "vitest";
+beforeAll(async () => {
+  expect((await exports.default.fetch("http://localhost/__local/health")).status).toBe(200);
+});
 it("persists fake transcription through the local Worker and R2 binding", async () => {
   const response = await exports.default.fetch(
     "http://localhost/__local/transcriptions/no-speech",

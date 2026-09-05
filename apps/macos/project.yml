@@ -10,19 +10,22 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     MACOSX_DEPLOYMENT_TARGET: "15.0"
-    GENERATE_INFOPLIST_FILE: YES
+    GENERATE_INFOPLIST_FILE: NO
     CODE_SIGN_STYLE: Automatic
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "0.1.0"
     INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
-    INFOPLIST_KEY_TrigoWorktreeID: $(TRIGO_WORKTREE_ID)
-    TRIGO_WORKTREE_ID: local
+    TRIGO_WORKTREE_ID: ${TRIGO_WORKTREE_ID}
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 targetTemplates:
   App:
     type: application
     platform: macOS
     sources: [Sources]
+    info:
+      path: Generated/Info.plist
+      properties:
+        TrigoWorktreeID: $(TRIGO_WORKTREE_ID)
     dependencies:
       - package: TrigoNative
 targets:

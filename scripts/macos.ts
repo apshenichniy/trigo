@@ -1,5 +1,5 @@
-import { requireNativeTools } from "./toolchain.ts";
-import { assertLocksUnchanged } from "./locks.ts";
+import { requireNativeTools, toolOutput } from "./toolchain.ts";
+import { assertLocksUnchanged, snapshotLocks } from "./locks.ts";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
@@ -20,25 +20,22 @@ const scheme = variant === "dev" ? "Trigo Dev" : "Trigo";
 const project = "apps/macos/Trigo.xcodeproj";
 const canonical = "apps/macos/Locks/Package.resolved";
 const nested = `${project}/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`;
-const locks = [
-  "bun.lock",
-  "packages/contracts/Package.resolved",
-  "apps/macos/Package.resolved",
-  canonical,
-];
-const before = new Map(locks.filter(existsSync).map((path) => [path, readFileSync(path, "utf8")]));
+const before = action === "dependencies" ? new Map<string, string>() : snapshotLocks();
 const derived = resolve(root, ".local/DerivedData");
 const worktree = createHash("sha256").update(root).digest("hex").slice(0, 12);
 mkdirSync(".local", { recursive: true });
-run([
-  "xcodegen",
-  "generate",
-  "--spec",
-  "apps/macos/project.yml",
-  "--use-cache",
-  "--cache-path",
-  ".local/xcodegen.cache",
-]);
+run(
+  [
+    "xcodegen",
+    "generate",
+    "--spec",
+    "apps/macos/project.yml",
+    "--use-cache",
+    "--cache-path",
+    ".local/xcodegen.cache",
+  ],
+  { env: { ...process.env, TRIGO_WORKTREE_ID: worktree } },
+);
 if (action === "dependencies") {
   run(["swift", "package", "--package-path", "packages/contracts", "update"]);
   run(["swift", "package", "--package-path", "apps/macos", "update"]);
@@ -87,6 +84,20 @@ if (action === "dependencies") {
     ]);
     if (readFileSync(nested, "utf8") !== readFileSync(canonical, "utf8"))
       throw new Error("Xcode changed the restored dependency lock");
+    const bundle =
+      action === "archive"
+        ? resolve(root, `.local/archives/${scheme}.xcarchive/Products/Applications/${scheme}.app`)
+        : resolve(derived, `Build/Products/Debug/${scheme}.app`);
+    const info = resolve(bundle, "Contents/Info.plist");
+    const bundleId =
+      variant === "dev" ? "io.github.apshenichniy.trigo.dev" : "io.github.apshenichniy.trigo";
+    for (const [key, expected] of [
+      ["CFBundleIdentifier", bundleId],
+      ["TrigoWorktreeID", worktree],
+    ]) {
+      if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
+        throw new Error(`Built app identity mismatch: ${key}`);
+    }
     if (action === "run") {
       const applications = resolve(homedir(), "Applications");
       mkdirSync(applications, { recursive: true });

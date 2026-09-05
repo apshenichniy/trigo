@@ -356,5 +356,41 @@
       "00000000-0000-4000-8000-000000000011": "no-speech.json"
     },
     "expected": "structure"
+  },
+  {
+    "name": "reused-speaker",
+    "kind": "CallDocument",
+    "document": "reused-speaker.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json",
+      "00000000-0000-4000-8000-000000000030": "reused-speaker-revision.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "reused-turn",
+    "kind": "CallDocument",
+    "document": "reused-turn.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json",
+      "00000000-0000-4000-8000-000000000030": "reused-turn-revision.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "valid-fresh-transcription",
+    "kind": "CallDocument",
+    "document": "valid-fresh-transcription.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "revision.json",
+      "00000000-0000-4000-8000-000000000011": "no-speech.json",
+      "00000000-0000-4000-8000-000000000030": "valid-fresh-transcription-revision.json"
+    },
+    "expected": null
   }
 ]

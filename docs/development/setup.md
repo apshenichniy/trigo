@@ -16,7 +16,7 @@ mise exec -- bun run doctor
 mise exec -- bun run check
 ```
 
-Git and `rg` are prerequisites. Package setup can access registries; subsequent
+Git is a prerequisite. Package setup can access registries; subsequent
 ordinary development/checks require no cloud credentials or real ASR. Native
 Swift dependencies are fetched automatically from tracked resolutions on the
 first build. A clean clone needs network access for that dependency fetch.
@@ -85,7 +85,8 @@ provide no account access. No AI binding or remote state store is created.
 
 State lives under `.local/<hash-of-real-worktree-path>/.alchemy`; tests use a
 fresh temporary directory. `TRIGO_LOCAL_PORT` selects a port (default 19371; smoke
-19372). Both bind only to 127.0.0.1 and fail on collisions. On macOS the launcher
+uses a fresh available port). Both bind only to 127.0.0.1 and fail on collisions. A per-launch nonce verifies that
+smoke requests reach the runtime created by that test. On macOS the launcher
 also denies external network access for the entire child process tree using the
 OS sandbox. Workers pool tests independently deny outbound service requests.
 The Linux composition retains the resource/credential restrictions; the macOS
@@ -128,7 +129,9 @@ publication remain #4. Archives live under `.local/archives/`.
 
 ## Generation and dependency updates
 
-Edit `project.yml`, never the generated Xcode project. Every build/archive restores
+Edit `project.yml`, never the generated Xcode project. Run the wrapper once before
+opening the generated project in Xcode: it embeds the worktree namespace for
+normal Xcode debugging as well as terminal builds. Every build/archive restores
 `apps/macos/Locks/Package.resolved` into the generated project's shared SwiftPM
 location, including cache hits. Xcode uses locked resolution with package updates
 disabled. Swift CLI builds separately use the contracts/native package locks.

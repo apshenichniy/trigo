@@ -15,8 +15,8 @@ Implementation scope: [approved plan](https://github.com/apshenichniy/trigo/issu
   4.0.0-rc.112 were required additions discovered by the runtime gate.
 - `bun run check` passed on Xcode 26.6 (17F113), Swift 6.3.3 / formatter 6.3.0,
   Bun 1.3.13, Node 24.14.1 and XcodeGen 2.46.0.
-- Shared conformance has 40 valid/invalid cases with identical Swift/TS results;
-  Node suite has 52 tests, Workers suite four, Swift contracts two aggregate tests
+- Shared conformance has 43 valid/invalid cases with identical Swift/TS results;
+  Node suite has 56 tests, Workers suite four, Swift contracts two aggregate tests
   (including all fixtures), native logic one. Later changes must refresh counts.
 - Both `Trigo` and `Trigo Dev` build without owner signing credentials. Native
   tests establish separate archive, journal, connection, preferences and Keychain
@@ -25,6 +25,19 @@ Implementation scope: [approved plan](https://github.com/apshenichniy/trigo/issu
   malformed JSON/UTF-8, missing references and rejected checksum mismatches.
 - Unavailable cloud/provider commands return nonzero and identify #12/#13.
   `dev --stage personal` is rejected before starting a process.
+
+## Review and CI corrections
+
+Independent Standards review found two maintenance duplications in native tool/lock
+checks; both were consolidated. Spec review found a smoke-port ownership hole and
+missing cross-revision turn/speaker uniqueness. Both now have regression coverage
+and passed the reviewer recheck. Installed-bundle inspection found that Xcode omitted
+a custom Info key; explicit generated plists and post-build identity checks correct it.
+
+The first GitHub run exposed an undeclared `rg` prerequisite on macOS and a Workers
+cold-start timeout on Linux. Wrappers now use Git's file inventory; the Worker starts
+in a bounded setup hook before persistence assertions. These are recorded failures,
+not completed CI acceptance.
 
 ## Delivery verification
 

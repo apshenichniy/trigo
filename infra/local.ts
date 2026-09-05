@@ -17,7 +17,7 @@ export default Stack(
     const bucket = yield* Bucket("Archive");
     const worker = yield* Worker("Api", {
       main: new URL("../apps/server/src/local-worker.ts", import.meta.url).pathname,
-      env: { LOCAL_ARCHIVE: bucket },
+      env: { LOCAL_ARCHIVE: bucket, LOCAL_RUN_ID: process.env.TRIGO_LOCAL_RUN_ID! },
       compatibility: { date: "2026-07-04", flags: ["nodejs_compat"] },
       dev: {
         host: "127.0.0.1",

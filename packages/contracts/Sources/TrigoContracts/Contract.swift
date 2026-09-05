@@ -112,6 +112,8 @@ public enum Contract {
       }
     }
     var revisions: [String: JSONValue] = [:]
+    var speakerIds = Set<JSONValue>()
+    var turnIds = Set<JSONValue>()
     for ref in call["revisions"].items {
       let revision = try resolve("TranscriptRevision", ref["revisionId"].text, ref["sha256"].text)
       try require(
@@ -125,6 +127,12 @@ public enum Contract {
         try require(
           tracks.contains { $0["trackId"] == turn["trackId"] }
             && turn["endMs"].integerValue <= call["durationMs"].integerValue, .reference)
+      }
+      for speaker in revision["speakers"].items {
+        try require(speakerIds.insert(speaker["speakerId"]).inserted, .reference)
+      }
+      for turn in revision["turns"].items {
+        try require(turnIds.insert(turn["turnId"]).inserted, .reference)
       }
       revisions[ref["revisionId"].text] = revision
     }

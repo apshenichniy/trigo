@@ -94,6 +94,8 @@ export async function validateArchive(
     }
   }
   const revisions = new Map<string, TranscriptRevision>();
+  const speakerIds = new Set<string>();
+  const turnIds = new Set<string>();
   for (const ref of call.revisions) {
     const revision = await resolve("TranscriptRevision", ref.revisionId, ref.sha256);
     check(
@@ -113,6 +115,14 @@ export async function validateArchive(
         call.tracks.some((t) => t.trackId === turn.trackId) &&
           turn.endMs <= (call.durationMs ?? -1),
       );
+    for (const speaker of revision.speakers) {
+      check(!speakerIds.has(speaker.speakerId));
+      speakerIds.add(speaker.speakerId);
+    }
+    for (const turn of revision.turns) {
+      check(!turnIds.has(turn.turnId));
+      turnIds.add(turn.turnId);
+    }
     revisions.set(ref.revisionId, revision);
   }
   for (const [revisionId, names] of Object.entries(call.speakerNames)) {

@@ -14,11 +14,6 @@ function doctor() {
     [["bun", "--version"], "1.3.13"],
     [["node", "--version"], "v24.14.1"],
   ];
-  if (process.platform === "darwin")
-    checks.push(
-      [["xcodegen", "--version"], "Version: 2.46.0"],
-      [["xcodebuild", "-version"], "Xcode 26.6\nBuild version 17F113"],
-    );
   for (const [cmd, expected] of checks) {
     const actual = output(cmd);
     console.log(`${cmd[0]}: ${actual}`);
@@ -27,7 +22,17 @@ function doctor() {
   console.log("Target: local; fake ASR; cloud setup (#12) and provider probes (#13) unavailable.");
 }
 function swiftFiles(): string[] {
-  return output(["rg", "--files", "apps/macos", "packages/contracts", "-g", "*.swift"]).split("\n");
+  return output([
+    "git",
+    "ls-files",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "apps/macos",
+    "packages/contracts",
+  ])
+    .split("\n")
+    .filter((path) => path.endsWith(".swift"));
 }
 const tsformat = (write = false) =>
   run(["node", "node_modules/oxfmt/bin/oxfmt", write ? "--write" : "--check", "."]);

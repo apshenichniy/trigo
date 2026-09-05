@@ -2,13 +2,19 @@ import { Effect } from "effect";
 import { fakeAsr, type Asr } from "./asr.ts";
 export interface LocalEnv {
   LOCAL_ARCHIVE: R2Bucket;
+  LOCAL_RUN_ID: string;
 }
 export function localHandler(asr: Asr) {
   return {
     async fetch(request: Request, env: LocalEnv): Promise<Response> {
       const url = new URL(request.url);
       if (url.pathname === "/__local/health")
-        return Response.json({ mode: "local", asr: "fake", schemaVersion: 1 });
+        return Response.json({
+          mode: "local",
+          asr: "fake",
+          schemaVersion: 1,
+          runId: env.LOCAL_RUN_ID,
+        });
       const match = /^\/__local\/transcriptions\/([a-z-]+)$/.exec(url.pathname);
       if (!match) return Response.json({ error: "unavailable", issue: 12 }, { status: 501 });
       const fixture = match[1]!;
