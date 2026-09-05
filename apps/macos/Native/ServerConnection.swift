@@ -360,12 +360,8 @@ public actor ServerConnection {
     if let pending = metadata.pending {
       do {
         try await credentialStore.delete(account: pending.credentialAccount)
-      } catch {
-        recoverySucceeded = false
-      }
-      var recovered = metadata
-      recovered.pending = nil
-      do {
+        var recovered = metadata
+        recovered.pending = nil
         try await metadataStore.save(recovered)
         metadata = recovered
       } catch {
@@ -408,8 +404,8 @@ public actor ServerConnection {
   }
 
   private func rollBack(candidate: StoredConnection, to previous: ConnectionMetadata) async {
-    try? await credentialStore.delete(account: candidate.credentialAccount)
     do {
+      try await credentialStore.delete(account: candidate.credentialAccount)
       try await metadataStore.save(previous)
       metadata = previous
     } catch {
