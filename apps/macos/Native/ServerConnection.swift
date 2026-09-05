@@ -270,13 +270,23 @@ public actor ServerConnection {
     current = ConnectionSnapshot(
       binding: committed.binding, health: .checking,
       lastAttemptIssue: recovered ? nil : .persistence)
+    let token: String
     do {
-      guard let token = try await credentialStore.load(account: committed.credentialAccount) else {
+      guard let savedToken = try await credentialStore.load(account: committed.credentialAccount)
+      else {
         current = ConnectionSnapshot(
           binding: committed.binding, health: .blocked(.credentialMissing),
           lastAttemptIssue: current.lastAttemptIssue)
         return current
       }
+      token = savedToken
+    } catch {
+      current = ConnectionSnapshot(
+        binding: committed.binding, health: .blocked(.credentialMissing),
+        lastAttemptIssue: current.lastAttemptIssue)
+      return current
+    }
+    do {
       let status = try await statusClient.fetch(serverURL: committed.serverURL, token: token)
       try validate(status, expectedArchiveId: committed.archiveId)
       current = ConnectionSnapshot(
