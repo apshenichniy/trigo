@@ -59,7 +59,7 @@ repository.
   ledger remained EUR 0 actual and EUR 0 reserved; no paid ASR or other provider
   probe ran. Cloudflare dashboard billing was not independently queried.
 
-## Disposable rehearsal evidence and remaining acceptance
+## Disposable interrupted-bootstrap acceptance
 
 The owner approved the isolated interrupted-bootstrap boundary for the free-tier
 `Trigo Recovery Disposable` account
@@ -86,11 +86,43 @@ API re-read returned subdomain `trigo-recovery-disposable` and exact state-store
 origin `https://alchemy-state-store.trigo-recovery-disposable.workers.dev`; Workers
 and Secrets Store inventories remained empty. The local guard now permits the
 unresolved sentinel only for initial `preflight` and blocks `arm` until that exact
-post-onboarding origin is configured. The designed EISDIR checkpoint, identical
-resume, version-7 check and final cleanup remain required before issue #29 is
-accepted.
+post-onboarding origin is configured.
+
+The reviewed retry ran from a new private clone at commit
+`c09bce2f8107665caad765a343842a16d553f877` with one-use environment profile
+`trigo-cloud-issue-29-interrupt-c09bce2f`. The initial preflight passed with the
+pending sentinel and `arm` rejected it. After the exact API origin was configured,
+the second preflight passed and read-only inventory still reported zero Workers and
+zero Stores. The protected dev credential digest matched the value recorded above.
+
+- The induced bootstrap exited 1 with the expected `EISDIR` at the
+  directory-backed `cloudflare-state-store.json` write. `assert-interrupted`
+  accepted exactly six resource rows, all settled at `created`, without returning
+  the local state bearer token.
+- Interrupted remote inventory contained only Worker `alchemy-state-store`, Secrets
+  Store `ad165fe8d9954408b6301f4afa03c0ae`, encryption-key secret
+  `76c643eb1bae4e56843fbe41068b5e7d` and bearer-token secret
+  `07daab6196044617b1cb6eee5ad35efe`. Both secrets were active and scoped to
+  Workers.
+- `disarm` repeated the full checkpoint assertion before removing only the marked
+  local collision. The identical bootstrap command then exited zero and logged
+  both `Resuming Cloudflare State Store 'alchemy-state-store' deployment...` and
+  `Cloudflare State Store 'alchemy-state-store' is ready.`
+- `assert-recovered` proved the local stage absent and the private credential cache
+  bound to the disposable account and pinned origin. Read-only inspection found the
+  same Worker, Store and secret IDs, with no duplicate or replacement, and the
+  authenticated `/version` endpoint returned 7.
+- Cleanup deleted the exact Worker name, the two recorded secret IDs, and the Store
+  only after a read proved it empty. Final inventory reported zero Workers and zero
+  Stores. The one-use profile and credential path were cleared, the throwaway root
+  was moved to Trash, and the protected dev credential digest remained unchanged.
+
+The dashboard showed zero usage before the rehearsal, no command presented a paid
+provider or billing prompt, and the task ledger remained EUR 0 actual / EUR 0
+reserved. No dev-account request or mutation occurred during either disposable
+attempt.
 
 The exact operator commands and recovery boundaries are in
 [Cloud operations](cloud.md). Do not mark issue #29 accepted, deploy personal,
-merge, or start issue #30 until the remaining experiment and live evidence review
-are owner-approved.
+merge, or start issue #30 until the owner deletes `Trigo Recovery Disposable`,
+retains the account-deletion confirmation and accepts this live evidence.
