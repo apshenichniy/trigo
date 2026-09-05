@@ -31,11 +31,13 @@
     "cloud:bootstrap": "bun scripts/unavailable.ts 12",
     "cloud:deploy": "bun scripts/unavailable.ts 12",
     "test:cloud": "bun scripts/unavailable.ts 12",
-    "test:asr": "bun scripts/unavailable.ts 13"
+    "test:asr": "bun scripts/unavailable.ts 13",
+    "prepare": "effect-tsgo patch --typescript --oxlint"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.22.0",
     "@cloudflare/workers-types": "5.20260815.1",
+    "@effect/tsgo": "0.41.0",
     "@effect/vitest": "4.0.0-rc.112",
     "@types/bun": "1.3.13",
     "@types/node": "24.3.0",
@@ -44,6 +46,7 @@
     "json-schema-to-typescript": "16.0.0",
     "oxfmt": "0.66.0",
     "oxlint": "1.81.0",
+    "oxlint-tsgolint": "7.0.2001",
     "typescript": "7.0.2",
     "vite": "8.0.7",
     "vitest": "4.1.11",
