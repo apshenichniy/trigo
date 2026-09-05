@@ -250,6 +250,7 @@ public actor ServerConnection {
 
     do {
       metadata = try await metadataStore.load() ?? ConnectionMetadata()
+      guard metadataIsValidForNamespace() else { throw ConnectionIssue.persistence }
       didLoad = true
     } catch {
       current = ConnectionSnapshot(
@@ -343,6 +344,7 @@ public actor ServerConnection {
     guard !didLoad else { return true }
     do {
       metadata = try await metadataStore.load() ?? ConnectionMetadata()
+      guard metadataIsValidForNamespace() else { throw ConnectionIssue.persistence }
       didLoad = true
       if let committed = metadata.committed {
         current = ConnectionSnapshot(
@@ -445,6 +447,18 @@ public actor ServerConnection {
     }
   }
 
+  private func metadataIsValidForNamespace() -> Bool {
+    let stored = [metadata.committed, metadata.pending].compactMap { $0 }
+    guard stored.allSatisfy({ $0.stage == expectedStage }) else { return false }
+    if let committed = metadata.committed, let pending = metadata.pending,
+      committed.archiveId != pending.archiveId
+    {
+      return false
+    }
+    let accounts = stored.map(\.credentialAccount) + metadata.retiredCredentialAccounts
+    return Set(accounts).count == accounts.count
+  }
+
   private func reject(_ issue: ConnectionIssue) -> ConnectionSnapshot {
     current = ConnectionSnapshot(
       binding: current.binding, health: current.health, lastAttemptIssue: issue)
@@ -454,10 +468,11 @@ public actor ServerConnection {
   static func canonicalServerURL(_ rawValue: String) -> URL? {
     let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
     guard var components = URLComponents(string: value),
-      components.scheme?.lowercased() == "https", components.host != nil,
+      components.scheme?.lowercased() == "https", let host = components.host, !host.isEmpty,
       components.user == nil, components.password == nil, components.query == nil,
       components.fragment == nil, components.path.isEmpty || components.path == "/"
     else { return nil }
+    if let port = components.port, !(1...65_535).contains(port) { return nil }
     components.scheme = "https"
     components.path = ""
     return components.url
