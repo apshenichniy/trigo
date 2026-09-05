@@ -199,6 +199,33 @@ struct ServerConnectionTests {
     #expect(await credentials.values == ["first"])
   }
 
+  @Test func sameProcessRetryRecoversPendingCredentialBeforeStartingAnotherCommit() async {
+    let old = StoredConnection.fixture(
+      archiveId: archiveA, serverURL: "https://old.example.test", credentialAccount: "old")
+    let pending = StoredConnection.fixture(
+      archiveId: archiveA, serverURL: "https://new.example.test", credentialAccount: "pending")
+    let metadata = MemoryConnectionMetadataStore(
+      value: ConnectionMetadata(committed: old, pending: pending))
+    let credentials = MemoryCredentialStore(values: ["old": "first", "pending": "replacement"])
+    await credentials.failNextDelete()
+    let status = StubStatusClient(responses: [
+      "first": .success(.fixture(archiveId: archiveA)),
+      "retry": .success(.fixture(archiveId: archiveA)),
+    ])
+    let connection = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
+      statusClient: status)
+    _ = await connection.restore()
+
+    let recovered = await connection.connect(
+      serverURL: "https://retry.example.test", token: "retry")
+
+    #expect(recovered.binding?.serverURL.absoluteString == "https://retry.example.test")
+    #expect(recovered.lastAttemptIssue == nil)
+    #expect(await metadata.value?.pending == nil)
+    #expect(await credentials.values == ["retry"])
+  }
+
   @Test func boundArchiveRemainsRecordingEligibleWhenServerIsUnavailableAfterRelaunch() async {
     let metadata = MemoryConnectionMetadataStore()
     let credentials = MemoryCredentialStore()
