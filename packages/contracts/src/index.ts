@@ -3,6 +3,7 @@ import type {
   CallDocument,
   TranscriptRevision,
   AudioManifest,
+  StatusResponse,
   CommandIdentity,
   ErrorEnvelope,
 } from "./generated/documents.d.ts";
@@ -12,6 +13,7 @@ export interface Documents {
   CallDocument: CallDocument;
   TranscriptRevision: TranscriptRevision;
   AudioManifest: AudioManifest;
+  StatusResponse: StatusResponse;
   CommandIdentity: CommandIdentity;
   ErrorEnvelope: ErrorEnvelope;
 }

@@ -1,6 +1,7 @@
 /* Generated from schema/v1.schema.json. Do not edit. */
 
-export type TrigoV1 = CallDocument | TranscriptRevision | AudioManifest | CommandIdentity | ErrorEnvelope;
+export type TrigoV1 =
+  CallDocument | TranscriptRevision | AudioManifest | StatusResponse | CommandIdentity | ErrorEnvelope;
 
 export interface CallDocument {
   schemaVersion: 1;
@@ -141,6 +142,23 @@ export interface AudioManifest {
         trackId: string;
       }[]
     ];
+  }[];
+}
+export interface StatusResponse {
+  schemaVersion: 1;
+  apiVersion: 1;
+  archiveId: string;
+  stage: "dev" | "personal";
+  readiness: {
+    archive: "ready";
+    ownerAuthentication: "ready";
+    transcription: "ready" | "not_verified" | "unavailable";
+    callOperations: "ready" | "unavailable";
+  };
+  errors: {
+    code: string;
+    retry: "never" | "after_correction" | "retryable";
+    message: string;
   }[];
 }
 export interface CommandIdentity {
