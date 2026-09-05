@@ -143,7 +143,11 @@ clipboard is clear. This is the maximum cleanup that can be performed without
 expanding scope to another person or deleting the owner's Cloudflare profile.
 
 The exact operator commands and recovery boundaries are in
-[Cloud operations](cloud.md). Do not mark issue #29 accepted, deploy personal,
-merge, or start issue #30 until the owner explicitly accepts the residual empty
-account as the maximum safe cleanup and accepts this live evidence. Issue #29
-remains `needs-info` until then.
+[Cloud operations](cloud.md).
+
+## Owner acceptance
+
+On 2026-09-05, after Cloudflare refused the account-removal operation, the owner
+explicitly accepted the residual empty, credential-free disposable account as the
+maximum safe cleanup and accepted the live evidence above. Issue #29 is complete.
+No personal deployment or merge was authorized by that acceptance.
