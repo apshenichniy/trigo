@@ -116,6 +116,7 @@ All commands use `bun run <command>` and propagate errors.
 | `macos:run --variant dev`                | Build, install and open stable development app                                       |
 | `macos:archive --variant dev`            | Reproducible unsigned archive unless a signing team is selected                      |
 | `macos:dependencies`                     | Explicit Swift dependency update and app lock refresh                                |
+| `cloud:preflight --stage dev`            | Read-only validation of the stage configuration and dedicated Alchemy profile        |
 | `cloud:bootstrap --stage dev`            | Explicit-profile Cloudflare remote-state bootstrap; see [cloud operations](cloud.md) |
 | `cloud:deploy --stage dev`               | Deploy isolated dev R2, D1, Workflow, AI binding and Worker                          |
 | `test:cloud --stage dev`                 | Read-only infrastructure checks, with explicit dev fixture seed/verify modes         |

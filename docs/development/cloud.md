@@ -115,15 +115,7 @@ Before requesting cloud authorization, validate the local inputs without creatin
 or changing a Cloudflare resource:
 
 ```sh
-jq -e '
-  keys == ["accountId", "profile", "stage"] and
-  .stage == "dev" and
-  .profile == "trigo-cloud-dev" and
-  (.accountId | test("^[0-9A-Fa-f]{32}$"))
-' config/cloud/dev.json >/dev/null
-
-mise exec -- bun --bun infra/node_modules/alchemy/bin/alchemy.js profile show \
-  --profile trigo-cloud-dev
+mise exec -- bun run cloud:preflight --stage dev
 
 TRIGO_DEV_ACCOUNT_ID="$(jq -r '.accountId' config/cloud/dev.json)"
 mise exec -- node node_modules/wrangler/bin/wrangler.js whoami \
@@ -132,9 +124,13 @@ mise exec -- node node_modules/wrangler/bin/wrangler.js whoami \
     '.loggedIn == true and any(.accounts[]?; .id == $id)' >/dev/null
 ```
 
-The last command is a read-only authentication/account check. It cannot prove the
-token's write permissions; compare those permissions in the Cloudflare token
-dashboard with the list above before bootstrap.
+The project preflight validates the whole stage configuration and reads the pinned
+Alchemy profile registry directly, including its Cloudflare provider and account
+mapping. Do not substitute Alchemy's `profile show` command as a pass/fail gate:
+this pinned release exits zero after printing a not-found message for an absent
+profile. The Wrangler command is a read-only authentication/account check. It
+cannot prove the token's write permissions; compare those permissions in the
+Cloudflare token dashboard with the list above before bootstrap.
 
 With explicit authorization, bootstrap remote state once for the account:
 

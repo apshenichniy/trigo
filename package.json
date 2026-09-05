@@ -28,6 +28,7 @@
     "test:unit": "node node_modules/vitest/vitest.mjs run --config vitest.config.ts",
     "test:workers": "node node_modules/vitest/vitest.mjs run --config apps/server/vitest.config.ts",
     "test:local": "bun scripts/local.ts --test",
+    "cloud:preflight": "bun scripts/cloud.ts preflight",
     "cloud:bootstrap": "bun scripts/cloud.ts bootstrap",
     "cloud:deploy": "bun scripts/cloud.ts deploy",
     "test:cloud": "bun scripts/cloud.ts test",
