@@ -52,6 +52,27 @@ it("initializes one archive identity and safely replays the same operation", asy
   ).toMatchObject({ results: [{ archive_id: input.archiveId }] });
 });
 
+it("rejects an operation ID replayed with different initialization content", async () => {
+  const ownerToken = token();
+  const input = {
+    kind: "initialize" as const,
+    operationId: "00000000-0000-4000-8000-000000000301",
+    archiveId: "00000000-0000-4000-8000-000000000030",
+    verifierSha256: await Effect.runPromise(hashOwnerToken(ownerToken)),
+    now: "2026-09-05T21:30:00.000Z",
+  };
+  await Effect.runPromise(applyOwnerOperation(env.CATALOG, input));
+
+  await expect(
+    Effect.runPromise(
+      applyOwnerOperation(env.CATALOG, {
+        ...input,
+        archiveId: "00000000-0000-4000-8000-000000000031",
+      }),
+    ),
+  ).rejects.toMatchObject({ _tag: "OwnerState.OwnerOperationConflict" });
+});
+
 it("commits exactly one concurrent owner-token replacement", async () => {
   const initialToken = token();
   await Effect.runPromise(
