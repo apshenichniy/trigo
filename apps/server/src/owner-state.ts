@@ -126,6 +126,204 @@ interface OwnerStateRow {
   readonly revoked: number;
 }
 
+export interface OwnerOperationQuery {
+  readonly sql: string;
+  readonly params: ReadonlyArray<string>;
+}
+
+export function ownerOperationQueries(input: OwnerOperation): ReadonlyArray<OwnerOperationQuery> {
+  if (input.kind === "initialize")
+    return [
+      {
+        sql: `INSERT OR IGNORE INTO trigo_archive_identity
+          (singleton, archive_id, created_at)
+        VALUES (1, ?, ?)`,
+        params: [input.archiveId, input.now],
+      },
+      {
+        sql: `INSERT OR IGNORE INTO trigo_owner_credential_state
+          (singleton, generation, verifier_sha256, revoked, current_operation_id, updated_at)
+        SELECT 1, 1, ?, 0, ?, ?
+        FROM trigo_archive_identity
+        WHERE singleton = 1 AND archive_id = ?`,
+        params: [input.verifierSha256, input.operationId, input.now, input.archiveId],
+      },
+      {
+        sql: `INSERT OR IGNORE INTO trigo_owner_credential_operations
+          (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
+        SELECT ?, 'initialize', archive_id, 1, ?, ?
+        FROM trigo_archive_identity
+        JOIN trigo_owner_credential_state USING (singleton)
+        WHERE singleton = 1
+          AND archive_id = ?
+          AND generation = 1
+          AND verifier_sha256 = ?
+          AND revoked = 0
+          AND current_operation_id = ?`,
+        params: [
+          input.operationId,
+          input.verifierSha256,
+          input.now,
+          input.archiveId,
+          input.verifierSha256,
+          input.operationId,
+        ],
+      },
+      {
+        sql: `SELECT identity.archive_id, state.generation,
+          state.current_operation_id AS operation_id, state.revoked
+        FROM trigo_archive_identity AS identity
+        JOIN trigo_owner_credential_state AS state USING (singleton)
+        JOIN trigo_owner_credential_operations AS operation
+          ON operation.operation_id = state.current_operation_id
+        WHERE identity.singleton = 1
+          AND operation.kind = 'initialize'
+          AND operation.archive_id = ?
+          AND operation.verifier_sha256 = ?
+          AND operation.operation_id = ?`,
+        params: [input.archiveId, input.verifierSha256, input.operationId],
+      },
+    ];
+
+  const nextGeneration = input.expectedGeneration + 1;
+  if (input.kind === "rotate")
+    return [
+      {
+        sql: `UPDATE trigo_owner_credential_state
+          SET generation = ?,
+              verifier_sha256 = ?,
+              revoked = 0,
+              current_operation_id = ?,
+              updated_at = ?
+          WHERE singleton = 1
+            AND (
+              (
+                generation = ?
+                AND NOT EXISTS (
+                  SELECT 1 FROM trigo_owner_credential_operations
+                  WHERE operation_id = ?
+                )
+              )
+              OR (
+                generation = ?
+                AND verifier_sha256 = ?
+                AND revoked = 0
+                AND current_operation_id = ?
+              )
+            )`,
+        params: [
+          String(nextGeneration),
+          input.verifierSha256,
+          input.operationId,
+          input.now,
+          String(input.expectedGeneration),
+          input.operationId,
+          String(nextGeneration),
+          input.verifierSha256,
+          input.operationId,
+        ],
+      },
+      {
+        sql: `INSERT OR IGNORE INTO trigo_owner_credential_operations
+          (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
+        SELECT ?, 'rotate', identity.archive_id,
+               state.generation, state.verifier_sha256, ?
+        FROM trigo_archive_identity AS identity
+        JOIN trigo_owner_credential_state AS state USING (singleton)
+        WHERE identity.singleton = 1
+          AND state.generation = ?
+          AND state.verifier_sha256 = ?
+          AND state.revoked = 0
+          AND state.current_operation_id = ?`,
+        params: [
+          input.operationId,
+          input.now,
+          String(nextGeneration),
+          input.verifierSha256,
+          input.operationId,
+        ],
+      },
+      {
+        sql: `SELECT identity.archive_id, state.generation,
+          state.current_operation_id AS operation_id, state.revoked
+        FROM trigo_archive_identity AS identity
+        JOIN trigo_owner_credential_state AS state USING (singleton)
+        JOIN trigo_owner_credential_operations AS operation
+          ON operation.operation_id = state.current_operation_id
+        WHERE identity.singleton = 1
+          AND operation.kind = 'rotate'
+          AND operation.generation = ?
+          AND operation.verifier_sha256 = ?
+          AND operation.operation_id = ?`,
+        params: [String(nextGeneration), input.verifierSha256, input.operationId],
+      },
+    ];
+
+  return [
+    {
+      sql: `UPDATE trigo_owner_credential_state
+        SET generation = ?,
+            verifier_sha256 = NULL,
+            revoked = 1,
+            current_operation_id = ?,
+            updated_at = ?
+        WHERE singleton = 1
+          AND (
+            (
+              generation = ?
+              AND NOT EXISTS (
+                SELECT 1 FROM trigo_owner_credential_operations
+                WHERE operation_id = ?
+              )
+            )
+            OR (
+              generation = ?
+              AND verifier_sha256 IS NULL
+              AND revoked = 1
+              AND current_operation_id = ?
+            )
+          )`,
+      params: [
+        String(nextGeneration),
+        input.operationId,
+        input.now,
+        String(input.expectedGeneration),
+        input.operationId,
+        String(nextGeneration),
+        input.operationId,
+      ],
+    },
+    {
+      sql: `INSERT OR IGNORE INTO trigo_owner_credential_operations
+        (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
+      SELECT ?, 'revoke', identity.archive_id,
+             state.generation, NULL, ?
+      FROM trigo_archive_identity AS identity
+      JOIN trigo_owner_credential_state AS state USING (singleton)
+      WHERE identity.singleton = 1
+        AND state.generation = ?
+        AND state.verifier_sha256 IS NULL
+        AND state.revoked = 1
+        AND state.current_operation_id = ?`,
+      params: [input.operationId, input.now, String(nextGeneration), input.operationId],
+    },
+    {
+      sql: `SELECT identity.archive_id, state.generation,
+        state.current_operation_id AS operation_id, state.revoked
+      FROM trigo_archive_identity AS identity
+      JOIN trigo_owner_credential_state AS state USING (singleton)
+      JOIN trigo_owner_credential_operations AS operation
+        ON operation.operation_id = state.current_operation_id
+      WHERE identity.singleton = 1
+        AND operation.kind = 'revoke'
+        AND operation.generation = ?
+        AND operation.verifier_sha256 IS NULL
+        AND operation.operation_id = ?`,
+      params: [String(nextGeneration), input.operationId],
+    },
+  ];
+}
+
 export const applyOwnerOperation = Effect.fn("OwnerState.applyOperation")(function* (
   db: D1Database,
   input: OwnerOperation,
@@ -143,149 +341,11 @@ export const applyOwnerOperation = Effect.fn("OwnerState.applyOperation")(functi
         operation: "OwnerState.applyOperation",
         cause,
       });
-    const rows =
-      input.kind === "initialize"
-        ? yield* sql
-            .batch([
-              sql`INSERT OR IGNORE INTO trigo_archive_identity
-              (singleton, archive_id, created_at)
-            VALUES (1, ${input.archiveId}, ${input.now})`,
-              sql`INSERT OR IGNORE INTO trigo_owner_credential_state
-              (singleton, generation, verifier_sha256, revoked, current_operation_id, updated_at)
-            SELECT 1, 1, ${input.verifierSha256}, 0, ${input.operationId}, ${input.now}
-            FROM trigo_archive_identity
-            WHERE singleton = 1 AND archive_id = ${input.archiveId}`,
-              sql`INSERT OR IGNORE INTO trigo_owner_credential_operations
-              (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
-            SELECT ${input.operationId}, 'initialize', archive_id, 1,
-                   ${input.verifierSha256}, ${input.now}
-            FROM trigo_archive_identity
-            JOIN trigo_owner_credential_state USING (singleton)
-            WHERE singleton = 1
-              AND archive_id = ${input.archiveId}
-              AND generation = 1
-              AND verifier_sha256 = ${input.verifierSha256}
-              AND revoked = 0
-              AND current_operation_id = ${input.operationId}`,
-              sql<OwnerStateRow>`SELECT identity.archive_id, state.generation,
-              state.current_operation_id AS operation_id, state.revoked
-            FROM trigo_archive_identity AS identity
-            JOIN trigo_owner_credential_state AS state USING (singleton)
-            JOIN trigo_owner_credential_operations AS operation
-              ON operation.operation_id = state.current_operation_id
-            WHERE identity.singleton = 1
-              AND operation.kind = 'initialize'
-              AND operation.archive_id = ${input.archiveId}
-              AND operation.verifier_sha256 = ${input.verifierSha256}
-              AND operation.operation_id = ${input.operationId}`,
-            ] as const)
-            .pipe(
-              Effect.map(([, , , rows]) => rows),
-              Effect.mapError(persistenceError),
-            )
-        : input.kind === "rotate"
-          ? yield* sql
-              .batch([
-                sql`UPDATE trigo_owner_credential_state
-            SET generation = ${input.expectedGeneration + 1},
-                verifier_sha256 = ${input.verifierSha256},
-                revoked = 0,
-                current_operation_id = ${input.operationId},
-                updated_at = ${input.now}
-            WHERE singleton = 1
-              AND (
-                (
-                  generation = ${input.expectedGeneration}
-                  AND NOT EXISTS (
-                    SELECT 1 FROM trigo_owner_credential_operations
-                    WHERE operation_id = ${input.operationId}
-                  )
-                )
-                OR (
-                  generation = ${input.expectedGeneration + 1}
-                  AND verifier_sha256 = ${input.verifierSha256}
-                  AND revoked = 0
-                  AND current_operation_id = ${input.operationId}
-                )
-              )`,
-                sql`INSERT OR IGNORE INTO trigo_owner_credential_operations
-              (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
-            SELECT ${input.operationId}, 'rotate', identity.archive_id,
-                   state.generation, state.verifier_sha256, ${input.now}
-            FROM trigo_archive_identity AS identity
-            JOIN trigo_owner_credential_state AS state USING (singleton)
-            WHERE identity.singleton = 1
-              AND state.generation = ${input.expectedGeneration + 1}
-              AND state.verifier_sha256 = ${input.verifierSha256}
-              AND state.revoked = 0
-              AND state.current_operation_id = ${input.operationId}`,
-                sql<OwnerStateRow>`SELECT identity.archive_id, state.generation,
-              state.current_operation_id AS operation_id, state.revoked
-            FROM trigo_archive_identity AS identity
-            JOIN trigo_owner_credential_state AS state USING (singleton)
-            JOIN trigo_owner_credential_operations AS operation
-              ON operation.operation_id = state.current_operation_id
-            WHERE identity.singleton = 1
-              AND operation.kind = 'rotate'
-              AND operation.generation = ${input.expectedGeneration + 1}
-              AND operation.verifier_sha256 = ${input.verifierSha256}
-              AND operation.operation_id = ${input.operationId}`,
-              ] as const)
-              .pipe(
-                Effect.map(([, , rows]) => rows),
-                Effect.mapError(persistenceError),
-              )
-          : yield* sql
-              .batch([
-                sql`UPDATE trigo_owner_credential_state
-            SET generation = ${input.expectedGeneration + 1},
-                verifier_sha256 = NULL,
-                revoked = 1,
-                current_operation_id = ${input.operationId},
-                updated_at = ${input.now}
-            WHERE singleton = 1
-              AND (
-                (
-                  generation = ${input.expectedGeneration}
-                  AND NOT EXISTS (
-                    SELECT 1 FROM trigo_owner_credential_operations
-                    WHERE operation_id = ${input.operationId}
-                  )
-                )
-                OR (
-                  generation = ${input.expectedGeneration + 1}
-                  AND verifier_sha256 IS NULL
-                  AND revoked = 1
-                  AND current_operation_id = ${input.operationId}
-                )
-              )`,
-                sql`INSERT OR IGNORE INTO trigo_owner_credential_operations
-              (operation_id, kind, archive_id, generation, verifier_sha256, created_at)
-            SELECT ${input.operationId}, 'revoke', identity.archive_id,
-                   state.generation, NULL, ${input.now}
-            FROM trigo_archive_identity AS identity
-            JOIN trigo_owner_credential_state AS state USING (singleton)
-            WHERE identity.singleton = 1
-              AND state.generation = ${input.expectedGeneration + 1}
-              AND state.verifier_sha256 IS NULL
-              AND state.revoked = 1
-              AND state.current_operation_id = ${input.operationId}`,
-                sql<OwnerStateRow>`SELECT identity.archive_id, state.generation,
-              state.current_operation_id AS operation_id, state.revoked
-            FROM trigo_archive_identity AS identity
-            JOIN trigo_owner_credential_state AS state USING (singleton)
-            JOIN trigo_owner_credential_operations AS operation
-              ON operation.operation_id = state.current_operation_id
-            WHERE identity.singleton = 1
-              AND operation.kind = 'revoke'
-              AND operation.generation = ${input.expectedGeneration + 1}
-              AND operation.verifier_sha256 IS NULL
-              AND operation.operation_id = ${input.operationId}`,
-              ] as const)
-              .pipe(
-                Effect.map(([, , rows]) => rows),
-                Effect.mapError(persistenceError),
-              );
+    const queries = ownerOperationQueries(input);
+    const results = yield* sql
+      .batch(queries.map((query) => sql.unsafe<OwnerStateRow>(query.sql, query.params)))
+      .pipe(Effect.mapError(persistenceError));
+    const rows = results[results.length - 1] ?? [];
     const row = rows[0];
     if (row === undefined)
       return yield* new OwnerOperationConflict({
