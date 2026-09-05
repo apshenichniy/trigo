@@ -1,0 +1,4 @@
+[tools]
+bun = "1.3.13"
+node = "24.14.1"
+xcodegen = { version = "2.46.0", os = ["macos"] }

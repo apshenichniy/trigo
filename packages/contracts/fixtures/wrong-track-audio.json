@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "callId": "00000000-0000-4000-8000-000000000001",
+  "manifestId": "00000000-0000-4000-8000-000000000004",
+  "durationMs": 1000,
+  "mediaProfileId": "pending-nova3-gate",
+  "objects": [
+    {
+      "objectId": "00000000-0000-4000-8000-000000000005",
+      "index": 0,
+      "contentType": "application/octet-stream",
+      "byteLength": 3,
+      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "startMs": 0,
+      "endMs": 1000,
+      "channelMap": [
+        {
+          "channelIndex": 0,
+          "trackId": "00000000-0000-4000-8000-000000000099"
+        },
+        {
+          "channelIndex": 1,
+          "trackId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  ]
+}

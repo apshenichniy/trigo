@@ -1,0 +1,53 @@
+{
+  "name": "trigo",
+  "private": true,
+  "workspaces": [
+    "apps/server",
+    "packages/contracts",
+    "infra"
+  ],
+  "type": "module",
+  "scripts": {
+    "doctor": "bun scripts/commands.ts doctor",
+    "format": "bun scripts/commands.ts format",
+    "format:check": "bun scripts/commands.ts format:check",
+    "lint": "bun scripts/commands.ts lint",
+    "typecheck": "bun scripts/commands.ts typecheck",
+    "test": "bun scripts/commands.ts test",
+    "build": "bun scripts/commands.ts build",
+    "check": "bun scripts/commands.ts check",
+    "check:server": "bun scripts/commands.ts check:server",
+    "check:macos": "bun scripts/commands.ts check:macos",
+    "dev": "bun scripts/local.ts",
+    "macos:run": "bun scripts/macos.ts run",
+    "macos:archive": "bun scripts/macos.ts archive",
+    "macos:build": "bun scripts/macos.ts build",
+    "macos:dependencies": "bun scripts/macos.ts dependencies",
+    "contracts:generate": "bun scripts/generate.ts",
+    "contracts:check": "bun scripts/generate.ts --check",
+    "test:unit": "node node_modules/vitest/vitest.mjs run --config vitest.config.ts",
+    "test:workers": "node node_modules/vitest/vitest.mjs run --config apps/server/vitest.config.ts",
+    "test:local": "bun scripts/local.ts --test",
+    "cloud:bootstrap": "bun scripts/unavailable.ts 12",
+    "cloud:deploy": "bun scripts/unavailable.ts 12",
+    "test:cloud": "bun scripts/unavailable.ts 12",
+    "test:asr": "bun scripts/unavailable.ts 13"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/workers-types": "5.20260815.1",
+    "@effect/vitest": "4.0.0-rc.112",
+    "@types/bun": "1.3.13",
+    "@types/node": "24.3.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "json-schema-to-typescript": "16.0.0",
+    "oxfmt": "0.66.0",
+    "oxlint": "1.81.0",
+    "typescript": "7.0.2",
+    "vite": "8.0.7",
+    "vitest": "4.1.11",
+    "wrangler": "4.124.0"
+  },
+  "packageManager": "bun@1.3.13"
+}

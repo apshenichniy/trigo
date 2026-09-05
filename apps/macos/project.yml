@@ -1,0 +1,53 @@
+name: Trigo
+options:
+  minimumXcodeGenVersion: 2.46.0
+  deploymentTarget:
+    macOS: "15.0"
+packages:
+  TrigoNative:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: "0.1.0"
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+    INFOPLIST_KEY_TrigoWorktreeID: $(TRIGO_WORKTREE_ID)
+    TRIGO_WORKTREE_ID: local
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targetTemplates:
+  App:
+    type: application
+    platform: macOS
+    sources: [Sources]
+    dependencies:
+      - package: TrigoNative
+targets:
+  Trigo:
+    templates: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo
+        PRODUCT_NAME: Trigo
+  Trigo Dev:
+    templates: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.dev
+        PRODUCT_NAME: Trigo Dev
+schemes:
+  Trigo:
+    build:
+      targets:
+        Trigo: all
+    archive:
+      config: Release
+  Trigo Dev:
+    build:
+      targets:
+        Trigo Dev: all
+    archive:
+      config: Release

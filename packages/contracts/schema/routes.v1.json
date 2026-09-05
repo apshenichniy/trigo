@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "errorSchema": "v1.schema.json#/$defs/ErrorEnvelope",
+  "commandIdentitySchema": "v1.schema.json#/$defs/CommandIdentity",
+  "routes": [
+    { "method": "GET", "path": "/v1/status", "ownerIssue": 12 },
+    {
+      "method": "POST",
+      "path": "/v1/calls",
+      "documentSchema": "v1.schema.json#/$defs/CallDocument",
+      "ownerIssue": 17
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/calls/{callId}/uploads/{uploadId}/chunks/{index}",
+      "ownerIssue": 17
+    },
+    {
+      "method": "POST",
+      "path": "/v1/calls/{callId}/finalize",
+      "documentSchema": "v1.schema.json#/$defs/AudioManifest",
+      "ownerIssue": 17
+    },
+    { "method": "POST", "path": "/v1/calls/{callId}/transcriptions", "ownerIssue": 18 },
+    { "method": "GET", "path": "/v1/operations/{operationId}", "ownerIssue": 18 },
+    { "method": "GET", "path": "/v1/calls", "ownerIssue": 19 },
+    { "method": "GET", "path": "/v1/changes", "ownerIssue": 19 },
+    {
+      "method": "GET",
+      "path": "/v1/calls/{callId}/document",
+      "documentSchema": "v1.schema.json#/$defs/CallDocument",
+      "ownerIssue": 19
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/calls/{callId}/document",
+      "documentSchema": "v1.schema.json#/$defs/CallDocument",
+      "ownerIssue": 19
+    },
+    {
+      "method": "GET",
+      "path": "/v1/calls/{callId}/revisions/{revisionId}",
+      "documentSchema": "v1.schema.json#/$defs/TranscriptRevision",
+      "ownerIssue": 19
+    },
+    {
+      "method": "POST",
+      "path": "/v1/calls/{callId}/playback",
+      "documentSchema": "v1.schema.json#/$defs/AudioManifest",
+      "ownerIssue": 20
+    },
+    { "method": "DELETE", "path": "/v1/calls/{callId}", "ownerIssue": 22 }
+  ]
+}

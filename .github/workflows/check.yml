@@ -1,0 +1,39 @@
+name: Checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  server:
+    name: Server checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: 2026.9.1
+      - run: bun install --frozen-lockfile
+      - run: bun run check:server
+      - run: git diff --exit-code
+  macos:
+    name: macOS checks
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: 2026.9.1
+      - run: bun install --frozen-lockfile
+      - run: bun run check:macos
+      - name: Verify generator cache hit restores missing nested lock
+        run: |
+          rm apps/macos/Trigo.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          bun run macos:build --variant dev
+      - run: git diff --exit-code

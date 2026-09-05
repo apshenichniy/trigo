@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+.build/
+.swiftpm/
+*.xcodeproj/
+DerivedData/
+dist/
+.alchemy/
+.local/
+.env
+.env.*
+!.env.example
