@@ -285,8 +285,9 @@ Confirm and retain non-secret evidence for every item before arming the seam:
 2. The selected account is exactly `Trigo Recovery Disposable`, ID
    `3fd3cd769d5d372e6757d0ec208a74f2`. It differs from the protected dev ID above,
    and its inventory is empty: no Workers, Secrets Store, R2 buckets, D1 databases
-   or Workflows. Read the account's `workers.dev` subdomain without mutation and
-   record the exact `https://alchemy-state-store.<subdomain>.workers.dev` origin.
+   or Workflows. A brand-new account can return HTTP 404 from the read-only
+   `/workers/subdomain` endpoint until its first Worker exists. Record that result;
+   it is the expected unresolved baseline, not permission to infer a subdomain.
 3. The dedicated token is restricted under Account Resources to that disposable
    account only. It has Workers Scripts Write and Account Secrets Store Edit, no
    zone permissions and no access to the protected dev account. The token is
@@ -303,9 +304,10 @@ Confirm and retain non-secret evidence for every item before arming the seam:
    account. It does not authorize dev/personal mutation or application deployment.
 
 Use a new clone under a mode-`0700` temporary root and copy the tracked declaration
-to its ignored path. Replace the random profile suffix and state-store origin with
-the read-only verified values; the probe pins both account IDs and the purpose. Do
-not put a token in this file:
+to its ignored path. Replace only the random profile suffix before the first run.
+Keep `stateStoreOrigin` at its exact `pending-first-worker` sentinel until the first
+Worker makes the account subdomain observable. The probe pins both account IDs and
+the purpose. Do not put a token in this file:
 
 ```sh
 umask 077
@@ -328,9 +330,11 @@ cp config/cloud/issue-29-interrupt.example.json \
 Configure exactly that profile with Cloudflare method `env`, then export the same
 profile and disposable account ID for the rehearsal process. The source-only probe
 performs no network requests: it validates the closed schema, pinned disposable
-account and verified Worker origin, protected-account separation, exact environment
-identity, restrictive process umask, the single-provider `env` profile and the
-absence of both local experiment artifacts.
+account, protected-account separation, exact environment identity, restrictive
+process umask, the single-provider `env` profile and the absence of both local
+experiment artifacts. `preflight` and `arm` accept the exact pending sentinel;
+checkpoint assertion, disarm and recovery assertion require it to have been
+replaced by the read-only verified Worker origin.
 
 ```sh
 TRIGO_RECOVERY_CONFIG=config/cloud/issue-29-interrupt.json
@@ -368,15 +372,35 @@ TRIGO_INTERRUPTED_STATUS=$?
 set -e
 test "$TRIGO_INTERRUPTED_STATUS" -ne 0
 
+TRIGO_SUBDOMAIN_RESPONSE="$TRIGO_RECOVERY_ROOT/workers-subdomain.json"
+printf 'Authorization: Bearer %s\n' "$CLOUDFLARE_API_TOKEN" | \
+  curl --fail-with-body --silent --show-error --header @- \
+    "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+    >"$TRIGO_SUBDOMAIN_RESPONSE"
+TRIGO_WORKERS_SUBDOMAIN="$(jq -er \
+  'select(.success == true) | .result.subdomain | select(type == "string" and length > 0)' \
+  "$TRIGO_SUBDOMAIN_RESPONSE")"
+TRIGO_STATE_STORE_ORIGIN="https://alchemy-state-store.$TRIGO_WORKERS_SUBDOMAIN.workers.dev"
+TRIGO_RECOVERY_CONFIG_NEXT="${TRIGO_RECOVERY_CONFIG}.next"
+jq --arg origin "$TRIGO_STATE_STORE_ORIGIN" \
+  '.stateStoreOrigin = $origin' "$TRIGO_RECOVERY_CONFIG" \
+  >"$TRIGO_RECOVERY_CONFIG_NEXT"
+chmod 600 "$TRIGO_RECOVERY_CONFIG_NEXT"
+mv "$TRIGO_RECOVERY_CONFIG_NEXT" "$TRIGO_RECOVERY_CONFIG"
+
 mise exec -- bun scripts/cloud-bootstrap-interruption.ts assert-interrupted \
   --config "$TRIGO_RECOVERY_CONFIG"
 ```
 
 The failed run is valid only when the error is the expected attempt to write the
-directory-backed credential path and `assert-interrupted` passes. The probe parses
-but never prints the secret-bearing state. It requires mode-private local state, a
-stack output containing the verified origin and a non-empty bearer token, all
-resource rows in settled `created`/`updated` states, and these pinned logical IDs:
+directory-backed credential path. After that failure, the formerly unavailable
+read-only subdomain lookup must succeed and the resulting exact state-store origin
+must replace the sentinel before `assert-interrupted` runs. Stop if the lookup still
+fails, returns an invalid subdomain, or the assertion rejects the origin; never
+guess or derive it from another account. The probe parses but never prints the
+secret-bearing state. It requires mode-private local state, a stack output
+containing the verified origin and a non-empty bearer token, all resource rows in
+settled `created`/`updated` states, and these pinned logical IDs:
 `StateStoreSecrets`, `StateStoreAuthTokenValue`, `AlchemyStateStoreToken`,
 `StateStoreEncryptionKeyValue`, `StateStoreEncryptionKey` and `Api`. Record its
 sanitized JSON summary plus the remote Worker/store/secret IDs. The remote account
@@ -384,8 +408,9 @@ must now contain only `alchemy-state-store`, one Secrets Store and exactly the
 `AlchemyStateStoreToken` and `AlchemyStateStoreEncryptionKey` secrets; R2, D1 and
 Workflows remain empty.
 
-Disarm only after that checkpoint passes. The command refuses to remove anything
-unless the collision directory contains its exact `ARMED` marker and nothing else.
+Disarm only after that checkpoint passes. The command repeats the full local
+checkpoint assertion and refuses to remove anything unless the exact stack output,
+resource state and collision directory with its sole `ARMED` marker still match.
 Then replay the same pinned bootstrap command without adding `--force` or
 `--worker-name`:
 
@@ -410,7 +435,7 @@ deployment...` followed by the ready message;
 - the state-store `/version` endpoint reports contract version 7;
 - the local experiment stage is gone only after replay succeeds; and
 - the regenerated credential cache is a regular file bound to the disposable
-  account and exact pre-verified state-store Worker origin, with no group/other
+  account and exact post-first-Worker verified state-store origin, with no group/other
   access. The probe reports these last two facts without returning its bearer token.
 
 ### Cleanup and retained evidence

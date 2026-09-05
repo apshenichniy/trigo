@@ -26,6 +26,7 @@ import {
 const disposableAccountId = APPROVED_DISPOSABLE_ACCOUNT_ID;
 const profile = "trigo-cloud-issue-29-interrupt-a1b2c3";
 const stateStoreOrigin = "https://alchemy-state-store.disposable.workers.dev";
+const pendingStateStoreOrigin = "pending-first-worker";
 
 function writeConfiguration(directory: string, overrides: Record<string, unknown> = {}): string {
   const path = resolve(directory, "issue-29-interrupt.json");
@@ -104,6 +105,8 @@ describe("issue #29 interrupted bootstrap probe", () => {
     expect(runbook).toContain("## Disposable interrupted-bootstrap rehearsal");
     expect(runbook).toMatch(/completed local stack output\s+checkpoint/);
     expect(runbook).toContain("Resuming Cloudflare State Store");
+    expect(runbook).toContain("pending-first-worker");
+    expect(runbook).toContain("/workers/subdomain");
     expect(runbook).toContain(PROTECTED_DEV_ACCOUNT_ID);
     expect(runbook).toContain('git clone --no-local "$TRIGO_SOURCE_REPOSITORY"');
     expect(runbook).toContain('cd "$TRIGO_RECOVERY_ROOT/trigo"');
@@ -198,6 +201,89 @@ describe("issue #29 interrupted bootstrap probe", () => {
     }
   });
 
+  it("allows the first-Worker origin sentinel only before observation assertions", () => {
+    const directory = mkdtempSync(resolve(tmpdir(), "trigo-bootstrap-interruption-"));
+    const alchemyRoot = resolve(directory, "home-alchemy");
+    const workspaceRoot = resolve(directory, "workspace");
+    try {
+      mkdirSync(workspaceRoot);
+      const config = writeConfiguration(directory, {
+        stateStoreOrigin: pendingStateStoreOrigin,
+      });
+      writeEnvironmentProfile(alchemyRoot);
+      const probe = probeEnvironment(alchemyRoot, workspaceRoot);
+
+      expect(preflightBootstrapInterruption(config, probe)).toMatchObject({
+        accountId: disposableAccountId,
+        profile,
+      });
+      armBootstrapInterruption(config, probe);
+      expect(() => assertInterruptedBootstrap(config, probe)).toThrow(
+        "Resolve stateStoreOrigin after the first Worker deployment",
+      );
+      expect(() => disarmBootstrapInterruption(config, probe)).toThrow(
+        "Resolve stateStoreOrigin after the first Worker deployment",
+      );
+
+      writeConfiguration(directory);
+      writeSettledLocalStack(workspaceRoot);
+      assertInterruptedBootstrap(config, probe);
+      disarmBootstrapInterruption(config, probe);
+      const credentialDirectory = resolve(alchemyRoot, "credentials", profile);
+      writeFileSync(
+        resolve(credentialDirectory, "cloudflare-state-store.json"),
+        JSON.stringify({
+          accountId: disposableAccountId,
+          url: stateStoreOrigin,
+          authToken: "sensitive-and-never-returned",
+        }),
+        { mode: 0o600 },
+      );
+      writeConfiguration(directory, { stateStoreOrigin: pendingStateStoreOrigin });
+      expect(() => assertRecoveredBootstrap(config, probe)).toThrow(
+        "Resolve stateStoreOrigin after the first Worker deployment",
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects malformed state-store origins other than the exact pending sentinel", () => {
+    const directory = mkdtempSync(resolve(tmpdir(), "trigo-bootstrap-interruption-"));
+    try {
+      expect(() =>
+        readBootstrapInterruptionConfiguration(
+          writeConfiguration(directory, { stateStoreOrigin: "pending" }),
+        ),
+      ).toThrow(
+        "stateStoreOrigin must be the pending sentinel or verified state-store HTTPS origin",
+      );
+      expect(() =>
+        readBootstrapInterruptionConfiguration(
+          writeConfiguration(directory, {
+            stateStoreOrigin: "http://alchemy-state-store.disposable.workers.dev",
+          }),
+        ),
+      ).toThrow(
+        "stateStoreOrigin must be the pending sentinel or verified state-store HTTPS origin",
+      );
+      for (const stateStoreOrigin of [
+        "https://alchemy-state-store.disposable.extra.workers.dev",
+        "https://alchemy-state-store.disposable.workers.dev:8443",
+      ]) {
+        expect(() =>
+          readBootstrapInterruptionConfiguration(
+            writeConfiguration(directory, { stateStoreOrigin }),
+          ),
+        ).toThrow(
+          "stateStoreOrigin must be the pending sentinel or verified state-store HTTPS origin",
+        );
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("arms only an empty marker-owned credential collision and disarms only that fixture", () => {
     const directory = mkdtempSync(resolve(tmpdir(), "trigo-bootstrap-interruption-"));
     const alchemyRoot = resolve(directory, "home-alchemy");
@@ -219,6 +305,10 @@ describe("issue #29 interrupted bootstrap probe", () => {
         "Disposable credential profile path already exists",
       );
 
+      expect(() => disarmBootstrapInterruption(config, probe)).toThrow(
+        "Interrupted local bootstrap stage is missing",
+      );
+      writeSettledLocalStack(workspaceRoot);
       disarmBootstrapInterruption(config, probe);
       expect(() => disarmBootstrapInterruption(config, probe)).toThrow(
         "Armed interruption fixture is missing",
