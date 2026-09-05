@@ -305,6 +305,7 @@ public actor ServerConnection {
     let token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !token.isEmpty else { return reject(.tokenRequired) }
     guard await loadMetadataIfNeeded() else { return reject(.persistence) }
+    guard await recoverInterruptedWrites() else { return reject(.persistence) }
 
     let status: ServerStatus
     do {
@@ -347,7 +348,7 @@ public actor ServerConnection {
         current = ConnectionSnapshot(
           binding: committed.binding, health: .checking, lastAttemptIssue: nil)
       }
-      return await recoverInterruptedWrites()
+      return true
     } catch {
       current = ConnectionSnapshot(
         binding: nil, health: .recoveryRequired(.persistence), lastAttemptIssue: nil)
