@@ -25,8 +25,12 @@ export const EXPECTED_STATE_STORE_LOGICAL_IDS = [
 
 const PURPOSE = "issue-29-interrupted-bootstrap" as const;
 const STATE_STORE_SCRIPT = "alchemy-state-store" as const;
+const PENDING_STATE_STORE_ORIGIN = "pending-first-worker" as const;
 const MARKER = "ARMED" as const;
 const PLACEHOLDER_PROFILE = "trigo-cloud-issue-29-interrupt-replace-me" as const;
+const STATE_STORE_ORIGIN_ERROR =
+  "stateStoreOrigin must be the pending sentinel or verified state-store HTTPS origin";
+const STATE_STORE_HOSTNAME = /^alchemy-state-store\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.workers\.dev$/;
 
 export interface BootstrapInterruptionConfiguration {
   readonly purpose: typeof PURPOSE;
@@ -48,6 +52,11 @@ export interface BootstrapInterruptionSummary {
   readonly profile: string;
   readonly localStage: string;
 }
+
+type InterruptedBootstrapSummary = BootstrapInterruptionSummary & {
+  readonly resourceCount: number;
+  readonly statuses: readonly string[];
+};
 
 const defaultEnvironment = (): BootstrapInterruptionEnvironment => ({
   alchemyRoot: resolve(homedir(), ".alchemy"),
@@ -104,27 +113,29 @@ export function readBootstrapInterruptionConfiguration(
     );
   if (value.profile === PLACEHOLDER_PROFILE)
     throw new Error("Replace the example profile suffix with a unique one-use value");
-  let stateStoreOrigin: URL;
-  try {
-    stateStoreOrigin = new URL(
-      typeof value.stateStoreOrigin === "string" ? value.stateStoreOrigin : "",
-    );
-  } catch (error) {
-    throw new Error("stateStoreOrigin must be the verified state-store HTTPS origin", {
-      cause: error,
-    });
+  let stateStoreOrigin = PENDING_STATE_STORE_ORIGIN as string;
+  if (value.stateStoreOrigin !== PENDING_STATE_STORE_ORIGIN) {
+    let verifiedStateStoreOrigin: URL;
+    try {
+      verifiedStateStoreOrigin = new URL(
+        typeof value.stateStoreOrigin === "string" ? value.stateStoreOrigin : "",
+      );
+    } catch (error) {
+      throw new Error(STATE_STORE_ORIGIN_ERROR, { cause: error });
+    }
+    if (
+      verifiedStateStoreOrigin.protocol !== "https:" ||
+      verifiedStateStoreOrigin.username !== "" ||
+      verifiedStateStoreOrigin.password !== "" ||
+      verifiedStateStoreOrigin.port !== "" ||
+      verifiedStateStoreOrigin.pathname !== "/" ||
+      verifiedStateStoreOrigin.search !== "" ||
+      verifiedStateStoreOrigin.hash !== "" ||
+      !STATE_STORE_HOSTNAME.test(verifiedStateStoreOrigin.hostname)
+    )
+      throw new Error(STATE_STORE_ORIGIN_ERROR);
+    stateStoreOrigin = verifiedStateStoreOrigin.origin;
   }
-  if (
-    stateStoreOrigin.protocol !== "https:" ||
-    stateStoreOrigin.username !== "" ||
-    stateStoreOrigin.password !== "" ||
-    stateStoreOrigin.pathname !== "/" ||
-    stateStoreOrigin.search !== "" ||
-    stateStoreOrigin.hash !== "" ||
-    !stateStoreOrigin.hostname.startsWith(`${STATE_STORE_SCRIPT}.`) ||
-    !stateStoreOrigin.hostname.endsWith(".workers.dev")
-  )
-    throw new Error("stateStoreOrigin must be the verified state-store HTTPS origin");
   if (!Array.isArray(value.protectedAccountIds))
     throw new Error("protectedAccountIds must be an array of Cloudflare account IDs");
   const protectedAccountIds = value.protectedAccountIds.map((id, index) =>
@@ -143,7 +154,7 @@ export function readBootstrapInterruptionConfiguration(
     purpose: PURPOSE,
     accountId: disposableAccountId,
     profile: value.profile,
-    stateStoreOrigin: stateStoreOrigin.origin,
+    stateStoreOrigin,
     protectedAccountIds,
   };
 }
@@ -188,6 +199,14 @@ function markerPath(
 
 function expectedMarker(configuration: BootstrapInterruptionConfiguration): string {
   return `${PURPOSE}\n${configuration.accountId}\n${configuration.profile}\n`;
+}
+
+function requireStateStoreOrigin(configuration: BootstrapInterruptionConfiguration): string {
+  if (configuration.stateStoreOrigin === PENDING_STATE_STORE_ORIGIN)
+    throw new Error(
+      "Resolve stateStoreOrigin after the first Worker deployment before asserting its checkpoint",
+    );
+  return configuration.stateStoreOrigin;
 }
 
 function assertRuntimeIdentity(
@@ -319,14 +338,11 @@ function assertArmedFixture(
   assertPrivateMode(markerPath(configuration, environment), "Armed interruption marker");
 }
 
-export function assertInterruptedBootstrap(
-  configPath: string,
-  environment = defaultEnvironment(),
-): BootstrapInterruptionSummary & {
-  readonly resourceCount: number;
-  readonly statuses: readonly string[];
-} {
-  const configuration = assertConfiguredIdentity(configPath, environment);
+function assertInterruptedBootstrapConfiguration(
+  configuration: BootstrapInterruptionConfiguration,
+  environment: BootstrapInterruptionEnvironment,
+): InterruptedBootstrapSummary {
+  const stateStoreOrigin = requireStateStoreOrigin(configuration);
   assertArmedFixture(configuration, environment);
   const stagePath = localStagePath(configuration, environment);
   if (!existsSync(stagePath) || !lstatSync(stagePath).isDirectory())
@@ -349,7 +365,7 @@ export function assertInterruptedBootstrap(
   const output = JSON.parse(readFileSync(outputPath, "utf8")) as unknown;
   if (typeof output !== "object" || output === null || Array.isArray(output))
     throw new Error("Interrupted bootstrap stack output is not an object");
-  if (Reflect.get(output, "url") !== configuration.stateStoreOrigin)
+  if (Reflect.get(output, "url") !== stateStoreOrigin)
     throw new Error("Interrupted bootstrap stack output has an unexpected state-store origin");
   const outputToken = Reflect.get(output, "authToken");
   if (typeof outputToken !== "string" || outputToken.trim().length === 0)
@@ -396,12 +412,20 @@ export function assertInterruptedBootstrap(
   };
 }
 
+export function assertInterruptedBootstrap(
+  configPath: string,
+  environment = defaultEnvironment(),
+): InterruptedBootstrapSummary {
+  const configuration = assertConfiguredIdentity(configPath, environment);
+  return assertInterruptedBootstrapConfiguration(configuration, environment);
+}
+
 export function disarmBootstrapInterruption(
   configPath: string,
   environment = defaultEnvironment(),
 ): BootstrapInterruptionSummary {
   const configuration = assertConfiguredIdentity(configPath, environment);
-  assertArmedFixture(configuration, environment);
+  assertInterruptedBootstrapConfiguration(configuration, environment);
   unlinkSync(markerPath(configuration, environment));
   rmdirSync(credentialPath(configuration, environment));
   return {
@@ -419,6 +443,7 @@ export function assertRecoveredBootstrap(
   readonly credentialAccountMatches: true;
 } {
   const configuration = assertConfiguredIdentity(configPath, environment);
+  const stateStoreOrigin = requireStateStoreOrigin(configuration);
   const stagePath = localStagePath(configuration, environment);
   if (existsSync(stagePath))
     throw new Error(`Recovered bootstrap left its local stage in place: ${stagePath}`);
@@ -435,7 +460,7 @@ export function assertRecoveredBootstrap(
     throw new Error("Recovered state credential cache belongs to a different account");
   if (typeof cache.authToken !== "string" || cache.authToken.length === 0)
     throw new Error("Recovered state credential cache has no bearer token");
-  if (cache.url !== configuration.stateStoreOrigin)
+  if (cache.url !== stateStoreOrigin)
     throw new Error(
       "Recovered state credential cache does not match the verified state-store origin",
     );
