@@ -122,7 +122,28 @@ provider or billing prompt, and the task ledger remained EUR 0 actual / EUR 0
 reserved. No dev-account request or mutation occurred during either disposable
 attempt.
 
+The owner authorized the final account cleanup and selected **Leave account** under
+**Manage Account > Members**. Cloudflare refused the operation with `This account
+needs at least one super administrator. You will need to invite another super
+administrator before you can leave`. Cloudflare's current documentation confirms
+that a Super Administrator
+[cannot delete an individual account](https://developers.cloudflare.com/fundamentals/manage-members/manage/#super-administrator-access);
+the available self-service deletion
+[removes the user profile](https://developers.cloudflare.com/fundamentals/user-profiles/delete-account/)
+and accounts where that profile is the last active member. Profile deletion would
+also endanger the protected dev account and was not attempted. No second user was
+invited, and the tenant-admin `DELETE /accounts` operation is unavailable to this
+ordinary self-service account.
+
+The disposable account therefore remains at its proven empty Workers/Stores `0/0`
+baseline. The user token `trigo-recovery-disposable-bootstrap` was deleted; a live
+`/user/tokens/verify` request then returned HTTP 401, `success=false`, Cloudflare
+error 1000. The `trigo-cloudflare-recovery-token` Keychain item is absent and the
+clipboard is clear. This is the maximum cleanup that can be performed without
+expanding scope to another person or deleting the owner's Cloudflare profile.
+
 The exact operator commands and recovery boundaries are in
 [Cloud operations](cloud.md). Do not mark issue #29 accepted, deploy personal,
-merge, or start issue #30 until the owner deletes `Trigo Recovery Disposable`,
-retains the account-deletion confirmation and accepts this live evidence.
+merge, or start issue #30 until the owner explicitly accepts the residual empty
+account as the maximum safe cleanup and accepts this live evidence. Issue #29
+remains `needs-info` until then.
