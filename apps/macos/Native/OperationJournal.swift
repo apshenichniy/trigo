@@ -48,7 +48,7 @@ public struct JournaledOperation: Codable, Sendable, Equatable {
   public let createdAtMilliseconds: Int64
   public let updatedAtMilliseconds: Int64
   public let attempt: Int
-  public let lastFailure: String?
+  public let lastFailure: LifecycleFailure?
 }
 
 public struct JournalReconciliationReport: Sendable, Equatable {
@@ -128,15 +128,19 @@ public actor OperationJournal {
   }
 
   @discardableResult
-  public func markBlocked(_ operationID: String, reason: String) throws -> JournaledOperation {
+  public func markBlocked(_ operationID: String, failure: LifecycleFailure) throws
+    -> JournaledOperation
+  {
     let current = try requiredOperation(operationID)
-    return try replace(current, phase: .blocked, attempt: current.attempt, lastFailure: reason)
+    return try replace(current, phase: .blocked, attempt: current.attempt, lastFailure: failure)
   }
 
   @discardableResult
-  public func markFailed(_ operationID: String, reason: String) throws -> JournaledOperation {
+  public func markFailed(_ operationID: String, failure: LifecycleFailure) throws
+    -> JournaledOperation
+  {
     let current = try requiredOperation(operationID)
-    return try replace(current, phase: .failed, attempt: current.attempt, lastFailure: reason)
+    return try replace(current, phase: .failed, attempt: current.attempt, lastFailure: failure)
   }
 
   public func acknowledge(_ operationID: String) throws {
@@ -149,7 +153,7 @@ public actor OperationJournal {
   /// Runs a side effect only after intent and running state are durable.
   /// Success acknowledges the operation; failure remains durable and replayable.
   public func perform<Result: Sendable>(
-    _ intent: OperationIntent,
+    _ intent: OperationIntent, failureOnError: LifecycleFailure,
     sideEffect: @Sendable (JournaledOperation) async throws -> Result
   ) async throws -> Result {
     _ = try recordIntent(intent)
@@ -158,7 +162,7 @@ public actor OperationJournal {
     do {
       result = try await sideEffect(running)
     } catch {
-      _ = try? markFailed(intent.operationID, reason: String(describing: error))
+      _ = try? markFailed(intent.operationID, failure: failureOnError)
       throw error
     }
     try acknowledge(intent.operationID)
@@ -226,7 +230,8 @@ public actor OperationJournal {
   }
 
   private func replace(
-    _ current: JournaledOperation, phase: OperationPhase, attempt: Int, lastFailure: String?
+    _ current: JournaledOperation, phase: OperationPhase, attempt: Int,
+    lastFailure: LifecycleFailure?
   ) throws -> JournaledOperation {
     let updated = JournaledOperation(
       schemaVersion: current.schemaVersion, operationID: current.operationID,
@@ -260,7 +265,8 @@ public actor OperationJournal {
       operation.archiveID == archiveID, isCanonicalIdentifier(operation.operationID),
       isCanonicalIdentifier(operation.callID), operation.attempt >= 0,
       operation.createdAtMilliseconds <= operation.updatedAtMilliseconds,
-      Contract.hash(operation.payload) == operation.payloadSHA256
+      Contract.hash(operation.payload) == operation.payloadSHA256,
+      operation.lastFailure.map({ isStableFailureCode($0.code) }) ?? true
     else {
       throw LocalPersistenceError.invalidStoredDocument(
         "Operation journal entry failed validation")

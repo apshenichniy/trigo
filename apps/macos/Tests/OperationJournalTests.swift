@@ -54,8 +54,14 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     let operation = try await journal.recordIntent(intent(kind, suffix: index + 1))
     switch index % 4 {
     case 0: _ = try await journal.markRunning(operation.operationID)
-    case 1: _ = try await journal.markBlocked(operation.operationID, reason: "offline")
-    case 2: _ = try await journal.markFailed(operation.operationID, reason: "retryable")
+    case 1:
+      _ = try await journal.markBlocked(
+        operation.operationID,
+        failure: LifecycleFailure(code: "offline", retry: .retryable))
+    case 2:
+      _ = try await journal.markFailed(
+        operation.operationID,
+        failure: LifecycleFailure(code: "provider_failed", retry: .retryable))
     default: break
     }
   }
@@ -78,9 +84,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   defer { try? FileManager.default.removeItem(at: root) }
   let journal = try OperationJournal(root: root, archiveID: journalArchiveID)
   let operationIntent = intent(.deletion, suffix: 20)
+  let stableFailure = try LifecycleFailure(code: "side_effect_failed", retry: .retryable)
 
   await #expect(throws: JournalSideEffectFailure.self) {
-    try await journal.perform(operationIntent) { recorded in
+    try await journal.perform(operationIntent, failureOnError: stableFailure) { recorded in
       let visible = try await journal.operation(recorded.operationID)
       #expect(visible?.phase == .running)
       throw JournalSideEffectFailure()
@@ -90,7 +97,7 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
   let retained = try #require(try await relaunched.operation(operationIntent.operationID))
   #expect(retained.phase == .failed)
-  #expect(retained.lastFailure == "JournalSideEffectFailure()")
+  #expect(retained.lastFailure == stableFailure)
 }
 
 @Test func interruptionBeforeAcknowledgementLeavesReplayableWork() async throws {
@@ -100,14 +107,18 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   let interrupted = try OperationJournal(
     root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
   let operationIntent = intent(.replica, suffix: 21)
+  let stableFailure = try LifecycleFailure(code: "replica_failed", retry: .retryable)
 
   await #expect(throws: JournalInjectedInterruption.self) {
-    try await interrupted.perform(operationIntent) { _ in "replicated" }
+    try await interrupted.perform(operationIntent, failureOnError: stableFailure) { _ in
+      "replicated"
+    }
   }
 
   let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
   #expect(try await relaunched.operation(operationIntent.operationID)?.phase == .running)
-  let result = try await relaunched.perform(operationIntent) { operation in
+  let result = try await relaunched.perform(operationIntent, failureOnError: stableFailure) {
+    operation in
     #expect(operation.attempt == 2)
     return "replicated"
   }
@@ -123,9 +134,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
   let operationIntent = intent(.upload, suffix: 22)
   let sideEffectRan = LockedFlag()
+  let stableFailure = try LifecycleFailure(code: "upload_failed", retry: .retryable)
 
   await #expect(throws: JournalInjectedInterruption.self) {
-    try await journal.perform(operationIntent) { _ in
+    try await journal.perform(operationIntent, failureOnError: stableFailure) { _ in
       sideEffectRan.set()
       return ()
     }
@@ -160,9 +172,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   let interrupted = try OperationJournal(
     root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
   let operationIntent = intent(.importRevision, suffix: 24)
+  let stableFailure = try LifecycleFailure(code: "import_failed", retry: .afterCorrection)
 
   await #expect(throws: JournalInjectedInterruption.self) {
-    try await interrupted.perform(operationIntent) { _ in () }
+    try await interrupted.perform(operationIntent, failureOnError: stableFailure) { _ in () }
   }
 
   let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
