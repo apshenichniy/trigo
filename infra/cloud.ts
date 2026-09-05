@@ -28,6 +28,7 @@ export default Stack(
       name: target.resources.catalogDatabase,
       jurisdiction: "default",
       readReplication: { mode: "disabled" },
+      migrations: "./apps/server/migrations",
     }).pipe(RemovalPolicy.retain());
     const workflow = Cloudflare.Workflows.Workflow<PendingArchiveWorkflowInput>(
       target.resources.workflow,
