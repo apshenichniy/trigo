@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
-it.each(["cloud:bootstrap", "cloud:deploy", "test:cloud"])(
+it.each(["cloud:preflight", "cloud:bootstrap", "cloud:deploy", "test:cloud"])(
   "%s runs the explicit cloud preflight instead of an ownership placeholder",
   (command) => {
     const missing = resolve(tmpdir(), `trigo-cloud-${randomUUID()}.json`);
@@ -15,6 +15,18 @@ it.each(["cloud:bootstrap", "cloud:deploy", "test:cloud"])(
     expect(result.stderr).not.toContain("#12");
   },
 );
+it("cloud:preflight rejects forwarded arguments before local profile validation", () => {
+  const missing = resolve(tmpdir(), `trigo-cloud-${randomUUID()}.json`);
+  const result = spawnSync(
+    "bun",
+    ["run", "cloud:preflight", "--stage", "dev", "--config", missing, "--bogus"],
+    { encoding: "utf8" },
+  );
+
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("Unexpected preflight argument: --bogus");
+  expect(result.stdout).not.toContain("Cloud preflight passed");
+});
 it("test:asr remains the #13 ownership placeholder", () => {
   const result = spawnSync("bun", ["run", "test:asr", "--stage", "dev"], {
     encoding: "utf8",

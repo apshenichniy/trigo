@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,6 +10,7 @@ import {
   cloudTargetFor,
   executeCloudInvocation,
   parseCloudStage,
+  preflightCloudConfiguration,
   readCloudConfiguration,
   validateAlchemyProfileAccount,
 } from "./cloud.ts";
@@ -54,6 +55,38 @@ describe("cloud target mapping", () => {
 });
 
 describe("cloud command preflight", () => {
+  it("rejects a missing profile through the project preflight despite Alchemy's zero exit", () => {
+    const directory = mkdtempSync(resolve(tmpdir(), "trigo-cloud-preflight-"));
+    const alchemyRoot = resolve(directory, ".alchemy");
+    try {
+      const config = resolve(directory, "dev.json");
+      mkdirSync(alchemyRoot);
+      writeFileSync(
+        config,
+        JSON.stringify({
+          stage: "dev",
+          accountId: "0123456789abcdef0123456789abcdef",
+          profile: "trigo-cloud-dev",
+        }),
+      );
+
+      expect(() => preflightCloudConfiguration(config, cloudTargetFor("dev"), alchemyRoot)).toThrow(
+        "Alchemy profile trigo-cloud-dev is not configured for Cloudflare; run alchemy login --configure --profile trigo-cloud-dev and confirm the intended account",
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("documents the project preflight instead of trusting Alchemy profile-show status", () => {
+    const runbook = readFileSync(new URL("../docs/development/cloud.md", import.meta.url), "utf8");
+    const setup = readFileSync(new URL("../docs/development/setup.md", import.meta.url), "utf8");
+
+    expect(runbook).toContain("mise exec -- bun run cloud:preflight --stage dev");
+    expect(runbook).not.toContain("alchemy.js profile show");
+    expect(setup).toContain("`cloud:preflight --stage dev`");
+  });
+
   it("requires an explicit stage before invoking cloud tooling", () => {
     const result = spawnSync("bun", ["scripts/cloud.ts", "deploy"], {
       cwd: new URL("..", import.meta.url),
@@ -151,7 +184,7 @@ describe("cloud command preflight", () => {
     }
   });
 
-  it("rejects a stored profile bound to another account before remote state", () => {
+  it("rejects an OAuth profile bound to another account before remote state", () => {
     const alchemyRoot = mkdtempSync(resolve(tmpdir(), "trigo-cloud-profile-"));
     try {
       writeFileSync(
@@ -167,6 +200,44 @@ describe("cloud command preflight", () => {
               },
             },
           },
+        }),
+      );
+
+      expect(() =>
+        validateAlchemyProfileAccount(
+          {
+            stage: "dev",
+            accountId: "0123456789abcdef0123456789abcdef",
+            profile: "trigo-cloud-dev",
+          },
+          alchemyRoot,
+        ),
+      ).toThrow(
+        "Alchemy profile trigo-cloud-dev belongs to a different Cloudflare account; rerun alchemy login --configure --profile trigo-cloud-dev and confirm the intended account",
+      );
+    } finally {
+      rmSync(alchemyRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a stored profile bound to another account before remote state", () => {
+    const alchemyRoot = mkdtempSync(resolve(tmpdir(), "trigo-cloud-profile-"));
+    try {
+      writeFileSync(
+        resolve(alchemyRoot, "profiles.json"),
+        JSON.stringify({
+          version: 0,
+          profiles: { "trigo-cloud-dev": { Cloudflare: { method: "stored" } } },
+        }),
+      );
+      const credentials = resolve(alchemyRoot, "credentials", "trigo-cloud-dev");
+      mkdirSync(credentials, { recursive: true });
+      writeFileSync(
+        resolve(credentials, "cf-stored.json"),
+        JSON.stringify({
+          type: "apiToken",
+          apiToken: "never-read-by-validation",
+          accountId: "fedcba9876543210fedcba9876543210",
         }),
       );
 

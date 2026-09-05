@@ -6,7 +6,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export type CloudStage = "dev" | "personal";
-export type CloudAction = "bootstrap" | "deploy" | "test";
+export type CloudInvocationAction = "bootstrap" | "deploy" | "test";
+export type CloudAction = "preflight" | CloudInvocationAction;
 
 export interface CloudTarget {
   readonly stage: CloudStage;
@@ -80,8 +81,9 @@ export function cloudDeploymentIdentity(target: CloudTarget, accountId: string):
 }
 
 function parseAction(value: string | undefined): CloudAction {
-  if (value === "bootstrap" || value === "deploy" || value === "test") return value;
-  throw new Error("Expected cloud action: bootstrap, deploy, or test");
+  if (value === "preflight" || value === "bootstrap" || value === "deploy" || value === "test")
+    return value;
+  throw new Error("Expected cloud action: preflight, bootstrap, deploy, or test");
 }
 
 export function parseCloudStage(args: readonly string[]): CloudStage {
@@ -236,15 +238,33 @@ export function validateAlchemyProfileAccount(
     );
 }
 
-export function cloudInvocationFor(
+export function preflightCloudConfiguration(
+  configPath: string,
+  target: CloudTarget,
+  alchemyRoot = resolve(homedir(), ".alchemy"),
+): CloudConfiguration {
+  if (!existsSync(configPath)) throw new Error(`Cloud configuration not found: ${configPath}`);
+  const configuration = readCloudConfiguration(configPath, target);
+  validateAlchemyProfileAccount(configuration, alchemyRoot);
+  return configuration;
+}
+
+function rejectUnexpectedCloudActionArgument(
   action: CloudAction,
+  actionArgs: readonly string[],
+): void {
+  const unsupportedArgument = action === "test" ? undefined : actionArgs[0];
+  if (unsupportedArgument !== undefined)
+    throw new Error(`Unexpected ${action} argument: ${unsupportedArgument}`);
+}
+
+export function cloudInvocationFor(
+  action: CloudInvocationAction,
   target: CloudTarget,
   configuration: CloudConfiguration,
   actionArgs: readonly string[] = [],
 ): CloudInvocation {
-  const unsupportedArgument = action === "test" ? undefined : actionArgs[0];
-  if (unsupportedArgument !== undefined)
-    throw new Error(`Unexpected ${action} argument: ${unsupportedArgument}`);
+  rejectUnexpectedCloudActionArgument(action, actionArgs);
   if (action === "test" && target.stage !== "dev")
     throw new Error("test:cloud fixtures are destructive and may target only --stage dev");
   if (action === "test" && configuration.apiUrl === undefined)
@@ -327,21 +347,26 @@ if (import.meta.main) {
     const [action, ...args] = process.argv.slice(2);
     const parsedAction = parseAction(action);
     const target = cloudTargetFor(parseCloudStage(args));
+    const actionArgs = cloudActionArguments(args);
+    if (parsedAction === "preflight") rejectUnexpectedCloudActionArgument(parsedAction, actionArgs);
     const config = cloudConfigPath(args, target);
-    if (!existsSync(config)) throw new Error(`Cloud configuration not found: ${config}`);
-    const configuration = readCloudConfiguration(config, target);
-    if (parsedAction !== "test") validateAlchemyProfileAccount(configuration);
-    const invocation = cloudInvocationFor(
-      parsedAction,
-      target,
-      configuration,
-      cloudActionArguments(args),
-    );
-    process.exitCode = executeCloudInvocation(invocation, {
-      root: fileURLToPath(new URL("..", import.meta.url)),
-      bun: process.execPath,
-      baseEnv: process.env,
-    });
+    const configuration =
+      parsedAction === "test"
+        ? (() => {
+            if (!existsSync(config)) throw new Error(`Cloud configuration not found: ${config}`);
+            return readCloudConfiguration(config, target);
+          })()
+        : preflightCloudConfiguration(config, target);
+    if (parsedAction === "preflight") {
+      console.log(`Cloud preflight passed for profile ${configuration.profile}`);
+    } else {
+      const invocation = cloudInvocationFor(parsedAction, target, configuration, actionArgs);
+      process.exitCode = executeCloudInvocation(invocation, {
+        root: fileURLToPath(new URL("..", import.meta.url)),
+        bun: process.execPath,
+        baseEnv: process.env,
+      });
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
