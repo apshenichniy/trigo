@@ -98,34 +98,37 @@ vendored source and imported agent skills.
 
 All commands use `bun run <command>` and propagate errors.
 
-| Command                                  | Behavior                                                                       |
-| ---------------------------------------- | ------------------------------------------------------------------------------ |
-| `doctor`                                 | Read-only selected tools and local-target diagnostics                          |
-| `format` / `format:check`                | Apply/check Oxfmt and bundled Swift formatting                                 |
-| `lint`                                   | Oxlint and strict Swift formatting checks                                      |
-| `typecheck`                              | Strict TypeScript and locked native Swift compilation                          |
-| `test`                                   | Node/Effect, Workers, shared Swift fixtures, native logic, Alchemy local smoke |
-| `build`                                  | Local Worker bundle and both app variants                                      |
-| `check`                                  | Complete macOS gate: format, lint, types, generation, tests and builds         |
-| `check:server`                           | Portable Linux/macOS TS/contracts/Workers checks and bundle                    |
-| `check:macos`                            | Native style/conformance/tests, both apps and Alchemy local smoke              |
-| `contracts:generate` / `contracts:check` | Explicit regeneration / temporary regeneration and comparison                  |
-| `dev`                                    | Loopback Alchemy Worker, worktree-local R2 and fake ASR                        |
-| `test:local`                             | Disposable Alchemy composition and R2 readback                                 |
-| `macos:build --variant dev`              | Locked build (`personal` also supported)                                       |
-| `macos:run --variant dev`                | Build, install and open stable development app                                 |
-| `macos:archive --variant dev`            | Reproducible unsigned archive unless a signing team is selected                |
-| `macos:dependencies`                     | Explicit Swift dependency update and app lock refresh                          |
-| `cloud:bootstrap --stage dev`            | Nonzero placeholder; #12 owns bootstrap                                        |
-| `cloud:deploy --stage dev`               | Nonzero placeholder; #12 owns deployment                                       |
-| `test:cloud --stage dev`                 | Nonzero placeholder; #12 owns cloud verification                               |
-| `test:asr --stage dev`                   | Nonzero placeholder; #13 owns paid provider probes                             |
+| Command                                  | Behavior                                                                             |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ |
+| `doctor`                                 | Read-only selected tools and local-target diagnostics                                |
+| `format` / `format:check`                | Apply/check Oxfmt and bundled Swift formatting                                       |
+| `lint`                                   | Oxlint and strict Swift formatting checks                                            |
+| `typecheck`                              | Strict TypeScript and locked native Swift compilation                                |
+| `test`                                   | Node/Effect, Workers, shared Swift fixtures, native logic, Alchemy local smoke       |
+| `build`                                  | Local Worker bundle and both app variants                                            |
+| `check`                                  | Complete macOS gate: format, lint, types, generation, tests and builds               |
+| `check:server`                           | Portable Linux/macOS TS/contracts/Workers checks and bundle                          |
+| `check:macos`                            | Native style/conformance/tests, both apps and Alchemy local smoke                    |
+| `contracts:generate` / `contracts:check` | Explicit regeneration / temporary regeneration and comparison                        |
+| `dev`                                    | Loopback Alchemy Worker, worktree-local R2 and fake ASR                              |
+| `test:local`                             | Disposable Alchemy composition and R2 readback                                       |
+| `macos:build --variant dev`              | Locked build (`personal` also supported)                                             |
+| `macos:run --variant dev`                | Build, install and open stable development app                                       |
+| `macos:archive --variant dev`            | Reproducible unsigned archive unless a signing team is selected                      |
+| `macos:dependencies`                     | Explicit Swift dependency update and app lock refresh                                |
+| `cloud:bootstrap --stage dev`            | Explicit-profile Cloudflare remote-state bootstrap; see [cloud operations](cloud.md) |
+| `cloud:deploy --stage dev`               | Deploy isolated dev R2, D1, Workflow, AI binding and Worker                          |
+| `test:cloud --stage dev`                 | Read-only infrastructure checks, with explicit dev fixture seed/verify modes         |
+| `test:asr --stage dev`                   | Nonzero placeholder; #13 owns paid provider probes                                   |
 
 The full check fails on Linux rather than silently skipping macOS. Verification
 may create ignored build outputs/caches; it must not rewrite tracked sources or
 locks. CI runs both jobs on every PR and `main` change. Required merge checks must
 be configured separately in repository rules; a green workflow does not prove
 that branch protection exists. Merge/deployment require the owner's instruction.
+Cloud commands are never part of `doctor`, `check`, `dev`, or offline CI; their
+credentials, recovery procedure and acceptance sequence are documented separately
+in [Cloud operations](cloud.md).
 
 ## Local runtime
 

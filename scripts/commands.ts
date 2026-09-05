@@ -19,7 +19,9 @@ function doctor() {
     console.log(`${cmd[0]}: ${actual}`);
     if (actual !== expected) throw new Error(`Expected ${expected}`);
   }
-  console.log("Target: local; fake ASR; cloud setup (#12) and provider probes (#13) unavailable.");
+  console.log(
+    "Target: local; fake ASR. Cloud commands require an explicit stage and stage config; provider probes (#13) remain unavailable.",
+  );
 }
 function swiftFiles(): string[] {
   return output([
@@ -86,13 +88,14 @@ const macosBuild = () => {
 };
 async function serverBuild() {
   const result = await Bun.build({
-    entrypoints: ["apps/server/src/local-worker.ts"],
+    entrypoints: ["apps/server/src/local-worker.ts", "apps/server/src/cloud-worker.ts"],
     outdir: "apps/server/dist",
     target: "browser",
     format: "esm",
+    external: ["cloudflare:workers"],
   });
   if (!result.success) throw new Error(result.logs.map((log) => log.message).join("\n"));
-  console.log("Local Worker bundle built.");
+  console.log("Local and cloud Worker bundles built.");
 }
 const snapshot = snapshotLocks();
 try {
