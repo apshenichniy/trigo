@@ -1,4 +1,53 @@
 {
   "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
-  "extends": ["./node_modules/@effect/tsgo/oxlint-presets/recommended.json"]
+  "extends": ["./node_modules/@effect/tsgo/oxlint-presets/recommended.json"],
+  "overrides": [
+    {
+      "files": ["scripts/**/*.ts"],
+      "rules": {
+        "effecttsgo/global-console": "off",
+        "effecttsgo/node-builtin-import": "off",
+        "effecttsgo/process-env": "off"
+      }
+    },
+    {
+      "files": ["scripts/commands.ts", "scripts/commands.test.ts", "scripts/local.ts"],
+      "rules": {
+        "effecttsgo/async-function": "off"
+      }
+    },
+    {
+      "files": ["scripts/commands.test.ts", "scripts/local.ts"],
+      "rules": {
+        "effecttsgo/new-promise": "off"
+      }
+    },
+    {
+      "files": ["scripts/local.ts"],
+      "rules": {
+        "effecttsgo/global-fetch": "off",
+        "effecttsgo/global-timers": "off"
+      }
+    },
+    {
+      "files": ["packages/contracts/src/**/*.ts"],
+      "rules": {
+        "effecttsgo/async-function": "off"
+      }
+    },
+    {
+      "files": ["packages/contracts/test/**/*.ts"],
+      "rules": {
+        "effecttsgo/async-function": "off",
+        "effecttsgo/node-builtin-import": "off"
+      }
+    },
+    {
+      "files": ["apps/server/test/**/*.worker.test.ts"],
+      "rules": {
+        "effecttsgo/async-function": "off",
+        "effecttsgo/global-fetch": "off"
+      }
+    }
+  ]
 }

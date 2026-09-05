@@ -58,6 +58,7 @@ const lint = () =>
     "packages/contracts/test",
     "--ignore-pattern",
     "**/generated/**",
+    "--deny-warnings",
   ]);
 const units = () => run(["bun", "run", "test:unit"]);
 const workers = () => run(["bun", "run", "test:workers"]);
@@ -90,7 +91,7 @@ async function serverBuild() {
     target: "browser",
     format: "esm",
   });
-  if (!result.success) throw new Error(result.logs.join("\n"));
+  if (!result.success) throw new Error(result.logs.map((log) => log.message).join("\n"));
   console.log("Local Worker bundle built.");
 }
 const snapshot = snapshotLocks();
