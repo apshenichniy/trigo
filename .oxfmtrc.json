@@ -1,5 +1,7 @@
 {
   "ignorePatterns": [
+    ".agents/skills/**",
+    "repos/**",
     "**/src/generated/**",
     "**/.build/**",
     "**/*.xcodeproj/**",
