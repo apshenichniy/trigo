@@ -170,6 +170,35 @@ struct ServerConnectionTests {
     #expect(await credentials.values == ["first"])
   }
 
+  @Test func failedPendingCredentialCleanupRemainsRetryableAcrossRelaunch() async {
+    let old = StoredConnection.fixture(
+      archiveId: archiveA, serverURL: "https://old.example.test", credentialAccount: "old")
+    let pending = StoredConnection.fixture(
+      archiveId: archiveA, serverURL: "https://new.example.test", credentialAccount: "pending")
+    let metadata = MemoryConnectionMetadataStore(
+      value: ConnectionMetadata(committed: old, pending: pending))
+    let credentials = MemoryCredentialStore(values: ["old": "first", "pending": "replacement"])
+    await credentials.failNextDelete()
+    let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
+
+    let firstRelaunch = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
+      statusClient: status)
+    let firstRestore = await firstRelaunch.restore()
+
+    #expect(firstRestore.binding?.archiveId == archiveA)
+    #expect(firstRestore.lastAttemptIssue == .persistence)
+    #expect(await metadata.value?.pending == pending)
+
+    let secondRelaunch = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
+      statusClient: status)
+    let recovered = await secondRelaunch.restore()
+    #expect(recovered.health == .connected(.fixture(archiveId: archiveA)))
+    #expect(await metadata.value?.pending == nil)
+    #expect(await credentials.values == ["first"])
+  }
+
   @Test func boundArchiveRemainsRecordingEligibleWhenServerIsUnavailableAfterRelaunch() async {
     let metadata = MemoryConnectionMetadataStore()
     let credentials = MemoryCredentialStore()
@@ -245,6 +274,23 @@ struct ServerConnectionTests {
     try await store.delete(account: account)
     #expect(try await store.load(account: account) == nil)
   }
+
+  @Test func fileMetadataStorePersistsAtomicallyWithPrivatePermissions() async throws {
+    let root = FileManager.default.temporaryDirectory.appending(
+      path: "trigo-connection-\(UUID())", directoryHint: .isDirectory)
+    let url = root.appending(path: "connection.json")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = FileConnectionMetadataStore(url: url)
+    let connection = StoredConnection.fixture(
+      archiveId: archiveA, serverURL: "https://dev.example.test", credentialAccount: "credential")
+    let expected = ConnectionMetadata(committed: connection)
+
+    try await store.save(expected)
+
+    #expect(try await store.load() == expected)
+    let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+    #expect(attributes[.posixPermissions] as? Int == 0o600)
+  }
 }
 
 private actor MemoryConnectionMetadataStore: ConnectionMetadataStoring {
@@ -272,6 +318,7 @@ private actor MemoryConnectionMetadataStore: ConnectionMetadataStoring {
 private actor MemoryCredentialStore: CredentialStoring {
   private var storage: [String: String]
   private var shouldFailNextSave = false
+  private var shouldFailNextDelete = false
 
   init(values: [String: String] = [:]) { storage = values }
 
@@ -286,8 +333,15 @@ private actor MemoryCredentialStore: CredentialStoring {
     }
     storage[account] = token
   }
-  func delete(account: String) throws { storage.removeValue(forKey: account) }
+  func delete(account: String) throws {
+    if shouldFailNextDelete {
+      shouldFailNextDelete = false
+      throw TestFailure.injected
+    }
+    storage.removeValue(forKey: account)
+  }
   func failNextSave() { shouldFailNextSave = true }
+  func failNextDelete() { shouldFailNextDelete = true }
 }
 
 private actor StubStatusClient: ServerStatusFetching {
