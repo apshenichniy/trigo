@@ -1,13 +1,34 @@
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import { expect, it } from "vitest";
-it.each(["cloud:bootstrap", "cloud:deploy", "test:cloud", "test:asr"])(
-  "%s is a nonzero ownership placeholder",
+it.each(["cloud:bootstrap", "cloud:deploy", "test:cloud"])(
+  "%s runs the explicit cloud preflight instead of an ownership placeholder",
   (command) => {
-    const result = spawnSync("bun", ["run", command, "--stage", "dev"], { encoding: "utf8" });
+    const missing = resolve(tmpdir(), `trigo-cloud-${randomUUID()}.json`);
+    const result = spawnSync("bun", ["run", command, "--stage", "dev", "--config", missing], {
+      encoding: "utf8",
+    });
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain(command === "test:asr" ? "#13" : "#12");
+    expect(result.stderr).toContain(`Cloud configuration not found: ${missing}`);
+    expect(result.stderr).not.toContain("#12");
   },
 );
+it("test:asr remains the #13 ownership placeholder", () => {
+  const result = spawnSync("bun", ["run", "test:asr", "--stage", "dev"], {
+    encoding: "utf8",
+  });
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("#13");
+});
+it("doctor remains a read-only local diagnostic after cloud commands are available", () => {
+  const result = spawnSync("bun", ["run", "doctor"], { encoding: "utf8" });
+  expect(result.status).toBe(0);
+  expect(result.stdout).toContain("Target: local; fake ASR");
+  expect(result.stdout).toContain("Cloud commands require an explicit stage and stage config");
+  expect(result.stdout).not.toContain("Cloudflare State Store");
+});
 it("local dev refuses cloud stage arguments", () => {
   const result = spawnSync("bun", ["run", "dev", "--stage", "personal"], { encoding: "utf8" });
   expect(result.status).not.toBe(0);
