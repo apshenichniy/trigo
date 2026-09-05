@@ -90,12 +90,51 @@ provide a suitably scoped token in the process environment for each command.
 The login command deliberately uses `--configure`: pinned Alchemy otherwise
 reuses an existing provider entry. Confirm that its printed Cloudflare account is
 the intended dev account before bootstrapping or deploying.
-Never paste the token into the stage file, a command argument, a log or Git. The
-operator identity must have the Cloudflare Worker, Secrets Store, R2, D1,
-Workflows and Workers AI permissions required by the declared resources. Load a
-token into the environment from an interactive hidden prompt or the operator's
-secret manager; the commands below assume it is already present and do not show a
-token assignment that could be retained in shell history.
+Never paste the token into the stage file, a command argument, a log or Git. Create
+a custom token restricted to the intended dev account under **Account Resources**
+with exactly these account permissions:
+
+- [`Workers Scripts Write`](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/content/methods/update/)
+  for the state/application Workers and the
+  [Workflow definition](https://developers.cloudflare.com/api/resources/workflows/methods/update/)
+- [`Workers R2 Storage Write`](https://developers.cloudflare.com/api/resources/r2/subresources/buckets/methods/create/)
+  for the retained bucket and acceptance object
+- [`D1 Write`](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/create/)
+  for the retained database and acceptance row
+- [`Account Secrets Store Edit`](https://developers.cloudflare.com/secrets-store/access-control/)
+  for state-store secrets and their Worker binding
+
+No zone permission is required because this stage uses `workers.dev` and no custom
+domain. The Workers AI binding is part of the Worker upload and #29 never invokes
+inference, so this acceptance path does not require a Workers AI token permission.
+Load the token into the environment from an interactive hidden prompt or the
+operator's secret manager; the commands below assume it is already present and do
+not show a token assignment that could be retained in shell history.
+
+Before requesting cloud authorization, validate the local inputs without creating
+or changing a Cloudflare resource:
+
+```sh
+jq -e '
+  keys == ["accountId", "profile", "stage"] and
+  .stage == "dev" and
+  .profile == "trigo-cloud-dev" and
+  (.accountId | test("^[0-9A-Fa-f]{32}$"))
+' config/cloud/dev.json >/dev/null
+
+mise exec -- bun --bun infra/node_modules/alchemy/bin/alchemy.js profile show \
+  --profile trigo-cloud-dev
+
+TRIGO_DEV_ACCOUNT_ID="$(jq -r '.accountId' config/cloud/dev.json)"
+mise exec -- node node_modules/wrangler/bin/wrangler.js whoami \
+  --account "$TRIGO_DEV_ACCOUNT_ID" --json |
+  jq -e --arg id "$TRIGO_DEV_ACCOUNT_ID" \
+    '.loggedIn == true and any(.accounts[]?; .id == $id)' >/dev/null
+```
+
+The last command is a read-only authentication/account check. It cannot prove the
+token's write permissions; compare those permissions in the Cloudflare token
+dashboard with the list above before bootstrap.
 
 With explicit authorization, bootstrap remote state once for the account:
 
