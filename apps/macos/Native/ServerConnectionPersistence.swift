@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Security
 
@@ -43,8 +44,23 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
     }
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-    try encoder.encode(metadata).write(to: url, options: .atomic)
-    try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    let temporary = directory.appending(
+      path: ".\(url.lastPathComponent).\(UUID().uuidString).tmp")
+    defer { try? fileManager.removeItem(at: temporary) }
+    try encoder.encode(metadata).write(to: temporary, options: .withoutOverwriting)
+    try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: temporary.path)
+    let handle = try FileHandle(forWritingTo: temporary)
+    try handle.synchronize()
+    try handle.close()
+    let result: Int32 = temporary.withUnsafeFileSystemRepresentation { source in
+      url.withUnsafeFileSystemRepresentation { destination in
+        guard let source, let destination else { return Int32(-1) }
+        return Darwin.rename(source, destination)
+      }
+    }
+    guard result == 0 else {
+      throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
   }
 
   private static func validate(_ metadata: ConnectionMetadata) throws {
@@ -53,11 +69,18 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
       guard
         ServerConnection.canonicalServerURL(connection.serverURL.absoluteString)
           == connection.serverURL,
-        isCanonicalUUID(connection.archiveId), !connection.credentialAccount.isEmpty
+        isCanonicalUUID(connection.archiveId), isCanonicalUUID(connection.credentialAccount)
       else { throw ConnectionPersistenceError.invalidMetadata }
     }
-    guard Set(metadata.retiredCredentialAccounts).count == metadata.retiredCredentialAccounts.count,
-      metadata.retiredCredentialAccounts.allSatisfy({ !$0.isEmpty })
+    let stored = [metadata.committed, metadata.pending].compactMap { $0 }
+    if let committed = metadata.committed, let pending = metadata.pending {
+      guard committed.archiveId == pending.archiveId, committed.stage == pending.stage else {
+        throw ConnectionPersistenceError.invalidMetadata
+      }
+    }
+    let accounts = stored.map(\.credentialAccount) + metadata.retiredCredentialAccounts
+    guard Set(accounts).count == accounts.count,
+      metadata.retiredCredentialAccounts.allSatisfy(isCanonicalUUID)
     else { throw ConnectionPersistenceError.invalidMetadata }
   }
 

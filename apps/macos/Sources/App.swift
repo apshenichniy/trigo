@@ -54,6 +54,13 @@ private final class ConnectionViewModel: ObservableObject {
     snapshot = await connection.connect(serverURL: serverURL, token: candidateToken)
     isConnecting = false
   }
+
+  func retrySavedConnection() async {
+    guard !isConnecting else { return }
+    isConnecting = true
+    snapshot = await connection.restore()
+    isConnecting = false
+  }
 }
 
 private struct ConnectionView: View {
@@ -128,6 +135,13 @@ private struct ConnectionView: View {
           Label("New settings were not saved", systemImage: "arrow.uturn.backward.circle")
             .font(.headline)
           Text(issue.title + ". " + issue.recoverySuggestion).foregroundStyle(.secondary)
+        }
+        if model.snapshot.binding != nil {
+          Button("Retry saved connection") {
+            Task { await model.retrySavedConnection() }
+          }
+          .disabled(model.isConnecting)
+          .accessibilityIdentifier("retry-connection-button")
         }
       }
       .padding(.top, 8)
