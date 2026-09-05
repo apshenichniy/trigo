@@ -5,7 +5,7 @@ Trigo is a personal call archive. It captures conversations, preserves their tra
 ## Language
 
 **Call**:
-A conversation captured as one recording session, including one-to-one and group conversations.
+A single recording session of a conversation from one fixed capture source, including one-to-one and group conversations. A conversation recorded across different capture sources produces separate calls.
 
 **Capture source**:
 The application selected for recording through one of its windows. Selecting a window identifies the application; it does not imply that its audio is isolated from other windows or tabs of that application.
@@ -14,8 +14,14 @@ The application selected for recording through one of its windows. Selecting a w
 A recording of one audio source, such as the local microphone or the selected application's output. A track can contain more than one person's voice.
 _Avoid_: Speaker channel
 
+**Microphone recording mute**:
+A state in which Trigo excludes microphone input from a call's recording while retaining the capture source's audio. It is independent of microphone mute in the calling application.
+
 **Transcript**:
 The recorded speech represented as text with time positions and speaker labels where available. A transcript can be useful even when speaker attribution is incomplete.
+
+**Transcript revision**:
+A retained version of a call's transcript, including the names assigned to its speaker labels. Re-transcribing a call produces a new revision while previous revisions remain available.
 
 **Turn**:
 A time-bounded passage of a transcript associated with a speaker label when one is available.
@@ -28,7 +34,7 @@ A voice distinguished within a call. A speaker label does not by itself establis
 A person taking part in a call. Identifying a participant and attributing particular turns to that person are separate claims.
 
 **Canonical call document**:
-The authoritative record of a call's transcript and associated metadata, from which search representations can be rebuilt.
+The authoritative record of a call's transcript revisions and associated metadata, from which search representations can be rebuilt.
 _Avoid_: Search document
 
 **Corpus**:
