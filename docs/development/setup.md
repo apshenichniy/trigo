@@ -28,6 +28,7 @@ Use `mise exec --` in a shell without mise activation.
 | Bun / Node                                         | 1.3.13 / 24.14.1        |
 | XcodeGen (macOS only)                              | 2.46.0                  |
 | Effect, platform-node, platform-bun, effect/vitest | 4.0.0-rc.112            |
+| Effect TSGO / Oxlint TSGO bridge                   | 0.41.0 / 7.0.2001       |
 | Alchemy                                            | 2.0.0-beta.76           |
 | Vitest / Vite / TypeScript                         | 4.1.11 / 8.0.7 / 7.0.2  |
 | Workers pool / Wrangler                            | 0.22.0 / 4.124.0        |
@@ -41,6 +42,48 @@ All other direct dependencies are exact in package manifests; transitive version
 are in `bun.lock` and the three Swift resolution files. Effect's platform packages
 are required by the Alchemy CLI/runtime, not by the Worker. Vitest 5 is outside the
 accepted peer range. The two workerd versions are deliberately independent.
+
+## Effect development tooling
+
+The repository pins the Effect Language Service through `@effect/tsgo`. The root
+`prepare` script patches the workspace TypeScript 7 and Oxlint installations after
+every package install. `tsconfig.json` enables language-service completions,
+quick info and refactors; Effect diagnostics come from the type-aware Oxlint
+`effecttsgo` plugin so that they are not reported twice. The ordinary `lint` and
+`check` commands therefore include Effect-specific diagnostics.
+
+VS Code-based editors use the workspace TypeScript-Go installation through the
+tracked `.vscode/settings.json`. Install the TypeScript 7 editor extension and
+confirm that the workspace version is active. The optional Effect VS Code
+extension adds debugger views, but it does not contain the language service and
+is not required for repository checks.
+
+The repo-scoped Effect skill lives at `.agents/skills/effect` and was imported
+from `kitlangton/skills` commit `22c35cb7fd29f931789253fc3c8eb142f2863a8a`.
+Codex discovers it from the repository root; no user-level installation is
+required.
+
+## Vendored Effect reference
+
+`repos/effect` is a read-only squash subtree of Effect tag
+`effect@4.0.0-rc.112` (`2600f62f4532026928454dcea8d1c48557b3f942`). It
+matches the runtime packages pinned by this repository. Agents should read its
+`LLMS.md`, implementation, tests and examples when documentation or installed
+declarations are insufficient, but application code must continue importing
+normal package dependencies.
+
+Update the subtree only as part of the same reviewed change that updates the
+Effect package pins:
+
+```sh
+git subtree pull --prefix=repos/effect \
+  https://github.com/Effect-TS/effect.git effect@<version> --squash
+```
+
+Do not track Effect `main` independently: source newer than the installed package
+can teach agents APIs that the application cannot compile. Editor search, file
+watching and auto-imports exclude `repos/`, and repository formatting ignores both
+vendored source and imported agent skills.
 
 ## Command interface
 

@@ -1,4 +1,5 @@
 {
+  "$schema": "./node_modules/@effect/tsgo/schema.json",
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -10,7 +11,13 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "types": ["node", "bun", "@cloudflare/workers-types"]
+    "types": ["node", "bun", "@cloudflare/workers-types"],
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnostics": false
+      }
+    ]
   },
   "include": [
     "scripts/**/*.ts",
