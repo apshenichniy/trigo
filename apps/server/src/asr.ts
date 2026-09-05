@@ -1,16 +1,32 @@
-import { Effect } from "effect";
-export interface LocalTranscript {
-  fixture: string;
-  turns: readonly [];
-  provider: "fake";
-}
+import { Effect, Schema } from "effect";
+
+export const LocalTranscript = Schema.Struct({
+  fixture: Schema.String,
+  turns: Schema.Tuple([]),
+  provider: Schema.Literal("fake"),
+});
+
+export interface LocalTranscript extends Schema.Schema.Type<typeof LocalTranscript> {}
+
+export class UnknownLocalFixture extends Schema.TaggedError<UnknownLocalFixture>()(
+  "Asr.UnknownLocalFixture",
+  { fixture: Schema.String },
+) {}
+
 export interface Asr {
-  transcribe(fixture: string): Effect.Effect<LocalTranscript, Error>;
+  readonly transcribe: (fixture: string) => Effect.Effect<LocalTranscript, UnknownLocalFixture>;
 }
+
+const noSpeechTranscript = LocalTranscript.make({
+  fixture: "no-speech",
+  turns: [],
+  provider: "fake",
+});
+
 /** Local-only injection; the real Cloudflare Nova-3 adapter belongs to #13. */
 export const fakeAsr: Asr = {
-  transcribe: (fixture) =>
-    fixture === "no-speech"
-      ? Effect.succeed({ fixture, turns: [], provider: "fake" })
-      : Effect.fail(new Error("Unknown local fixture")),
+  transcribe: Effect.fn("Asr.transcribe")(function* (fixture: string) {
+    if (fixture !== "no-speech") return yield* new UnknownLocalFixture({ fixture });
+    return noSpeechTranscript;
+  }),
 };

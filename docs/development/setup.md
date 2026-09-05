@@ -52,6 +52,15 @@ quick info and refactors; Effect diagnostics come from the type-aware Oxlint
 `effecttsgo` plugin so that they are not reported twice. The ordinary `lint` and
 `check` commands therefore include Effect-specific diagnostics.
 
+`lint` denies warnings. Effect-owned production modules must therefore address
+the recommended diagnostics rather than accumulating advisory output. The
+tracked Oxlint overrides are intentionally narrow: repository orchestration
+scripts may use Node/Bun platform APIs, the shared contracts package retains its
+cross-runtime Promise API, and external Workers/Vitest harnesses retain their
+native asynchronous interfaces. Do not broaden these overrides to application
+logic; add a boundary-specific exception only when adopting an Effect API would
+change the platform contract or introduce an inappropriate runtime dependency.
+
 VS Code-based editors use the workspace TypeScript-Go installation through the
 tracked `.vscode/settings.json`. Install the TypeScript 7 editor extension and
 confirm that the workspace version is active. The optional Effect VS Code
