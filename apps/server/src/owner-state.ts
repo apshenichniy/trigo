@@ -4,6 +4,12 @@ import * as Reactivity from "effect/unstable/reactivity/Reactivity";
 
 const Sha256Digest = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/));
 const AuthorizationHeader = Schema.String.check(Schema.isPattern(/^Bearer trigo_v1_[0-9a-f]{64}$/));
+const CanonicalUuidV4 = Schema.String.check(
+  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+);
+const ArchiveId = CanonicalUuidV4.pipe(Schema.brand("ArchiveId"));
+const OwnerOperationId = CanonicalUuidV4.pipe(Schema.brand("OwnerOperationId"));
+const PositiveGeneration = Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1));
 const decodeSha256Digest = Schema.decodeUnknownOption(Sha256Digest);
 const decodeAuthorizationHeader = Schema.decodeUnknownOption(AuthorizationHeader);
 
@@ -73,10 +79,12 @@ export const hashOwnerToken = Effect.fn("OwnerState.hashToken")(function* (token
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 });
 
-interface OwnerAuthenticationRow {
-  readonly archive_id: string;
-  readonly generation: number;
-}
+const OwnerAuthenticationRow = Schema.Struct({
+  archive_id: ArchiveId,
+  generation: PositiveGeneration,
+});
+
+const decodeOwnerAuthenticationRow = Schema.decodeUnknownEffect(OwnerAuthenticationRow);
 
 export const authenticateOwner = Effect.fn("OwnerState.authenticateOwner")(function* (
   db: Pick<D1Database, "prepare">,
@@ -101,30 +109,41 @@ export const authenticateOwner = Effect.fn("OwnerState.authenticateOwner")(funct
              AND state.verifier_sha256 = ?`,
         )
         .bind(verifierSha256)
-        .all<OwnerAuthenticationRow>(),
+        .all(),
     catch: (cause) =>
       new OwnerPersistenceError({
         operation: "OwnerState.authenticateOwner",
         cause,
       }),
   });
-  const row = result.results[0];
-  if (row === undefined)
+  const persisted = result.results[0];
+  if (persisted === undefined)
     return yield* new OwnerAuthenticationError({
       message: "Provide the current Trigo owner token.",
     });
+  const row = yield* decodeOwnerAuthenticationRow(persisted).pipe(
+    Effect.mapError(
+      (cause) =>
+        new OwnerPersistenceError({
+          operation: "OwnerState.authenticateOwner.decode",
+          cause,
+        }),
+    ),
+  );
   return {
     archiveId: row.archive_id,
     credentialGeneration: row.generation,
   } satisfies OwnerContext;
 });
 
-interface OwnerStateRow {
-  readonly archive_id: string;
-  readonly generation: number;
-  readonly operation_id: string;
-  readonly revoked: number;
-}
+const OwnerStateRow = Schema.Struct({
+  archive_id: ArchiveId,
+  generation: PositiveGeneration,
+  operation_id: OwnerOperationId,
+  revoked: Schema.Finite.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 1 })),
+});
+
+const decodeOwnerStateRow = Schema.decodeUnknownEffect(OwnerStateRow);
 
 export interface OwnerOperationQuery {
   readonly sql: string;
@@ -343,15 +362,16 @@ export const applyOwnerOperation = Effect.fn("OwnerState.applyOperation")(functi
       });
     const queries = ownerOperationQueries(input);
     const results = yield* sql
-      .batch(queries.map((query) => sql.unsafe<OwnerStateRow>(query.sql, query.params)))
+      .batch(queries.map((query) => sql.unsafe(query.sql, query.params)))
       .pipe(Effect.mapError(persistenceError));
     const rows = results[results.length - 1] ?? [];
-    const row = rows[0];
-    if (row === undefined)
+    const persisted = rows[0];
+    if (persisted === undefined)
       return yield* new OwnerOperationConflict({
         operationId: input.operationId,
         message: "Owner operation conflicts with the current credential generation or content",
       });
+    const row = yield* decodeOwnerStateRow(persisted).pipe(Effect.mapError(persistenceError));
     return {
       archiveId: row.archive_id,
       generation: row.generation,

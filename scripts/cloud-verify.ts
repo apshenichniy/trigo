@@ -6,8 +6,8 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/
 import { validateDocument } from "../packages/contracts/src/index.ts";
 import type { CloudTarget } from "./cloud.ts";
 import { cloudDeploymentIdentity, cloudTargetFor } from "./cloud.ts";
-import type { OwnerHandoff } from "./cloud-owner.ts";
-import { readOwnerHandoff } from "./cloud-owner.ts";
+import type { OwnerHandoff, OwnerHandoffTarget } from "./cloud-owner.ts";
+import { ownerHandoffTarget, readOwnerHandoff } from "./cloud-owner.ts";
 
 export type CloudVerification =
   | { readonly stage: "dev"; readonly mode: "inspect" }
@@ -68,10 +68,17 @@ export interface CloudOwnerStatusBoundary {
 export const verifyCloudOwnerStatus = Effect.fn("CloudVerifier.ownerStatus")(function* (
   stage: "dev",
   handoff: OwnerHandoff,
+  expectedTarget: OwnerHandoffTarget,
   boundary: CloudOwnerStatusBoundary,
 ) {
   if (handoff.stage !== stage)
     return yield* cloudVerificationError(`Owner handoff stage mismatch: expected ${stage}`);
+  if (
+    handoff.target.accountId !== expectedTarget.accountId ||
+    handoff.target.databaseName !== expectedTarget.databaseName ||
+    handoff.target.deploymentIdentity !== expectedTarget.deploymentIdentity
+  )
+    return yield* cloudVerificationError("Owner handoff does not match the verified cloud target");
   if (handoff.action === "revoke")
     return yield* cloudVerificationError("A revoked owner handoff cannot authenticate status");
   const response = yield* boundary.status(handoff.token);
@@ -393,6 +400,27 @@ function productionWranglerRunner(
   );
 }
 
+function liveOwnerStatusBoundary(apiUrl: string): CloudOwnerStatusBoundary {
+  const status = Effect.fn("CloudVerifier.liveOwnerStatus")(function* (ownerToken: string) {
+    const response = yield* HttpClient.execute(
+      HttpClientRequest.get(`${apiUrl}/v1/status`).pipe(HttpClientRequest.bearerToken(ownerToken)),
+    ).pipe(
+      Effect.mapError((cause) =>
+        cloudVerificationError(`Cloud owner status request failed: ${apiUrl}`, cause),
+      ),
+      Effect.provide(FetchHttpClient.layer),
+      Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
+    );
+    return yield* response.json.pipe(
+      Effect.map((body) => ({ status: response.status, body })),
+      Effect.mapError((cause) =>
+        cloudVerificationError(`Cloud owner status request failed: ${apiUrl}`, cause),
+      ),
+    );
+  });
+  return { status };
+}
+
 const main = Effect.gen(function* () {
   const verification = yield* Effect.try({
     try: () => parseCloudVerification(process.argv.slice(2)),
@@ -429,23 +457,7 @@ const main = Effect.gen(function* () {
     Effect.provide(FetchHttpClient.layer),
     Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
   );
-  const ownerStatusBoundary: CloudOwnerStatusBoundary = {
-    status: (ownerToken) =>
-      HttpClient.execute(
-        HttpClientRequest.get(`${apiUrl}/v1/status`).pipe(
-          HttpClientRequest.bearerToken(ownerToken),
-        ),
-      ).pipe(
-        Effect.flatMap((response) =>
-          response.json.pipe(Effect.map((body) => ({ status: response.status, body }))),
-        ),
-        Effect.mapError((cause) =>
-          cloudVerificationError(`Cloud owner status request failed: ${apiUrl}`, cause),
-        ),
-        Effect.provide(FetchHttpClient.layer),
-        Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
-      ),
-  };
+  const ownerStatusBoundary = liveOwnerStatusBoundary(apiUrl);
   const boundary = makeWranglerBoundary(
     target,
     productionWranglerRunner(root, {
@@ -470,7 +482,12 @@ const main = Effect.gen(function* () {
             cloudVerificationError("Cannot load owner handoff for status verification", cause),
           ),
           Effect.andThen((handoff) =>
-            verifyCloudOwnerStatus(verification.stage, handoff, ownerStatusBoundary),
+            verifyCloudOwnerStatus(
+              verification.stage,
+              handoff,
+              ownerHandoffTarget(target, accountId),
+              ownerStatusBoundary,
+            ),
           ),
         )
       : undefined;

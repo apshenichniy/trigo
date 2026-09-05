@@ -128,9 +128,9 @@ export default {
               Effect.succeed(
                 errorResponse(
                   503,
-                  "owner_setup_unavailable",
+                  "owner_persistence_unavailable",
                   "retryable",
-                  "Owner identity is unavailable; run the operator initialization command.",
+                  "Owner authentication storage is temporarily unavailable; retry the request.",
                 ),
               ),
           }),
