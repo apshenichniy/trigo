@@ -3,13 +3,16 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync } fr
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { expect, it } from "@effect/vitest";
-import { Effect, Redacted, Schema } from "effect";
+import { DateTime, Effect, Redacted, Schema } from "effect";
 import { ownerOperationQueries } from "../apps/server/src/owner-state.ts";
+import { cloudTargetFor } from "./cloud.ts";
 import {
   applyRemoteOwnerOperation,
   assertOwnerMutationAllowed,
   type CloudflareOwnerTransport,
+  ownerHandoffFromUnknown,
   ownerOperationFromHandoff,
+  ownerHandoffTarget,
   parseOwnerCommand,
   prepareOwnerHandoff,
 } from "./cloud-owner.ts";
@@ -17,6 +20,7 @@ import {
 const unknownFromJsonString = Schema.fromJsonString(Schema.Unknown);
 const encodeUnknownJson = Schema.encodeSync(unknownFromJsonString);
 const decodeUnknownJson = Schema.decodeUnknownSync(unknownFromJsonString);
+const devTarget = ownerHandoffTarget(cloudTargetFor("dev"), "11111111111111111111111111111111");
 
 it.effect("reuses a private initialization handoff after a lost acknowledgement", () =>
   Effect.gen(function* () {
@@ -24,14 +28,15 @@ it.effect("reuses a private initialization handoff after a lost acknowledgement"
     const handoffPath = resolve(directory, "owner.json");
     try {
       const command = parseOwnerCommand("initialize", ["--stage", "dev", "--handoff", handoffPath]);
-      const first = yield* prepareOwnerHandoff(command);
-      const replay = yield* prepareOwnerHandoff(command);
+      const first = yield* prepareOwnerHandoff(command, devTarget);
+      const replay = yield* prepareOwnerHandoff(command, devTarget);
 
       expect(replay).toEqual(first);
       expect(first).toMatchObject({
         schemaVersion: 1,
         action: "initialize",
         stage: "dev",
+        target: devTarget,
       });
       if (first.action !== "initialize") throw new Error("Expected initialization handoff");
       expect(first.operationId).toMatch(/^[0-9a-f-]{36}$/);
@@ -44,7 +49,16 @@ it.effect("reuses a private initialization handoff after a lost acknowledgement"
       const requestBody = encodeUnknownJson({ batch: ownerOperationQueries(operation) });
       expect(requestBody).not.toContain(first.token);
       expect(requestBody).toContain(operation.verifierSha256);
-      expect(decodeUnknownJson(readFileSync(handoffPath, "utf8"))).toEqual(first);
+      expect(decodeUnknownJson(readFileSync(handoffPath, "utf8"))).toMatchObject({
+        schemaVersion: 1,
+        action: first.action,
+        stage: first.stage,
+        target: devTarget,
+        operationId: first.operationId,
+        archiveId: first.archiveId,
+        token: first.token,
+        createdAt: DateTime.formatIso(first.createdAt),
+      });
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -66,6 +80,7 @@ it.effect(
             "--expected-generation",
             "7",
           ]),
+          devTarget,
         );
         const revoke = yield* prepareOwnerHandoff(
           parseOwnerCommand("revoke", [
@@ -76,6 +91,7 @@ it.effect(
             "--expected-generation",
             "8",
           ]),
+          devTarget,
         );
         if (rotate.action !== "rotate" || revoke.action !== "revoke")
           throw new Error("Expected rotate and revoke handoffs");
@@ -102,7 +118,7 @@ it.effect("rejects unsafe or mismatched handoff replay", () =>
     const handoffPath = resolve(directory, "owner.json");
     try {
       const initial = parseOwnerCommand("initialize", ["--stage", "dev", "--handoff", handoffPath]);
-      yield* prepareOwnerHandoff(initial);
+      yield* prepareOwnerHandoff(initial, devTarget);
 
       const wrongStage = parseOwnerCommand("initialize", [
         "--stage",
@@ -110,11 +126,24 @@ it.effect("rejects unsafe or mismatched handoff replay", () =>
         "--handoff",
         handoffPath,
       ]);
-      const mismatch = yield* Effect.flip(prepareOwnerHandoff(wrongStage));
+      const mismatch = yield* Effect.flip(
+        prepareOwnerHandoff(
+          wrongStage,
+          ownerHandoffTarget(cloudTargetFor("personal"), "22222222222222222222222222222222"),
+        ),
+      );
       expect(mismatch.message).toContain("Cannot prepare owner handoff");
 
+      const wrongAccount = yield* Effect.flip(
+        prepareOwnerHandoff(
+          initial,
+          ownerHandoffTarget(cloudTargetFor("dev"), "33333333333333333333333333333333"),
+        ),
+      );
+      expect(wrongAccount.message).toContain("does not match the requested Cloudflare target");
+
       chmodSync(handoffPath, 0o644);
-      const unsafe = yield* Effect.flip(prepareOwnerHandoff(initial));
+      const unsafe = yield* Effect.flip(prepareOwnerHandoff(initial, devTarget));
       expect(unsafe.message).toContain("Cannot prepare owner handoff");
     } finally {
       rmSync(directory, { recursive: true, force: true });
@@ -232,15 +261,18 @@ it("documents the private handoff, replay, and authenticated status procedure", 
 it.effect("applies only verifier material through the authenticated Cloudflare D1 boundary", () =>
   Effect.gen(function* () {
     const ownerToken = "trigo_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    const verifierSha256 = yield* ownerOperationFromHandoff({
-      schemaVersion: 1,
-      action: "initialize",
-      stage: "dev",
-      operationId: "00000000-0000-4000-8000-000000000301",
-      archiveId: "00000000-0000-4000-8000-000000000030",
-      token: ownerToken,
-      createdAt: "2026-09-05T22:00:00.000Z",
-    });
+    const verifierSha256 = yield* ownerOperationFromHandoff(
+      ownerHandoffFromUnknown({
+        schemaVersion: 1,
+        action: "initialize",
+        stage: "dev",
+        target: devTarget,
+        operationId: "00000000-0000-4000-8000-000000000301",
+        archiveId: "00000000-0000-4000-8000-000000000030",
+        token: ownerToken,
+        createdAt: "2026-09-05T22:00:00.000Z",
+      }),
+    );
     if (verifierSha256.kind !== "initialize") throw new Error("Expected initialization operation");
     const requests: Array<Request> = [];
     const responses: Array<{ readonly status: number; readonly body: unknown }> = [

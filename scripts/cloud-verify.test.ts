@@ -1,6 +1,7 @@
 import { expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { cloudTargetFor } from "./cloud.ts";
+import { ownerHandoffFromUnknown, ownerHandoffTarget } from "./cloud-owner.ts";
 import {
   inspectCloudInfrastructure,
   makeWranglerBoundary,
@@ -42,17 +43,23 @@ it.effect("verifies authenticated status without exposing the handoff token", ()
   Effect.gen(function* () {
     const token = "trigo_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     const observed: Array<string> = [];
+    const expectedTarget = ownerHandoffTarget(
+      cloudTargetFor("dev"),
+      "11111111111111111111111111111111",
+    );
     const status = yield* verifyCloudOwnerStatus(
       "dev",
-      {
+      ownerHandoffFromUnknown({
         schemaVersion: 1,
         action: "initialize",
         stage: "dev",
+        target: expectedTarget,
         operationId: "00000000-0000-4000-8000-000000000301",
         archiveId: "00000000-0000-4000-8000-000000000030",
         token,
         createdAt: "2026-09-05T22:00:00.000Z",
-      },
+      }),
+      expectedTarget,
       {
         status: (ownerToken) =>
           Effect.sync(() => {
