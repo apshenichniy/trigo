@@ -44,6 +44,7 @@ const env: NodeJS.ProcessEnv = {
   PATH: process.env.PATH,
   TMPDIR: process.env.TMPDIR,
   LANG: "en_US.UTF-8",
+  CI: "1",
   TRIGO_LOCAL: "1",
   TRIGO_LOCAL_PORT: String(port),
   TRIGO_LOCAL_RUN_ID: runId,
@@ -59,6 +60,8 @@ const command = [
   "dev",
   "--stage",
   `local-${id}`,
+  "--profile",
+  `trigo-local-${id}`,
   resolve(root, "infra/local.ts"),
 ];
 // macOS also enforces the local-only boundary for every child including workerd.

@@ -81,7 +81,12 @@ that branch protection exists. Merge/deployment require the owner's instruction.
 R2. It accepts no arbitrary resources or cloud stage. The launcher passes an
 environment allowlist and deliberately invalid account/token values because the
 Alchemy local providers still require auth-shaped configuration. These values
-provide no account access. No AI binding or remote state store is created.
+provide no account access. The launcher selects a reserved `trigo-local-<worktree>`
+profile and `CI=1` so a fresh machine needs no interactive login. Alchemy may create
+local profile metadata (`method: env`) in `~/.alchemy/profiles.json`; no token is
+stored there. Reserve the `trigo-local-` prefix for this harness, never operator
+credentials. Default/operator profiles are not selected. No AI binding or remote
+state store is created.
 
 State lives under `.local/<hash-of-real-worktree-path>/.alchemy`; tests use a
 fresh temporary directory. `TRIGO_LOCAL_PORT` selects a port (default 19371; smoke

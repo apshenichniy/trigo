@@ -37,7 +37,9 @@ a custom Info key; explicit generated plists and post-build identity checks corr
 The first GitHub run exposed an undeclared `rg` prerequisite on macOS and a Workers
 cold-start timeout on Linux. Wrappers now use Git's file inventory; the Worker starts
 in a bounded setup hook before persistence assertions. These are recorded failures,
-not completed CI acceptance.
+not completed CI acceptance. The next macOS run exposed missing profile metadata
+on a fresh runner: the launcher now selects a dedicated local profile and explicitly
+uses noninteractive environment credentials containing only invalid local values.
 
 ## Delivery verification
 
