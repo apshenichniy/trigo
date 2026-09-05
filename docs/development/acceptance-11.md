@@ -43,12 +43,27 @@ uses noninteractive environment credentials containing only invalid local values
 
 ## Delivery verification
 
-Fresh-checkout, generator-cache restoration, archive/install and actual GitHub CI
-results are recorded at PR handoff. Local success alone does not establish CI or
-branch-protection success. No cloud provisioning, deployment, paid ASR, capture,
-permission-continuity test, public distribution or merge has been performed.
+- A fresh worktree at `97b128734` completed mise selection, frozen Bun install,
+  full macOS check, and cache-hit build after deliberate nested-lock removal.
+  The clean worktree then repeated frozen install/full check at `a184361e0`,
+  including first-time creation of its dedicated noninteractive local profile.
+  `git diff --exit-code` and all wrapper lock snapshots were unchanged.
+- Both variants were installed and opened at their documented paths. Actual
+  bundle IDs are `io.github.apshenichniy.trigo` and
+  `io.github.apshenichniy.trigo.dev`; the development bundle contains worktree ID
+  `5c8904ac791e`. Both pass `codesign --verify --deep --strict` with ad-hoc signing.
+- `macos:archive --variant dev` completed and its bundle identity checks passed.
+  The shared scheme and locked archive are suitable foundations for later release
+  tooling, not evidence of public signing/distribution or capture permissions.
+- Both independent review findings sets were addressed; see [review report](review-11.md).
+- The exact final CI results and run links are maintained on [PR #25](https://github.com/apshenichniy/trigo/pull/25).
+  Previous failed runs and their concrete corrections are retained above. Local
+  checks are not substituted for actual Linux/macOS CI execution.
+- Main branch protection was configured and read back: required contexts
+  `Server checks` and `macOS checks`, strict/up-to-date checks, enforcement for
+  administrators, no force pushes or deletion. Initial remote `main` contains only
+  the pre-existing documentation commit; implementation remains on the PR branch.
 
-At initial inspection the remote repository had no branches and no rulesets. Its
-local initial documentation commit is the intended PR base. Required checks must
-be verified separately from workflow execution. Issue #11 stays open until its
-complete acceptance is established; no completion is inferred from this document.
+No cloud provisioning, deployment, paid ASR, capture, permission-continuity test,
+public distribution or merge has been performed. Issue #11 remains open for the
+owner's closure workflow. The foundation is not the complete application epic.
