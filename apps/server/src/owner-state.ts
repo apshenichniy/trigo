@@ -2,36 +2,50 @@ import { D1Client } from "@effect/sql-d1";
 import { Effect, Option, Schema } from "effect";
 import * as Reactivity from "effect/unstable/reactivity/Reactivity";
 
-const Sha256Digest = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/));
+export const OwnerVerifierSha256 = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/)).pipe(
+  Schema.brand("OwnerVerifierSha256"),
+);
+export type OwnerVerifierSha256 = Schema.Schema.Type<typeof OwnerVerifierSha256>;
+
+export const OwnerToken = Schema.String.check(Schema.isPattern(/^trigo_v1_[0-9a-f]{64}$/)).pipe(
+  Schema.brand("OwnerToken"),
+);
+export type OwnerToken = Schema.Schema.Type<typeof OwnerToken>;
+
 const AuthorizationHeader = Schema.String.check(Schema.isPattern(/^Bearer trigo_v1_[0-9a-f]{64}$/));
 const CanonicalUuidV4 = Schema.String.check(
   Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
 );
-const ArchiveId = CanonicalUuidV4.pipe(Schema.brand("ArchiveId"));
-const OwnerOperationId = CanonicalUuidV4.pipe(Schema.brand("OwnerOperationId"));
+export const ArchiveId = CanonicalUuidV4.pipe(Schema.brand("ArchiveId"));
+export type ArchiveId = Schema.Schema.Type<typeof ArchiveId>;
+
+export const OwnerOperationId = CanonicalUuidV4.pipe(Schema.brand("OwnerOperationId"));
+export type OwnerOperationId = Schema.Schema.Type<typeof OwnerOperationId>;
+
 const PositiveGeneration = Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1));
-const decodeSha256Digest = Schema.decodeUnknownOption(Sha256Digest);
+const decodeOwnerVerifierSha256 = Schema.decodeUnknownOption(OwnerVerifierSha256);
+const decodeOwnerToken = Schema.decodeUnknownOption(OwnerToken);
 const decodeAuthorizationHeader = Schema.decodeUnknownOption(AuthorizationHeader);
 
 export interface InitializeOwnerOperation {
   readonly kind: "initialize";
-  readonly operationId: string;
-  readonly archiveId: string;
-  readonly verifierSha256: string;
+  readonly operationId: OwnerOperationId;
+  readonly archiveId: ArchiveId;
+  readonly verifierSha256: OwnerVerifierSha256;
   readonly now: string;
 }
 
 export interface RotateOwnerOperation {
   readonly kind: "rotate";
-  readonly operationId: string;
+  readonly operationId: OwnerOperationId;
   readonly expectedGeneration: number;
-  readonly verifierSha256: string;
+  readonly verifierSha256: OwnerVerifierSha256;
   readonly now: string;
 }
 
 export interface RevokeOwnerOperation {
   readonly kind: "revoke";
-  readonly operationId: string;
+  readonly operationId: OwnerOperationId;
   readonly expectedGeneration: number;
   readonly now: string;
 }
@@ -39,16 +53,16 @@ export interface RevokeOwnerOperation {
 export type OwnerOperation = InitializeOwnerOperation | RotateOwnerOperation | RevokeOwnerOperation;
 
 export interface OwnerOperationResult {
-  readonly archiveId: string;
+  readonly archiveId: ArchiveId;
   readonly generation: number;
-  readonly operationId: string;
+  readonly operationId: OwnerOperationId;
   readonly state: "active" | "revoked";
 }
 
 export class OwnerOperationConflict extends Schema.TaggedError<OwnerOperationConflict>()(
   "OwnerState.OwnerOperationConflict",
   {
-    operationId: Schema.String,
+    operationId: OwnerOperationId,
     message: Schema.String,
   },
 ) {}
@@ -69,14 +83,16 @@ export class OwnerAuthenticationError extends Schema.TaggedError<OwnerAuthentica
 ) {}
 
 export interface OwnerContext {
-  readonly archiveId: string;
+  readonly archiveId: ArchiveId;
   readonly credentialGeneration: number;
 }
 
-export const hashOwnerToken = Effect.fn("OwnerState.hashToken")(function* (token: string) {
+export const hashOwnerToken = Effect.fn("OwnerState.hashToken")(function* (token: OwnerToken) {
   const bytes = new TextEncoder().encode(token);
   const digest = yield* Effect.promise(() => crypto.subtle.digest("SHA-256", bytes));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return OwnerVerifierSha256.make(
+    Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""),
+  );
 });
 
 const OwnerAuthenticationRow = Schema.Struct({
@@ -95,8 +111,12 @@ export const authenticateOwner = Effect.fn("OwnerState.authenticateOwner")(funct
     return yield* new OwnerAuthenticationError({
       message: "Provide the current Trigo owner token.",
     });
-  const token = authorization.value.slice("Bearer ".length);
-  const verifierSha256 = yield* hashOwnerToken(token);
+  const token = decodeOwnerToken(authorization.value.slice("Bearer ".length));
+  if (Option.isNone(token))
+    return yield* new OwnerAuthenticationError({
+      message: "Provide the current Trigo owner token.",
+    });
+  const verifierSha256 = yield* hashOwnerToken(token.value);
   const result = yield* Effect.tryPromise({
     try: () =>
       db
@@ -347,7 +367,7 @@ export const applyOwnerOperation = Effect.fn("OwnerState.applyOperation")(functi
   db: D1Database,
   input: OwnerOperation,
 ) {
-  if (input.kind !== "revoke" && Option.isNone(decodeSha256Digest(input.verifierSha256)))
+  if (input.kind !== "revoke" && Option.isNone(decodeOwnerVerifierSha256(input.verifierSha256)))
     return yield* new OwnerOperationConflict({
       operationId: input.operationId,
       message: "Owner verifier must be a lowercase SHA-256 digest",

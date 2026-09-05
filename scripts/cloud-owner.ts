@@ -3,8 +3,18 @@ import { closeSync, lstatSync, openSync, readFileSync, writeFileSync } from "nod
 import { isAbsolute, resolve } from "node:path";
 import { Config, Console, DateTime, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
-import type { OwnerOperation, OwnerOperationResult } from "../apps/server/src/owner-state.ts";
-import { hashOwnerToken, ownerOperationQueries } from "../apps/server/src/owner-state.ts";
+import type {
+  OwnerOperation,
+  OwnerOperationResult,
+  OwnerToken as OwnerTokenType,
+} from "../apps/server/src/owner-state.ts";
+import {
+  ArchiveId,
+  hashOwnerToken,
+  OwnerOperationId,
+  ownerOperationQueries,
+  OwnerToken,
+} from "../apps/server/src/owner-state.ts";
 import type { CloudConfiguration, CloudStage, CloudTarget } from "./cloud.ts";
 import { cloudDeploymentIdentity, cloudTargetFor, preflightCloudConfiguration } from "./cloud.ts";
 
@@ -24,11 +34,6 @@ export type OwnerCommand =
       readonly expectedGeneration: number;
     });
 
-const CanonicalUuidV4 = Schema.String.check(
-  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
-);
-const ArchiveId = CanonicalUuidV4.pipe(Schema.brand("ArchiveId"));
-const OwnerOperationId = CanonicalUuidV4.pipe(Schema.brand("OwnerOperationId"));
 const CloudflareDatabaseId = Schema.String.check(
   Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
 ).pipe(Schema.brand("CloudflareDatabaseId"));
@@ -41,7 +46,6 @@ const CloudResourceName = Schema.String.check(Schema.isMinLength(1)).pipe(
 const CloudDeploymentIdentity = Schema.String.check(Schema.isMinLength(1)).pipe(
   Schema.brand("CloudDeploymentIdentity"),
 );
-const OwnerToken = Schema.String.check(Schema.isPattern(/^trigo_v1_[0-9a-f]{64}$/));
 const PositiveGeneration = Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1));
 
 const OwnerHandoffTargetSchema = Schema.Struct({
@@ -52,35 +56,31 @@ const OwnerHandoffTargetSchema = Schema.Struct({
 
 export type OwnerHandoffTarget = Schema.Schema.Type<typeof OwnerHandoffTargetSchema>;
 
+const OwnerHandoffCommon = Schema.Struct({
+  schemaVersion: Schema.Literal(1),
+  stage: Schema.Literals(["dev", "personal"]),
+  target: OwnerHandoffTargetSchema,
+  operationId: OwnerOperationId,
+  createdAt: Schema.DateTimeUtcFromString,
+});
+
 const OwnerHandoffSchema = Schema.Union([
   Schema.Struct({
-    schemaVersion: Schema.Literal(1),
+    ...OwnerHandoffCommon.fields,
     action: Schema.tag("initialize"),
-    stage: Schema.Literals(["dev", "personal"]),
-    target: OwnerHandoffTargetSchema,
-    operationId: OwnerOperationId,
     archiveId: ArchiveId,
     token: OwnerToken,
-    createdAt: Schema.DateTimeUtcFromString,
   }),
   Schema.Struct({
-    schemaVersion: Schema.Literal(1),
+    ...OwnerHandoffCommon.fields,
     action: Schema.tag("rotate"),
-    stage: Schema.Literals(["dev", "personal"]),
-    target: OwnerHandoffTargetSchema,
-    operationId: OwnerOperationId,
     expectedGeneration: PositiveGeneration,
     token: OwnerToken,
-    createdAt: Schema.DateTimeUtcFromString,
   }),
   Schema.Struct({
-    schemaVersion: Schema.Literal(1),
+    ...OwnerHandoffCommon.fields,
     action: Schema.tag("revoke"),
-    stage: Schema.Literals(["dev", "personal"]),
-    target: OwnerHandoffTargetSchema,
-    operationId: OwnerOperationId,
     expectedGeneration: PositiveGeneration,
-    createdAt: Schema.DateTimeUtcFromString,
   }),
 ]).pipe(Schema.toTaggedUnion("action"));
 
@@ -113,14 +113,14 @@ const CloudflareDatabaseList = Schema.Struct({
   errors: Schema.Array(CloudflareError),
   result: Schema.Array(
     Schema.Struct({
-      name: Schema.optional(Schema.String),
-      uuid: Schema.optional(CloudflareDatabaseId),
+      name: Schema.optionalKey(Schema.String),
+      uuid: Schema.optionalKey(CloudflareDatabaseId),
     }),
   ),
 });
 const CloudflareQueryResult = Schema.Struct({
-  success: Schema.optional(Schema.Boolean),
-  results: Schema.optional(Schema.Array(Schema.Unknown)),
+  success: Schema.optionalKey(Schema.Boolean),
+  results: Schema.optionalKey(Schema.Array(Schema.Unknown)),
 });
 const CloudflareQueryResponse = Schema.Struct({
   success: Schema.Boolean,
@@ -330,10 +330,10 @@ export function parseOwnerCommand(action: string, args: readonly string[]): Owne
   return { action, stage, handoffPath, ...config, expectedGeneration };
 }
 
-function ownerToken(): string {
+function ownerToken(): OwnerTokenType {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `trigo_v1_${hex}`;
+  return OwnerToken.make(`trigo_v1_${hex}`);
 }
 
 export function ownerHandoffTarget(target: CloudTarget, accountId: string): OwnerHandoffTarget {

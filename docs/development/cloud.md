@@ -261,12 +261,15 @@ The handoff is also the recovery record for an uncertain command result. If a
 network interruption or lost acknowledgement occurs, rerun the exact command with
 the same handoff path, action, stage and expected generation. The command validates
 and reuses the existing operation ID and token, and the D1 batch recognizes only an
-exact replay. Do not create a new handoff, edit the file, or advance the generation
-until the original operation's result is reconciled. A reused operation ID with
-different content, a competing generation, a stage/action mismatch or a handoff
-whose mode is not exactly `0600` is rejected. If the original handoff is lost while
-the result is uncertain, stop and inspect non-secret state with an authorized
-operator rather than improvising another mutation.
+exact replay. The handoff also records the selected account ID, catalog database
+name and derived deployment identity. Replay stops before the D1 mutation if the
+current configuration resolves to a different Cloudflare target. Do not create a
+new handoff, edit the file, or advance the generation until the original
+operation's result is reconciled. A reused operation ID with different content, a
+competing generation, a target/stage/action mismatch, a symbolic link, or a
+handoff whose mode is not exactly `0600` is rejected. If the original handoff is
+lost while the result is uncertain, stop and inspect non-secret state with an
+authorized operator rather than improvising another mutation.
 
 After the result and any required repeated/fresh-checkout acceptance are confirmed,
 move the active token into its approved secret storage and remove temporary handoff
