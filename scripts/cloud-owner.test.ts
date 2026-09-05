@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync } fr
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { expect, it } from "@effect/vitest";
-import { Effect, Redacted } from "effect";
+import { Effect, Redacted, Schema } from "effect";
 import { ownerOperationQueries } from "../apps/server/src/owner-state.ts";
 import {
   applyRemoteOwnerOperation,
@@ -13,6 +13,10 @@ import {
   parseOwnerCommand,
   prepareOwnerHandoff,
 } from "./cloud-owner.ts";
+
+const unknownFromJsonString = Schema.fromJsonString(Schema.Unknown);
+const encodeUnknownJson = Schema.encodeSync(unknownFromJsonString);
+const decodeUnknownJson = Schema.decodeUnknownSync(unknownFromJsonString);
 
 it.effect("reuses a private initialization handoff after a lost acknowledgement", () =>
   Effect.gen(function* () {
@@ -37,10 +41,10 @@ it.effect("reuses a private initialization handoff after a lost acknowledgement"
 
       const operation = yield* ownerOperationFromHandoff(first);
       if (operation.kind !== "initialize") throw new Error("Expected initialization operation");
-      const requestBody = JSON.stringify({ batch: ownerOperationQueries(operation) });
+      const requestBody = encodeUnknownJson({ batch: ownerOperationQueries(operation) });
       expect(requestBody).not.toContain(first.token);
       expect(requestBody).toContain(operation.verifierSha256);
-      expect(JSON.parse(readFileSync(handoffPath, "utf8"))).toEqual(first);
+      expect(decodeUnknownJson(readFileSync(handoffPath, "utf8"))).toEqual(first);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -83,7 +87,7 @@ it.effect(
 
         const rotateOperation = yield* ownerOperationFromHandoff(rotate);
         const revokeOperation = yield* ownerOperationFromHandoff(revoke);
-        const rotateBody = JSON.stringify({ batch: ownerOperationQueries(rotateOperation) });
+        const rotateBody = encodeUnknownJson({ batch: ownerOperationQueries(rotateOperation) });
         expect(rotateBody).not.toContain(rotate.token);
         expect(revokeOperation).not.toHaveProperty("verifierSha256");
       } finally {
@@ -198,7 +202,7 @@ it("keeps personal owner mutations behind the #32 deployment gate", () => {
 });
 
 it("exposes explicit initialization, rotation, and revocation commands", () => {
-  const manifest: unknown = JSON.parse(
+  const manifest = decodeUnknownJson(
     readFileSync(new URL("../package.json", import.meta.url), "utf8"),
   );
   const scripts =
@@ -211,6 +215,18 @@ it("exposes explicit initialization, rotation, and revocation commands", () => {
     "cloud:owner:rotate": "bun scripts/cloud-owner.ts rotate",
     "cloud:owner:revoke": "bun scripts/cloud-owner.ts revoke",
   });
+});
+
+it("documents the private handoff, replay, and authenticated status procedure", () => {
+  const runbook = readFileSync(new URL("../docs/development/cloud.md", import.meta.url), "utf8");
+  const setup = readFileSync(new URL("../docs/development/setup.md", import.meta.url), "utf8");
+
+  expect(runbook).toContain("bun run cloud:owner:init --stage dev --handoff");
+  expect(runbook).toContain("bun run cloud:owner:rotate --stage dev --handoff");
+  expect(runbook).toContain("bun run cloud:owner:revoke --stage dev --handoff");
+  expect(runbook).toMatch(/rerun the exact command with\s+the same handoff path/);
+  expect(runbook).toContain("test:cloud --stage dev --owner-handoff");
+  expect(setup).toContain("`cloud:owner:init --stage dev --handoff <absolute-path>`");
 });
 
 it.effect("applies only verifier material through the authenticated Cloudflare D1 boundary", () =>
@@ -298,7 +314,7 @@ it.effect("applies only verifier material through the authenticated Cloudflare D
     ).toBe(true);
     const queryRequest = requests[1];
     if (queryRequest === undefined) throw new Error("Expected D1 query request");
-    const body = JSON.stringify(yield* Effect.promise(() => queryRequest.json()));
+    const body = encodeUnknownJson(yield* Effect.promise(() => queryRequest.json()));
     expect(body).not.toContain(ownerToken);
     expect(body).toContain(verifierSha256.verifierSha256);
   }),

@@ -1,6 +1,7 @@
 # Cloud operations
 
-This runbook covers the Cloudflare infrastructure owned by issue #29. It is an
+This runbook covers the Cloudflare infrastructure owned by issue #29 and the
+archive identity and owner-credential operations owned by issue #30. It is an
 operator procedure, not an ordinary development prerequisite. Every cloud command
 requires both an explicit stage and a matching local configuration. Running a
 bootstrap, deployment or remote fixture command also requires separate owner
@@ -33,8 +34,9 @@ hash suffix; do not hard-code or rename that derived physical value.
 
 The Worker receives `ARCHIVE`, `CATALOG`, `ARCHIVE_WORKFLOW`, `AI` and
 `DEPLOYMENT_STAGE`. The Workflow entrypoint is deliberately unavailable until its
-owning feature is implemented. `/v1/*` also remains unavailable until issue #30
-adds archive identity, owner-token administration and authentication. The
+owning feature is implemented. Product routes under `/v1/*` deny access by default;
+the authenticated `GET /v1/status` route reports the stable archive identity and
+truthful readiness, while later call operations remain unavailable. The
 infrastructure diagnostic checks binding shape without reading storage, starting a
 Workflow or making a Workers AI inference.
 
@@ -197,6 +199,80 @@ fixtures and performs no writes. Keep the UUID in the acceptance record; never
 record the token. Repeat the final `--verify` from a fresh checkout after following
 the access procedure below.
 
+## Owner identity and credential operations
+
+The owner administration commands are local operator tools, not public Worker
+routes. They use the selected account's `CLOUDFLARE_API_TOKEN` to locate the stable
+D1 database and submit one parameterized batch. The batch stores only the owner
+token's SHA-256 verifier. The plaintext Trigo token exists only in a controlled
+handoff file and in the authenticated request header used by the status verifier;
+it is never placed in a URL, D1 request body, routine command output, fixture or
+diagnostic.
+
+Create a private temporary directory and choose a new, absolute file path. Do not
+pre-create the file: the command creates it exclusively with mode `0600` before the
+remote request. Initialize the archive identity exactly once:
+
+```sh
+TRIGO_OWNER_HANDOFF_DIR="$(mktemp -d)"
+chmod 700 "$TRIGO_OWNER_HANDOFF_DIR"
+TRIGO_OWNER_HANDOFF="$TRIGO_OWNER_HANDOFF_DIR/dev-owner-initialize.json"
+
+mise exec -- bun run cloud:owner:init --stage dev --handoff "$TRIGO_OWNER_HANDOFF"
+mise exec -- bun run test:cloud --stage dev --owner-handoff "$TRIGO_OWNER_HANDOFF"
+```
+
+The first command prints only the action, stage, handoff path, archive ID,
+generation, operation ID and active/revoked state. The second command reads the
+private file, authenticates `GET /v1/status`, validates the shared `StatusResponse`
+contract and reports the non-secret status document. For initialization, it also
+requires the returned archive ID to equal the ID written before the remote batch.
+Transfer the Trigo token from the handoff through the approved local secret path;
+do not print it to the terminal, paste it into a shell command, or retain it in an
+issue or acceptance record.
+
+Each successful mutation reports its new non-secret generation. Rotation requires
+the current generation and a new nonexistent handoff path:
+
+```sh
+TRIGO_ROTATE_HANDOFF="$TRIGO_OWNER_HANDOFF_DIR/dev-owner-rotate-2.json"
+mise exec -- bun run cloud:owner:rotate --stage dev --handoff "$TRIGO_ROTATE_HANDOFF" \
+  --expected-generation 1
+mise exec -- bun run test:cloud --stage dev --owner-handoff "$TRIGO_ROTATE_HANDOFF"
+```
+
+After rotation commits, the previous token must fail authentication and the new
+handoff must pass. Revocation uses the current generation and creates a private
+handoff with no token:
+
+```sh
+TRIGO_REVOKE_HANDOFF="$TRIGO_OWNER_HANDOFF_DIR/dev-owner-revoke-3.json"
+mise exec -- bun run cloud:owner:revoke --stage dev --handoff "$TRIGO_REVOKE_HANDOFF" \
+  --expected-generation 2
+```
+
+After revocation commits, the latest token must fail authentication. A later
+operator-authorized rotation may reactivate ownership by naming the revoked
+generation and using a new handoff path. Personal-stage owner mutations remain
+blocked until issue #32 is accepted and `personalDeploymentGate` is explicitly
+set to `approved-after-32`.
+
+The handoff is also the recovery record for an uncertain command result. If a
+network interruption or lost acknowledgement occurs, rerun the exact command with
+the same handoff path, action, stage and expected generation. The command validates
+and reuses the existing operation ID and token, and the D1 batch recognizes only an
+exact replay. Do not create a new handoff, edit the file, or advance the generation
+until the original operation's result is reconciled. A reused operation ID with
+different content, a competing generation, a stage/action mismatch or a handoff
+whose mode is not exactly `0600` is rejected. If the original handoff is lost while
+the result is uncertain, stop and inspect non-secret state with an authorized
+operator rather than improvising another mutation.
+
+After the result and any required repeated/fresh-checkout acceptance are confirmed,
+move the active token into its approved secret storage and remove temporary handoff
+files according to that storage procedure. Never commit or copy the handoff into an
+unencrypted acceptance artifact.
+
 ## Fresh checkout and credential recovery
 
 A fresh checkout or machine does not need copied `.alchemy` stack data or a copied
@@ -213,7 +289,10 @@ state credential cache:
    state Worker and re-derives the local state-store credential.
 5. Repeat `bun run cloud:deploy --stage dev` from that fresh checkout, using the
    same stack/stage and stable resource identities.
-6. Run the fixture `--verify` command with the previously recorded UUID.
+6. Run the fixture `--verify` command with the previously recorded UUID, then run
+   `test:cloud --stage dev --owner-handoff <absolute-path>` with the securely
+   transferred active-token handoff. Compare its archive ID with the pre-deployment
+   value; both the identity and current credential must remain valid.
 
 Re-derivation may create an ephemeral Worker preview to read the Secrets Store
 binding. The operator therefore needs Worker and Secrets Store access. This is why
