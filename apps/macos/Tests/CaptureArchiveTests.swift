@@ -98,3 +98,53 @@ import TrigoContracts
   #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
   #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
 }
+
+@Test(arguments: [
+  CapturePreparationPoint.afterSessionMetadata, .afterCallManifest, .afterLifecycle,
+])
+func partiallyPreparedCaptureRecoversWithItsAllocatedIdentity(_ boundary: CapturePreparationPoint)
+  async throws
+{
+  struct Crash: Error {}
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+    "trigo-preparation-\(UUID())")
+  defer { try? FileManager.default.removeItem(at: root) }
+  let session = try CaptureArchiveSession.allocate(
+    root: root, archiveID: UUID().uuidString.lowercased(),
+    source: CaptureSource(
+      applicationName: "Fixture", bundleID: "test.fixture", processID: 123,
+      windowID: 456, windowTitle: nil, processLaunchDate: Date()), microphone: nil)
+  await #expect(throws: Crash.self) {
+    try await session.prepare { if $0 == boundary { throw Crash() } }
+  }
+  // A relaunch has only the session metadata, not the caller's in-memory handle.
+  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
+  #expect(recovered.manifest.value.object?["callId"]?.string == session.callID)
+  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
+  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+  let lifecycle = try LocalLifecycleStore(root: root, archiveID: session.archiveID)
+  #expect(try await lifecycle.load(callID: session.callID)?.capture.state == .interrupted)
+  let repeated = try await session.recover()
+  #expect(repeated.manifest.storedBytes == recovered.manifest.storedBytes)
+}
+
+@Test func failedFirstPreparationWriteReturnsItsRecoverableIdentity() async throws {
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+    "trigo-first-write-\(UUID())")
+  defer { try? FileManager.default.removeItem(at: root) }
+  try Data().write(to: root)
+  do {
+    _ = try await CaptureArchiveSession.begin(
+      root: root, archiveID: UUID().uuidString.lowercased(),
+      source: CaptureSource(
+        applicationName: "Fixture", bundleID: "test.fixture", processID: 123,
+        windowID: 456, windowTitle: nil, processLaunchDate: Date()), microphone: nil)
+    Issue.record("Expected a filesystem preparation failure")
+  } catch let failure as CapturePreparationFailure {
+    try FileManager.default.removeItem(at: root)
+    let recovered = try await failure.session.recover()
+    #expect(recovered.manifest.value.object?["callId"]?.string == failure.session.callID)
+    #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
+    #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+  }
+}

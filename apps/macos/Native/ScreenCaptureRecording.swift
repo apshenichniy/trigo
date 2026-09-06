@@ -31,8 +31,12 @@ public enum CaptureStreamConfiguration {
 }
 
 public enum ScreenCapturePhase: Equatable, Sendable {
-  case idle, starting, recording, stopping
+  case idle, starting, recording, stopping, cancellingStart
   case needsRecovery(callID: String)
+}
+
+@MainActor private final class CaptureStartAttempt {
+  var cancelled = false
 }
 
 /// Production capture facade for #16. It deliberately owns no panels, shortcuts or
@@ -44,45 +48,70 @@ public enum ScreenCapturePhase: Equatable, Sendable {
   public private(set) var phase: ScreenCapturePhase = .idle
   public var onChange: (@MainActor @Sendable (CaptureRecordingSnapshot) -> Void)?
   public var onFailure: (@MainActor @Sendable (String) -> Void)?
-  private var applicationStream: SCStream?
-  private var microphoneStream: SCStream?
+  private var applicationStream: (any CaptureTransport)?
+  private var microphoneStream: (any CaptureTransport)?
   private var applicationDelegate: CaptureStreamDelegate?
   private var microphoneDelegate: CaptureStreamDelegate?
   private var filter: SCContentFilter?
   private var sink: CaptureStreamSink?
   private var starting: Bool { phase == .starting }
   private var stopping: Bool { phase == .stopping }
-  private var cancelStart = false
+  private var pendingStart: CaptureStartAttempt?
   private var switchingMicrophone = false
   private var retiringMicrophone = false
   private var monitor: Timer?
   private var sleepObserver: NSObjectProtocol?
   private let retirement = CaptureStreamRetirement()
+  private let system: CaptureSystem
 
-  public init() {}
+  public init() {
+    system = .init(
+      permissions: SystemCaptureSource.permissions, filter: SystemCaptureSource.filter,
+      microphone: Self.defaultMicrophone,
+      stream: { SCStream(filter: $0, configuration: $1, delegate: $2) })
+  }
+
+  init(system: CaptureSystem) { self.system = system }
 
   /// Permissions and source are resolved before this method acknowledges Recording.
   /// Call SystemCaptureSource.requestPermissions only from an explicit user action.
   public func start(root: URL, archiveID: String, source: CaptureSource) async throws {
-    guard phase == .idle, !retirement.hasPending else {
+    guard phase == .idle, pendingStart == nil, !retirement.hasPending else {
       throw CaptureStartFailure.alreadyRecording
     }
+    let attempt = CaptureStartAttempt()
+    pendingStart = attempt
+    var allocated: CaptureArchiveSession?
     phase = .starting
-    cancelStart = false
-    defer { if phase == .starting { phase = .idle } }
-    let permission = SystemCaptureSource.permissions()
+    defer {
+      if pendingStart === attempt {
+        pendingStart = nil
+        if phase == .starting {
+          phase = allocated.map { .needsRecovery(callID: $0.callID) } ?? .idle
+        } else if phase == .cancellingStart {
+          if retirement.hasPending, let allocated {
+            phase = .needsRecovery(callID: allocated.callID)
+          } else {
+            phase = .idle
+          }
+        }
+      }
+    }
+    let permission = system.permissions()
     _ = try CaptureSourceResolver.resolve(
       permissions: permission, frontmostPID: source.processID,
       ownPID: ProcessInfo.processInfo.processIdentifier, windows: [source])
-    let selectedFilter = try await SystemCaptureSource.filter(for: source)
-    guard !cancelStart else { throw CancellationError() }
-    let microphone = Self.defaultMicrophone()
-    let created = try await CaptureArchiveSession.begin(
+    let selectedFilter = try await system.filter(source)
+    try checkStart(attempt)
+    let microphone = system.microphone()
+    let created = try CaptureArchiveSession.allocate(
       root: root, archiveID: archiveID,
       source: source, microphone: microphone)
     session = created
-    // From this point a local recording exists, even if audio-writer setup fails.
-    phase = .needsRecovery(callID: created.callID)
+    allocated = created
+    // Retain the identity before even the first durable preparation write.
+    try await created.prepare()
+    try checkStart(attempt)
     filter = selectedFilter
     let output = try CaptureStreamSink(
       directory: created.mediaDirectory,
@@ -111,42 +140,56 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       }
     }
     applicationDelegate = delegate
-    let stream = SCStream(
-      filter: selectedFilter, configuration: CaptureStreamConfiguration.application(),
-      delegate: delegate)
+    let stream = system.stream(selectedFilter, CaptureStreamConfiguration.application(), delegate)
     applicationStream = stream
     output.acceptApplicationStream(stream)
     do {
-      try stream.addStreamOutput(output, type: .audio, sampleHandlerQueue: output.queue)
+      try stream.addCaptureOutput(output, type: .audio, queue: output.queue)
       // No .screen output and no SCRecordingOutput: pixels never reach persistence.
-      guard !cancelStart else { throw CancellationError() }
+      try checkStart(attempt)
       try await stream.startCapture()
-      guard !cancelStart else { throw CancellationError() }
+      try checkStart(attempt)
       if let microphone { await replaceMicrophone(microphone) }
-      guard !cancelStart else { throw CancellationError() }
+      try checkStart(attempt)
       output.startClock()
-      publish(try await output.perform { $0.snapshot })
+      let value = try await output.perform { $0.snapshot }
+      try checkStart(attempt)
+      publish(value)
       phase = .recording
       beginMonitoring()
     } catch {
-      _ = try? await stop(reason: "capture_start_failed")
+      if session?.callID == created.callID, sink === output {
+        _ = try? await stop(reason: "capture_start_failed")
+      }
+      // Stop may have completed before the OS acknowledged this Start. Retire
+      // that exact transport again after its late success, never another call.
+      do { try await retirement.retire(stream) } catch {
+        if session?.callID == created.callID { phase = .needsRecovery(callID: created.callID) }
+      }
       throw error
+    }
+  }
+
+  private func checkStart(_ attempt: CaptureStartAttempt) throws {
+    guard pendingStart === attempt, !attempt.cancelled, !Task.isCancelled else {
+      throw CancellationError()
     }
   }
 
   /// Returns only after microphone policy is effective on the audio/persistence queue.
   public func setMicrophoneEnabled(_ enabled: Bool) async throws {
-    guard let sink, !stopping else { throw CaptureError.closed }
+    guard let sink, owns(sink) else { throw CaptureError.closed }
     let value = try await sink.perform { engine in
       try engine.setMicrophoneEnabled(enabled, at: CMClockGetTime(CMClockGetHostTimeClock()))
       return engine.snapshot
     }
+    guard owns(sink) else { throw CaptureError.closed }
     publish(value)
   }
 
   @discardableResult public func stop(reason: String? = nil) async throws -> LocalCallAggregate? {
     try requireCaptureInterruptionReason(reason)
-    if starting { cancelStart = true }
+    pendingStart?.cancelled = true
     guard !stopping, let output = sink, let session else { return nil }
     phase = .stopping
     defer {
@@ -180,24 +223,33 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     let aggregate = try await session.finish(
       media: result.0, interruptionReason: result.1.interruptionReason)
     try await retirement.retryAll()
-    phase = .idle
+    phase = pendingStart == nil ? .idle : .cancellingStart
     return aggregate
   }
 
   /// A failed finalization retains its session and blocks new capture until explicitly recovered.
   @discardableResult public func retryRecovery() async throws -> LocalCallAggregate {
-    guard case .needsRecovery(let callID) = phase, let session, session.callID == callID else {
+    guard pendingStart == nil, case .needsRecovery(let callID) = phase,
+      let session, session.callID == callID
+    else {
       throw CaptureError.closed
     }
+    phase = .stopping
+    defer { if phase == .stopping { phase = .needsRecovery(callID: callID) } }
     try await retirement.retryAll()
-    let aggregate = try await CaptureArchiveSession.recover(root: session.root, callID: callID)
+    let aggregate = try await session.recover()
     phase = .idle
     return aggregate
   }
 
   private func interrupt(_ reason: String) async {
     guard !stopping else { return }
-    do { _ = try await stop(reason: reason) } catch { onFailure?("capture_finalization_failed") }
+    let callID = session?.callID
+    do { _ = try await stop(reason: reason) } catch {
+      guard session?.callID == callID else { return }
+      onFailure?("capture_finalization_failed")
+    }
+    guard session?.callID == callID else { return }
     onFailure?(reason)
   }
 
@@ -211,12 +263,26 @@ public enum ScreenCapturePhase: Equatable, Sendable {
   }
 
   private func beginMonitoring() {
+    let callID = session?.callID
     sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.willSleepNotification, object: nil, queue: .main
-    ) { [weak self] _ in Task { @MainActor in await self?.interrupt("system_sleep") } }
-    monitor = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-      Task { @MainActor in await self?.checkSourceAndMicrophone() }
+    ) { [weak self] _ in
+      Task { @MainActor in
+        guard self?.session?.callID == callID else { return }
+        await self?.interrupt("system_sleep")
+      }
     }
+    monitor = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+      Task { @MainActor in
+        guard self?.session?.callID == callID else { return }
+        await self?.checkSourceAndMicrophone()
+      }
+    }
+  }
+
+  private func owns(_ output: CaptureStreamSink) -> Bool {
+    sink === output && (phase == .starting || phase == .recording)
+      && pendingStart?.cancelled != true
   }
 
   private func checkSourceAndMicrophone() async {
@@ -234,14 +300,15 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       await interrupt("duration_limit")
       return
     }
-    let current = Self.defaultMicrophone()
+    let current = system.microphone()
     if current != snapshot?.microphone || (current != nil && microphoneStream == nil) {
       await replaceMicrophone(current)
     }
   }
 
   private func replaceMicrophone(_ device: CaptureMicrophone?) async {
-    guard !switchingMicrophone, !retiringMicrophone, !stopping, let output = sink, let filter else {
+    guard !switchingMicrophone, !retiringMicrophone, let output = sink, owns(output), let filter
+    else {
       return
     }
     switchingMicrophone = true
@@ -249,37 +316,50 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     let previous = microphoneStream
     microphoneStream = nil
     output.acceptMicrophoneStream(nil)
+    var replacement: (any CaptureTransport)?
     do {
       if let previous { try await retirement.retire(previous) }
+      guard owns(output) else { return }
       try await retirement.retryAll()
-      publish(
-        try await output.perform { engine in
-          try engine.microphoneChanged(nil, at: CMClockGetTime(CMClockGetHostTimeClock()))
-          return engine.snapshot
-        })
-      guard let device, !stopping, applicationStream != nil else { return }
+      guard owns(output) else { return }
+      let unavailable = try await output.perform { engine in
+        try engine.microphoneChanged(nil, at: CMClockGetTime(CMClockGetHostTimeClock()))
+        return engine.snapshot
+      }
+      guard owns(output) else { return }
+      publish(unavailable)
+      guard let device, applicationStream != nil else { return }
       let delegate = CaptureStreamDelegate { [weak self] id in
         Task { @MainActor in await self?.microphoneFailed(expectedID: id) }
       }
       microphoneDelegate = delegate
-      let stream = SCStream(
-        filter: filter, configuration: CaptureStreamConfiguration.microphone(device),
-        delegate: delegate)
+      let stream = system.stream(filter, CaptureStreamConfiguration.microphone(device), delegate)
+      replacement = stream
       microphoneStream = stream
-      try stream.addStreamOutput(output, type: .microphone, sampleHandlerQueue: output.queue)
+      try stream.addCaptureOutput(output, type: .microphone, queue: output.queue)
       output.acceptMicrophoneStream(stream)
-      publish(
-        try await output.perform { engine in
-          try engine.microphoneChanged(device, at: CMClockGetTime(CMClockGetHostTimeClock()))
-          return engine.snapshot
-        })
+      let available = try await output.perform { engine in
+        try engine.microphoneChanged(device, at: CMClockGetTime(CMClockGetHostTimeClock()))
+        return engine.snapshot
+      }
+      guard owns(output) else {
+        try await retirement.retire(stream)
+        return
+      }
+      publish(available)
       try await stream.startCapture()
-      if stopping || applicationStream == nil { try await retirement.retire(stream) }
-    } catch { await microphoneFailed() }
+      if !owns(output) || microphoneStream.map(ObjectIdentifier.init) != ObjectIdentifier(stream) {
+        try await retirement.retire(stream)
+      }
+    } catch {
+      if let replacement { try? await retirement.retire(replacement) }
+      guard owns(output) else { return }
+      await microphoneFailed(expectedID: replacement.map(ObjectIdentifier.init))
+    }
   }
 
   private func microphoneFailed(expectedID: ObjectIdentifier? = nil) async {
-    guard let sink, !stopping, !retiringMicrophone else { return }
+    guard let sink, owns(sink), !retiringMicrophone else { return }
     if let expectedID, microphoneStream.map(ObjectIdentifier.init) != expectedID { return }
     let failedStream = microphoneStream
     microphoneStream = nil
@@ -288,10 +368,12 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     retiringMicrophone = true
     defer { retiringMicrophone = false }
     if let failedStream { try? await retirement.retire(failedStream) }
+    guard owns(sink) else { return }
     if let value = try? await sink.perform({ engine in
       try engine.microphoneChanged(nil, at: CMClockGetTime(CMClockGetHostTimeClock()))
       return engine.snapshot
     }) {
+      guard owns(sink) else { return }
       publish(value)
     }
     onFailure?("microphone_unavailable")
@@ -348,12 +430,12 @@ private final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Send
     }
   }
 
-  func acceptMicrophoneStream(_ stream: SCStream?) {
+  func acceptMicrophoneStream(_ stream: (any CaptureTransport)?) {
     let id = stream.map(ObjectIdentifier.init)
     queue.async { [self] in routing.select(id, for: .microphone) }
   }
 
-  func acceptApplicationStream(_ stream: SCStream?) {
+  func acceptApplicationStream(_ stream: (any CaptureTransport)?) {
     let id = stream.map(ObjectIdentifier.init)
     queue.async { [self] in routing.select(id, for: .application) }
   }

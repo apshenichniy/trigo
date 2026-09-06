@@ -23,12 +23,24 @@ source. All audio from that application can be included, including other windows
 and browser tabs; this is not tab isolation.
 
 Observe `phase`, `snapshot`, `onChange` and `onFailure`. `phase` distinguishes
-starting, recording, stopping and a retained `needsRecovery(callID:)` state. A
-failed writer setup/finalization cannot silently admit a replacement recording.
+starting, recording, stopping, cancellingStart and a retained `needsRecovery(callID:)`
+state. Enable Start only when idle. A Stop during an outstanding OS start can
+finish local media first, but remains cancellingStart until that exact late
+transport is retired. A new recording cannot overlap the unfinished attempt.
+Failed preparation, writer setup or finalization retains the allocated call ID
+and cannot silently admit a replacement recording.
 Use `retryRecovery()` after correcting the failure. On launch, enumerate local
 calls and use `CaptureArchiveSession.recover(root:callID:)` for capture sessions
 with unfinished publication; recovery never starts capture. Expose rejected
 checkpoints as errors, not as an empty archive.
+
+Direct archive-library callers can allocate a `CaptureArchiveSession`, retain it,
+then call `prepare()`. Preparation is replay-safe at all three durable boundaries:
+session metadata, initial canonical call and initial lifecycle. The convenience
+`begin()` returns `CapturePreparationFailure.session` on a preparation failure.
+Instance `recover()` also works after correcting a failure before the first write;
+static recovery uses the durable session metadata after relaunch. Both finalize
+a never-opened capture as zero-duration interrupted and never open a stream.
 
 `setMicrophoneEnabled` acknowledges only after the serial audio queue applies
 the policy. It does not change microphone controls in the calling application.

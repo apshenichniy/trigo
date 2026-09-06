@@ -11,6 +11,14 @@ public struct CaptureMicrophone: Codable, Equatable, Sendable {
 }
 
 public enum CaptureFinalizationPoint: Sendable { case afterFinalizationIntent, afterAudioManifest }
+public enum CapturePreparationPoint: Sendable {
+  case afterSessionMetadata, afterCallManifest, afterLifecycle
+}
+
+public struct CapturePreparationFailure: Error {
+  public let session: CaptureArchiveSession
+  public let underlying: any Error
+}
 
 private struct CaptureFinalization: Codable {
   let media: CapturedMedia
@@ -19,7 +27,7 @@ private struct CaptureFinalization: Codable {
 
 /// Durable capture identities are allocated locally before a stream is opened. Canonical
 /// publication uses LocalArchive's validation and LocalLifecycleStore's independent state.
-public struct CaptureArchiveSession: Codable, Sendable {
+public struct CaptureArchiveSession: Codable, Equatable, Sendable {
   public let root: URL
   public let archiveID: String
   public let callID: String
@@ -37,20 +45,51 @@ public struct CaptureArchiveSession: Codable, Sendable {
     root: URL, archiveID: String, source: CaptureSource,
     microphone: CaptureMicrophone?, startedAt: Date = Date()
   ) async throws -> Self {
+    let session = try allocate(
+      root: root, archiveID: archiveID, source: source,
+      microphone: microphone, startedAt: startedAt)
+    do { try await session.prepare() } catch {
+      throw CapturePreparationFailure(session: session, underlying: error)
+    }
+    return session
+  }
+
+  /// Keep this identity before the first durable write, including when that write fails.
+  public static func allocate(
+    root: URL, archiveID: String, source: CaptureSource,
+    microphone: CaptureMicrophone?, startedAt: Date = Date()
+  ) throws -> Self {
     try requireCanonicalIdentifier(archiveID)
-    let session = Self(
+    return Self(
       root: root, archiveID: archiveID, callID: captureID(), microphoneTrackID: captureID(),
       applicationTrackID: captureID(), audioManifestID: captureID(), startedAt: startedAt,
       source: source, microphone: microphone)
-    try AtomicFileWriter(interruption: { _ in }).write(
-      try JSONEncoder().encode(session),
-      to: session.sessionURL, domain: .archive)
+  }
+
+  /// Replay-safe preparation never overwrites a later canonical/lifecycle state.
+  public func prepare(
+    interruption: @Sendable (CapturePreparationPoint) throws -> Void = { _ in }
+  ) async throws {
+    if FileManager.default.fileExists(atPath: sessionURL.path) {
+      guard try JSONDecoder().decode(Self.self, from: Data(contentsOf: sessionURL)) == self else {
+        throw CaptureError.corruptCheckpoint
+      }
+    } else {
+      try AtomicFileWriter(interruption: { _ in }).write(
+        try JSONEncoder().encode(self), to: sessionURL, domain: .archive)
+    }
+    try interruption(.afterSessionMetadata)
     let archive = try LocalArchive(root: root, archiveID: archiveID)
-    _ = try await archive.publishManifest(
-      session.callBytes(media: nil, reason: nil, version: 1, reference: nil))
+    do { _ = try await archive.loadCall(callID: callID) } catch LocalPersistenceError.callNotFound {
+      _ = try await archive.publishManifest(
+        callBytes(media: nil, reason: nil, version: 1, reference: nil))
+    }
+    try interruption(.afterCallManifest)
     let lifecycle = try LocalLifecycleStore(root: root, archiveID: archiveID)
-    _ = try await lifecycle.publish(.initial(archiveID: archiveID, callID: session.callID))
-    return session
+    if try await lifecycle.load(callID: callID) == nil {
+      _ = try await lifecycle.publish(.initial(archiveID: archiveID, callID: callID))
+    }
+    try interruption(.afterLifecycle)
   }
 
   public func finish(
@@ -107,6 +146,13 @@ public struct CaptureArchiveSession: Codable, Sendable {
     else {
       throw CaptureError.corruptCheckpoint
     }
+    return try await session.recover()
+  }
+
+  /// Also handles an in-process failure before session metadata could be persisted.
+  public func recover() async throws -> LocalCallAggregate {
+    try await prepare()
+    let session = self
     let archive = try LocalArchive(root: root, archiveID: session.archiveID)
     let existing = try await archive.loadCall(callID: callID)
     if try jsonObject(existing.manifest.storedBytes)["audioManifest"] is [String: Any] {
