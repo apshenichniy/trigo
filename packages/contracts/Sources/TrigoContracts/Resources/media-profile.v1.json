@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+  "container": "wave",
+  "contentType": "audio/wav",
+  "codec": "pcm_s16le",
+  "sampleRateHz": 16000,
+  "bitsPerSample": 16,
+  "interleaved": true,
+  "objectDurationMs": 60000,
+  "checkpointDurationMs": 2000,
+  "waveHeaderBytes": 44,
+  "maxObjectBytes": 3840044,
+  "maxCallDurationMs": 10800000,
+  "maxObjectsPerCall": 180,
+  "limits": {
+    "uploadRequestBytes": 8388608,
+    "batchEnvelopeBytes": 10000000,
+    "base64ObjectBytes": 5120060
+  },
+  "channels": [
+    {
+      "index": 0,
+      "role": "microphone"
+    },
+    {
+      "index": 1,
+      "role": "application"
+    }
+  ],
+  "assembly": {
+    "ordering": "object-index",
+    "timeline": "manifest-start-end-ms",
+    "missingFrames": "silence",
+    "playback": "decode-ordered-wave-objects-and-mix-at-output"
+  },
+  "asr": {
+    "model": "@cf/deepgram/nova-3",
+    "requestContentType": "audio/wav",
+    "encoding": null,
+    "channels": 2,
+    "multichannel": true,
+    "diarize": true,
+    "submission": "one-object-per-request",
+    "timestampOrigin": "object",
+    "speakerScope": "object-channel"
+  }
+}

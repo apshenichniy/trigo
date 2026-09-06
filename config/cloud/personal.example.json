@@ -1,0 +1,6 @@
+{
+  "stage": "personal",
+  "accountId": "replace-with-cloudflare-account-id",
+  "profile": "trigo-cloud-personal",
+  "personalDeploymentGate": "blocked-by-32"
+}

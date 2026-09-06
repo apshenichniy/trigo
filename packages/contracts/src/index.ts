@@ -1,8 +1,35 @@
 import { validateCall, validateRevision, validateAudio } from "./semantics.ts";
+import { selectedMediaProfile } from "./media-profile.ts";
+export {
+  AsrProbeLanguage,
+  AsrProbeTranscriptionResponse,
+  AsrProbeUploadResponse,
+} from "./asr-probe.ts";
+export type {
+  AsrProbeLanguage as AsrProbeLanguageCode,
+  AsrProbeTranscriptionResponse as AsrProbeTranscriptionResponseDocument,
+  AsrProbeUploadResponse as AsrProbeUploadResponseDocument,
+} from "./asr-probe.ts";
+export { ErrorEnvelopeSchema } from "./document-schema.ts";
+export {
+  frameCountForDuration,
+  inspectWaveObject,
+  makeWaveHeader,
+  MediaProfile,
+  MediaSourceRole,
+  objectCountForDuration,
+  selectedMediaProfile,
+  waveByteLength,
+} from "./media-profile.ts";
+export type {
+  MediaProfile as MediaProfileDocument,
+  WaveObjectInspection,
+} from "./media-profile.ts";
 import type {
   CallDocument,
   TranscriptRevision,
   AudioManifest,
+  StatusResponse,
   CommandIdentity,
   ErrorEnvelope,
 } from "./generated/documents.d.ts";
@@ -12,6 +39,7 @@ export interface Documents {
   CallDocument: CallDocument;
   TranscriptRevision: TranscriptRevision;
   AudioManifest: AudioManifest;
+  StatusResponse: StatusResponse;
   CommandIdentity: CommandIdentity;
   ErrorEnvelope: ErrorEnvelope;
 }
@@ -80,8 +108,17 @@ export async function validateArchive(
     );
     for (const track of call.tracks) check(track.mediaProfileId === audio.mediaProfileId);
     for (const object of audio.objects)
-      for (const channel of object.channelMap)
-        check(call.tracks.some((t) => t.trackId === channel.trackId));
+      for (const expected of selectedMediaProfile.channels) {
+        const channel = object.channelMap.find(
+          (candidate) => candidate.channelIndex === expected.index,
+        );
+        check(
+          channel !== undefined &&
+            call.tracks.some(
+              (track) => track.trackId === channel.trackId && track.role === expected.role,
+            ),
+        );
+      }
     for (const track of call.tracks) {
       let cursor = 0;
       for (const object of audio.objects.filter((o) =>

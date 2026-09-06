@@ -10,4 +10,6 @@ dist/
 .env
 .env.*
 !.env.example
+config/cloud/*.json
+!config/cloud/*.example.json
 apps/macos/Generated/

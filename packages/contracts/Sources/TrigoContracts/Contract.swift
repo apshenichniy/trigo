@@ -95,9 +95,19 @@ public enum Contract {
       for track in tracks {
         try require(track["mediaProfileId"] == audio["mediaProfileId"], .reference)
       }
+      let profile = try MediaProfile.selected()
       for object in audio["objects"].items {
-        for channel in object["channelMap"].items {
-          try require(tracks.contains { $0["trackId"] == channel["trackId"] }, .reference)
+        for expected in profile.channels {
+          guard
+            let channel = object["channelMap"].items.first(where: {
+              $0["channelIndex"].integerValue == expected.index
+            })
+          else { throw ContractError.reference }
+          try require(
+            tracks.contains {
+              $0["trackId"] == channel["trackId"]
+                && $0["role"].text == expected.role.rawValue
+            }, .reference)
         }
       }
       for track in tracks {

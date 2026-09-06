@@ -20,7 +20,7 @@
       "trackId": "00000000-0000-4000-8000-000000000002",
       "role": "microphone",
       "inputDevice": null,
-      "mediaProfileId": "pending-nova3-gate",
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
       "intervals": [
         {
           "startMs": 0,
@@ -34,7 +34,7 @@
       "trackId": "00000000-0000-4000-8000-000000000003",
       "role": "application",
       "inputDevice": null,
-      "mediaProfileId": "pending-nova3-gate",
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
       "intervals": [
         {
           "startMs": 0,
@@ -47,23 +47,23 @@
   ],
   "audioManifest": {
     "manifestId": "00000000-0000-4000-8000-000000000004",
-    "sha256": "a2b877d544b6b5737fd99993eadaa9ff5ba4a91f042d0b6f04e29cc440b4ae56"
+    "sha256": "88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2"
   },
   "revisions": [
     {
       "revisionId": "00000000-0000-4000-8000-000000000006",
       "createdAt": "2026-09-05T10:01:00Z",
-      "sha256": "c1537cf16b6db4e8659d0e57ee2e48d613bc8ea49ccd333930927f398de2ea7b"
+      "sha256": "43807da39da1600c5395e9dcc3a60d18c34e9e6967726566ec5d44aa327a972c"
     },
     {
       "revisionId": "00000000-0000-4000-8000-000000000011",
       "createdAt": "2026-09-05T10:01:00Z",
-      "sha256": "29dfd228f491f1c5412decc2206b1430e4c260f92ef9c660313a5685910a3b98"
+      "sha256": "6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d"
     },
     {
       "revisionId": "00000000-0000-4000-8000-000000000030",
       "createdAt": "2026-09-05T10:01:00Z",
-      "sha256": "38f4d4f51b359500bc7de3e9e3d682c9cbfe70e6ef56bfda004bf14b7be83eff"
+      "sha256": "6f64221df8a0da00dbb49d0f281c2fa076c745710cb85e32480636e116323f12"
     }
   ],
   "activeRevisionId": "00000000-0000-4000-8000-000000000030",

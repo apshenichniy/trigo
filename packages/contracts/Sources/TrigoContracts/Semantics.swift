@@ -70,6 +70,8 @@ extension Contract {
     }
   }
   static func validateAudio(_ audio: JSONValue) throws {
+    let profile = try MediaProfile.selected()
+    try require(audio["mediaProfileId"].text == profile.id.rawValue)
     let objects = audio["objects"].items
     try unique(objects.map { $0["objectId"] })
     try unique(objects.map { $0["index"] })
@@ -84,6 +86,20 @@ extension Contract {
       start = object["startMs"].integerValue
       try unique(object["channelMap"].items.map { $0["channelIndex"] })
       try unique(object["channelMap"].items.map { $0["trackId"] })
+      let durationMs = object["endMs"].integerValue - object["startMs"].integerValue
+      try require(durationMs <= profile.objectDurationMs)
+      let frameCount = profile.frameCount(durationMs: durationMs)
+      try require(
+        object["contentType"].text == profile.contentType.rawValue
+          && object["byteLength"].integerValue == profile.waveByteLength(frameCount: frameCount)
+          && object["byteLength"].integerValue <= profile.maxObjectBytes
+          && object["byteLength"].integerValue <= profile.limits.uploadRequestBytes
+          && object["channelMap"].items.count == profile.channels.count
+          && profile.channels.allSatisfy { expected in
+            object["channelMap"].items.contains {
+              $0["channelIndex"].integerValue == expected.index
+            }
+          })
     }
   }
 }

@@ -20,7 +20,7 @@
       "trackId": "00000000-0000-4000-8000-000000000002",
       "role": "microphone",
       "inputDevice": null,
-      "mediaProfileId": "pending-nova3-gate",
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
       "intervals": [
         {
           "startMs": 0,
@@ -34,7 +34,7 @@
       "trackId": "00000000-0000-4000-8000-000000000003",
       "role": "application",
       "inputDevice": null,
-      "mediaProfileId": "pending-nova3-gate",
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
       "intervals": [
         {
           "startMs": 0,
@@ -47,7 +47,7 @@
   ],
   "audioManifest": {
     "manifestId": "00000000-0000-4000-8000-000000000004",
-    "sha256": "d32fefde139bebaf57e1e55cf95999d9a212b97c4c4e616a74b7640e83bd921d"
+    "sha256": "564822ff3f19cd9767170f562cb025699cf43442d6bd85fa5f2d3046ced764c2"
   },
   "revisions": [],
   "activeRevisionId": null,

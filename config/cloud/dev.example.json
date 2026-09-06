@@ -1,0 +1,5 @@
+{
+  "stage": "dev",
+  "accountId": "replace-with-cloudflare-account-id",
+  "profile": "trigo-cloud-dev"
+}

@@ -1,6 +1,7 @@
 /* Generated from schema/v1.schema.json. Do not edit. */
 
-export type TrigoV1 = CallDocument | TranscriptRevision | AudioManifest | CommandIdentity | ErrorEnvelope;
+export type TrigoV1 =
+  CallDocument | TranscriptRevision | AudioManifest | StatusResponse | CommandIdentity | ErrorEnvelope;
 
 export interface CallDocument {
   schemaVersion: 1;
@@ -31,7 +32,7 @@ export interface CallDocument {
         id: string;
         name: string;
       } | null;
-      mediaProfileId: string;
+      mediaProfileId: "trigo-call-wav-s16le-16khz-stereo-60s-v1";
       intervals: {
         startMs: number;
         endMs: number;
@@ -46,7 +47,7 @@ export interface CallDocument {
         id: string;
         name: string;
       } | null;
-      mediaProfileId: string;
+      mediaProfileId: "trigo-call-wav-s16le-16khz-stereo-60s-v1";
       intervals: {
         startMs: number;
         endMs: number;
@@ -84,7 +85,7 @@ export interface TranscriptRevision {
   asr: {
     adapter: string;
     model: string;
-    profileId: string;
+    profileId: "trigo-call-wav-s16le-16khz-stereo-60s-v1";
     requestedLanguage: string;
     detectedLanguages: string[];
     effectiveOptions: {
@@ -119,11 +120,11 @@ export interface AudioManifest {
   callId: string;
   manifestId: string;
   durationMs: number;
-  mediaProfileId: string;
+  mediaProfileId: "trigo-call-wav-s16le-16khz-stereo-60s-v1";
   objects: {
     objectId: string;
     index: number;
-    contentType: string;
+    contentType: "audio/wav";
     byteLength: number;
     sha256: string;
     startMs: number;
@@ -141,6 +142,23 @@ export interface AudioManifest {
         trackId: string;
       }[]
     ];
+  }[];
+}
+export interface StatusResponse {
+  schemaVersion: 1;
+  apiVersion: 1;
+  archiveId: string;
+  stage: "dev" | "personal";
+  readiness: {
+    archive: "ready";
+    ownerAuthentication: "ready";
+    transcription: "ready" | "not_verified" | "unavailable";
+    callOperations: "ready" | "unavailable";
+  };
+  errors: {
+    code: string;
+    retry: "never" | "after_correction" | "retryable";
+    message: string;
   }[];
 }
 export interface CommandIdentity {

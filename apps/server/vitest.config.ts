@@ -9,6 +9,7 @@ export default defineConfig({
         compatibilityDate: "2026-08-15",
         compatibilityFlags: ["nodejs_compat"],
         r2Buckets: ["LOCAL_ARCHIVE"],
+        d1Databases: ["CATALOG"],
         bindings: { LOCAL_RUN_ID: "worker-suite" },
         outboundService: () => new Response("External service access denied", { status: 403 }),
       },

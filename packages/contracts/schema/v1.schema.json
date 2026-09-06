@@ -139,7 +139,7 @@
                 ]
               },
               "mediaProfileId": {
-                "type": "string"
+                "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
               },
               "intervals": {
                 "type": "array",
@@ -322,7 +322,7 @@
               "type": "string"
             },
             "profileId": {
-              "type": "string"
+              "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
             },
             "requestedLanguage": {
               "type": "string"
@@ -511,7 +511,7 @@
           "maximum": 9007199254740991
         },
         "mediaProfileId": {
-          "type": "string"
+          "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
         },
         "objects": {
           "type": "array",
@@ -528,7 +528,7 @@
                 "maximum": 9007199254740991
               },
               "contentType": {
-                "type": "string"
+                "const": "audio/wav"
               },
               "byteLength": {
                 "type": "integer",
@@ -594,6 +594,70 @@
       ],
       "additionalProperties": false
     },
+    "StatusResponse": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "apiVersion": {
+          "const": 1
+        },
+        "archiveId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["dev", "personal"]
+        },
+        "readiness": {
+          "type": "object",
+          "properties": {
+            "archive": {
+              "const": "ready"
+            },
+            "ownerAuthentication": {
+              "const": "ready"
+            },
+            "transcription": {
+              "type": "string",
+              "enum": ["ready", "not_verified", "unavailable"]
+            },
+            "callOperations": {
+              "type": "string",
+              "enum": ["ready", "unavailable"]
+            }
+          },
+          "required": ["archive", "ownerAuthentication", "transcription", "callOperations"],
+          "additionalProperties": false
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "retry": {
+                "type": "string",
+                "enum": ["never", "after_correction", "retryable"]
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["code", "retry", "message"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["schemaVersion", "apiVersion", "archiveId", "stage", "readiness", "errors"],
+      "additionalProperties": false
+    },
     "CommandIdentity": {
       "type": "object",
       "properties": {
@@ -630,7 +694,7 @@
             },
             "requestId": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           },
           "required": ["code", "retry", "message", "requestId"],
@@ -650,6 +714,9 @@
     },
     {
       "$ref": "#/$defs/AudioManifest"
+    },
+    {
+      "$ref": "#/$defs/StatusResponse"
     },
     {
       "$ref": "#/$defs/CommandIdentity"

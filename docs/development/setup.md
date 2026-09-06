@@ -98,34 +98,51 @@ vendored source and imported agent skills.
 
 All commands use `bun run <command>` and propagate errors.
 
-| Command                                  | Behavior                                                                       |
-| ---------------------------------------- | ------------------------------------------------------------------------------ |
-| `doctor`                                 | Read-only selected tools and local-target diagnostics                          |
-| `format` / `format:check`                | Apply/check Oxfmt and bundled Swift formatting                                 |
-| `lint`                                   | Oxlint and strict Swift formatting checks                                      |
-| `typecheck`                              | Strict TypeScript and locked native Swift compilation                          |
-| `test`                                   | Node/Effect, Workers, shared Swift fixtures, native logic, Alchemy local smoke |
-| `build`                                  | Local Worker bundle and both app variants                                      |
-| `check`                                  | Complete macOS gate: format, lint, types, generation, tests and builds         |
-| `check:server`                           | Portable Linux/macOS TS/contracts/Workers checks and bundle                    |
-| `check:macos`                            | Native style/conformance/tests, both apps and Alchemy local smoke              |
-| `contracts:generate` / `contracts:check` | Explicit regeneration / temporary regeneration and comparison                  |
-| `dev`                                    | Loopback Alchemy Worker, worktree-local R2 and fake ASR                        |
-| `test:local`                             | Disposable Alchemy composition and R2 readback                                 |
-| `macos:build --variant dev`              | Locked build (`personal` also supported)                                       |
-| `macos:run --variant dev`                | Build, install and open stable development app                                 |
-| `macos:archive --variant dev`            | Reproducible unsigned archive unless a signing team is selected                |
-| `macos:dependencies`                     | Explicit Swift dependency update and app lock refresh                          |
-| `cloud:bootstrap --stage dev`            | Nonzero placeholder; #12 owns bootstrap                                        |
-| `cloud:deploy --stage dev`               | Nonzero placeholder; #12 owns deployment                                       |
-| `test:cloud --stage dev`                 | Nonzero placeholder; #12 owns cloud verification                               |
-| `test:asr --stage dev`                   | Nonzero placeholder; #13 owns paid provider probes                             |
+| Command                                                                              | Behavior                                                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `doctor`                                                                             | Read-only selected tools and local-target diagnostics                                |
+| `format` / `format:check`                                                            | Apply/check Oxfmt and bundled Swift formatting                                       |
+| `lint`                                                                               | Oxlint and strict Swift formatting checks                                            |
+| `typecheck`                                                                          | Strict TypeScript and locked native Swift compilation                                |
+| `test`                                                                               | Node/Effect, Workers, shared Swift fixtures, native logic, Alchemy local smoke       |
+| `build`                                                                              | Local Worker bundle and both app variants                                            |
+| `check`                                                                              | Complete macOS gate: format, lint, types, generation, tests and builds               |
+| `check:server`                                                                       | Portable Linux/macOS TS/contracts/Workers checks and bundle                          |
+| `check:macos`                                                                        | Native style/conformance/tests, both apps and Alchemy local smoke                    |
+| `contracts:generate` / `contracts:check`                                             | Explicit regeneration / temporary regeneration and comparison                        |
+| `dev`                                                                                | Loopback Alchemy Worker, worktree-local R2 and fake ASR                              |
+| `test:local`                                                                         | Disposable Alchemy composition and R2 readback                                       |
+| `macos:build --variant dev`                                                          | Locked build (`personal` also supported)                                             |
+| `macos:run --variant dev`                                                            | Build, install and open stable development app                                       |
+| `macos:archive --variant dev`                                                        | Reproducible unsigned archive unless a signing team is selected                      |
+| `macos:dependencies`                                                                 | Explicit Swift dependency update and app lock refresh                                |
+| `cloud:preflight --stage dev`                                                        | Read-only validation of the stage configuration and dedicated Alchemy profile        |
+| `cloud:bootstrap --stage dev`                                                        | Explicit-profile Cloudflare remote-state bootstrap; see [cloud operations](cloud.md) |
+| `cloud:deploy --stage dev`                                                           | Deploy isolated dev R2, D1, Workflow, AI binding and Worker                          |
+| `cloud:owner:init --stage dev --handoff <absolute-path>`                             | Initialize or exactly replay archive identity and the first owner verifier           |
+| `cloud:owner:rotate --stage dev --handoff <absolute-path> --expected-generation <n>` | Atomically replace the owner verifier through a private handoff                      |
+| `cloud:owner:revoke --stage dev --handoff <absolute-path> --expected-generation <n>` | Atomically revoke the owner verifier; the handoff contains no token                  |
+| `test:cloud --stage dev`                                                             | Read-only infrastructure checks, fixture seed/verify and owner-status modes          |
+| `test:asr --stage dev [--language en\|ru\|uk]`                                       | Explicit live Nova-3 probe; controlled synthetic audio, no automatic retries         |
 
 The full check fails on Linux rather than silently skipping macOS. Verification
 may create ignored build outputs/caches; it must not rewrite tracked sources or
 locks. CI runs both jobs on every PR and `main` change. Required merge checks must
 be configured separately in repository rules; a green workflow does not prove
 that branch protection exists. Merge/deployment require the owner's instruction.
+Cloud commands are never part of `doctor`, `check`, `dev`, or offline CI; their
+credentials, recovery procedure and acceptance sequence are documented separately
+in [Cloud operations](cloud.md).
+
+`test:asr` is a live, potentially billable acceptance command and is never part of
+the default verification graph. It targets only the isolated dev stage, requires
+the paired Trigo Dev owner credential, and creates a fresh controlled synthetic
+fixture for each selected language. Without `--language` it attempts `en`, `ru`,
+and `uk` once each; the selector narrows the set to one language. Before running
+it, reserve the bounded request set in the active Goal ledger and confirm that
+actual plus reserved spend remains within the approved ceiling. Afterward, record
+the conservative actual result and release unused reservation. The command never
+retries automatically, and the deployed fixture marker rejects a sequential repeat.
 
 ## Local runtime
 
@@ -173,8 +190,23 @@ must fail, never opt into Alchemy's remote fallback.
 `~/Library/Application Support/<namespace>/`. Preferences use the namespace as
 suite name; Keychain uses `<namespace>.connection-token`. Personal uses its bundle
 ID; development appends the build's worktree identifier. Test namespaces are
-UUID-based disposable locations. Actual archive persistence, token storage and
-connection setup belong to #14/#12. The shell requests no capture permissions.
+UUID-based disposable locations. The shell requests no capture permissions.
+
+The app's Archive connection screen accepts an HTTPS origin and owner token. A
+successful authenticated status check establishes the archive binding before local
+recording becomes eligible. `connection.json` stores only the canonical server
+origin, archive ID, stage and an opaque Keychain account reference; the token is a
+generic password in the namespace-specific Keychain service. URL/token replacement
+is allowed only when status reports the already-bound archive. Later network,
+authentication or compatibility failures preserve the binding and local-recording
+eligibility while blocking server operations. Use **Retry saved connection** to
+validate the persisted Keychain credential without re-entering it.
+
+Interrupted metadata/Keychain transactions are recovered on launch and before a
+new candidate is attempted. Do not edit `connection.json`, copy a token between
+namespaces or use a personal handoff with the development app. The opt-in production
+adapter demonstration and its required explicit selectors are documented in
+[Issue #31 acceptance](acceptance-31.md).
 
 Set `TRIGO_SIGNING_TEAM` to an existing Apple Development team for regular installed
 capture development; the corresponding certificate must exist in Keychain.
