@@ -250,3 +250,23 @@ No fixture accesses a device, TCC, Keychain, real app/call, personal archive,
 provider or cloud credential. This establishes process-termination and filesystem
 fault behavior locally; it does not claim installed-app, physical-device,
 power-loss hardware, live R2 or hosted ASR acceptance.
+
+## Integrated CI evidence
+
+Worker commit `e5619db00ec473726d73c0cd76141b5a2db43ea0` was integrated as
+`301438d9534fa8ddfa3b7b59e9eca90525f93552`; their complete trees are identical
+(`406e3f30595c87bd3187765595fa08523bc44f2f`). The following coordinator commit
+changed only the epic evidence table. Both jobs passed at integrated source
+`2b15a5de79d59a887bc4cd4b147d389b38a57dd1` in
+[Actions run 34064605149](https://github.com/apshenichniy/trigo/actions/runs/34064605149).
+
+The [Linux job](https://github.com/apshenichniy/trigo/actions/runs/34064605149/job/101571051295)
+passed the server gates. The
+[macOS job](https://github.com/apshenichniy/trigo/actions/runs/34064605149/job/101571051400)
+passed eight contract and 114 native tests, both Debug app builds, the isolated
+network-denied smoke and lock/output drift checks. Its native suite took 28.402 s;
+the full job took 203 s including setup/cache work. Full one-/three-hour proofs
+retained 57,600,000 / 172,800,000 frames and the same fixture SHA-256 values; the
+one-hour common-clock proof again measured 0.0 ms drift. These runner results
+confirm the integrated source and do not replace the isolated local resource
+measurements or later production/installed/provider acceptance.
