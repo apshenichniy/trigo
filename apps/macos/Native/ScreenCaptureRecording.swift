@@ -215,6 +215,8 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     microphoneStream = nil
     if let microphone { try? await retirement.retire(microphone) }
     if let application { try? await retirement.retire(application) }
+    // Preserve a known stop cause before crossing the external media sealing boundary.
+    if let reason { try await session.requestStop(reason: reason) }
     let result = try await output.perform { engine in
       let media = try engine.stop(at: endedAt, reason: reason)
       return (media, engine.snapshot)

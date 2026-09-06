@@ -37,7 +37,8 @@ public struct RecoveredRecording: Equatable, Sendable, Identifiable {
   }
 }
 
-/// Discovers only direct call directories. No deletion, recursive discovery or stream restart.
+/// SQLite owns metadata recovery. Only admitted direct sessions can trigger external media
+/// recovery; unfamiliar stores and unsafe paths fail without deletion or recursive discovery.
 enum RecordingRecovery {
   static func run(root: URL, archiveID: String) async -> RecordingRecoveryReport {
     var report = RecordingRecoveryReport()
@@ -45,104 +46,73 @@ enum RecordingRecovery {
     do {
       try requireCanonicalIdentifier(archiveID)
       guard files.fileExists(atPath: root.path) else { return report }
-      try requireUnlinked(root)
-      let children = try files.contentsOfDirectory(
-        at: root, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-      for directory in children.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
-        let metadataURL = directory.appendingPathComponent("capture-session.json")
-        let properties = try directory.resourceValues(forKeys: [
-          .isDirectoryKey, .isSymbolicLinkKey,
-        ])
-        // A linked call directory is rejected without reading through it.
-        if properties.isSymbolicLink == true {
+      try requireSafePath(root, directory: true)
+      let repository = try LocalRepository(root: root, archiveID: archiveID)
+      for child in try files.contentsOfDirectory(
+        at: root, includingPropertiesForKeys: [.isSymbolicLinkKey])
+      {
+        if try child.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true {
           report.failures.append(
             .init(
-              callID: directory.lastPathComponent,
-              message:
-                "Linked archive entry rejected. Restore the original local directory before retrying."
-            ))
-          continue
+              callID: child.lastPathComponent,
+              message: "Linked archive entry rejected; retained evidence has not been changed."))
         }
-        guard properties.isDirectory == true, files.fileExists(atPath: metadataURL.path) else {
-          continue
-        }
-        let callID = directory.lastPathComponent
-        do {
-          try requireCanonicalIdentifier(callID)
-          try requireUnlinked(metadataURL)
-          let session = try JSONDecoder().decode(
-            CaptureArchiveSession.self, from: Data(contentsOf: metadataURL))
-          guard session.callID == callID, session.archiveID == archiveID,
-            session.root.standardizedFileURL.path == root.standardizedFileURL.path
-          else { throw CaptureError.corruptCheckpoint }
-          // Recovery reads/writes known direct call files and direct media objects. Reject
-          // linked inputs there too; discovery never descends into unrelated directories.
-          try rejectLinkedChildren(directory)
-          if files.fileExists(atPath: session.mediaDirectory.path) {
-            try rejectLinkedChildren(session.mediaDirectory)
-          }
-          guard try await needsRecovery(session) else { continue }
-          let aggregate = try await CaptureArchiveSession.recover(root: root, callID: callID)
-          let manifest = aggregate.manifest.value
-          let reason = manifest.interruptionReason
-          report.recoveredCalls.append(.init(callID: callID, interruptionReason: reason))
-          if reason == "corrupt_media_tail" {
-            report.warnings.append(
+      }
+      var after: String?
+      while true {
+        let calls = try await repository.calls(after: after)
+        for call in calls where call.captureState == .recording {
+          do {
+            guard let session = try await repository.captureSession(callID: call.callID) else {
+              continue
+            }
+            let directory = session.mediaDirectory.deletingLastPathComponent()
+            if files.fileExists(atPath: directory.path) { try rejectLinkedChildren(directory) }
+            if files.fileExists(atPath: session.mediaDirectory.path) {
+              try rejectLinkedChildren(session.mediaDirectory)
+            }
+            let aggregate = try await session.recover()
+            let reason = aggregate.manifest.value.interruptionReason
+            report.recoveredCalls.append(.init(callID: call.callID, interruptionReason: reason))
+            if reason == "corrupt_media_tail" {
+              report.warnings.append(
+                .init(
+                  callID: call.callID,
+                  message:
+                    "Corrupt media tail rejected. Only the verified prefix was recovered; original files remain available for inspection."
+                ))
+            }
+          } catch {
+            report.failures.append(
               .init(
-                callID: callID,
+                callID: call.callID,
                 message:
-                  "Corrupt media tail rejected. Only the verified prefix was recovered; the original files remain available for inspection."
+                  "Recovery rejected or failed. Verify metadata, archive identity, free disk space and file access; retained evidence has not been deleted."
               ))
           }
-        } catch {
-          report.failures.append(
-            .init(
-              callID: callID,
-              message:
-                "Recovery rejected or failed. Verify this call's metadata, archive identity, free disk space and file access, then retry. Retained files have not been deleted."
-            ))
         }
+        if calls.count < 100 { break }
+        after = calls.last?.callID
       }
     } catch {
       report.failures.append(
         .init(
           callID: "archive",
           message:
-            "Cannot read the local archive. Check file access and free disk space, then retry recovery."
+            "Cannot open the local archive. Its identity, version, integrity or file access requires attention; no automatic reset was performed."
         ))
     }
     return report
   }
 
-  private static func needsRecovery(_ session: CaptureArchiveSession) async throws -> Bool {
-    let archive = try LocalArchive(root: session.root, archiveID: session.archiveID)
-    let lifecycle = try LocalLifecycleStore(root: session.root, archiveID: session.archiveID)
-    do {
-      let call = try await archive.loadCall(callID: session.callID)
-      let manifest = call.manifest.value
-      let state = manifest.captureState
-      guard manifest.audioManifest != nil, state != "recording"
-      else { return true }
-      let current = try await lifecycle.load(callID: session.callID)
-      return current?.capture.state.rawValue != state
-        || current?.capture.failure?.code != manifest.interruptionReason
-    } catch LocalPersistenceError.callNotFound {
-      return true
-    }
-  }
-
-  private static func requireUnlinked(_ url: URL) throws {
-    guard try url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink != true else {
-      throw CaptureError.corruptCheckpoint
-    }
-  }
-
   private static func rejectLinkedChildren(_ directory: URL) throws {
-    try requireUnlinked(directory)
+    try requireSafePath(directory, directory: true)
     for child in try FileManager.default.contentsOfDirectory(
       at: directory, includingPropertiesForKeys: [.isSymbolicLinkKey])
     {
-      try requireUnlinked(child)
+      guard try child.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink != true else {
+        throw LocalPersistenceError.unsafeStore(child.lastPathComponent)
+      }
     }
   }
 }

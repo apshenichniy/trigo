@@ -11,6 +11,13 @@ public struct StoredDocument<Value: ContractDocument>: Sendable {
   public let value: Value
   public let storedBytes: Data
   public var sha256: String { Contract.hash(storedBytes) }
+
+  /// A repository may reconstruct a validated typed projection alongside retained evidence.
+  /// This does not validate exchange input; untrusted bytes must enter through Contract.decode.
+  public init(value: Value, storedBytes: Data) {
+    self.value = value
+    self.storedBytes = storedBytes
+  }
 }
 
 extension StoredDocument where Value == CallDocument {

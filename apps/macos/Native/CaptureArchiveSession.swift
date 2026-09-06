@@ -10,30 +10,24 @@ public struct CaptureMicrophone: Codable, Equatable, Sendable {
   }
 }
 
-public enum CaptureFinalizationPoint: Sendable { case afterFinalizationIntent, afterAudioManifest }
-public enum CapturePreparationPoint: Sendable {
-  case afterSessionMetadata, afterCallManifest, afterLifecycle
-}
+public enum CaptureFinalizationPoint: Sendable { case afterStopIntent, beforeCommit, afterCommit }
+public enum CapturePreparationPoint: Sendable { case beforeCommit, afterCommit }
 
 public struct CapturePreparationFailure: Error {
   public let session: CaptureArchiveSession
   public let underlying: any Error
 }
 
-private struct CaptureFinalization: Codable {
-  let media: CapturedMedia
-  let reason: String?
-}
-
-/// Durable capture identities are allocated locally before a stream is opened. Canonical
-/// publication uses LocalArchive's validation and LocalLifecycleStore's independent state.
-public struct CaptureArchiveSession: Codable, Equatable, Sendable {
+/// Allocated identities and source context survive retries; SQLite owns their admission and
+/// canonical lifecycle. The external writer remains the media evidence owner.
+public struct CaptureArchiveSession: Equatable, Sendable {
   public let root: URL
   public let archiveID: String
   public let callID: String
   public let microphoneTrackID: String
   public let applicationTrackID: String
   public let audioManifestID: String
+  public let masterID: String
   public let startedAt: Date
   public let source: CaptureSource
   public let microphone: CaptureMicrophone?
@@ -61,145 +55,88 @@ public struct CaptureArchiveSession: Codable, Equatable, Sendable {
   ) throws -> Self {
     try requireCanonicalIdentifier(archiveID)
     return Self(
-      root: root, archiveID: archiveID, callID: captureID(), microphoneTrackID: captureID(),
-      applicationTrackID: captureID(), audioManifestID: captureID(), startedAt: startedAt,
+      root: try canonicalRepositoryRoot(root), archiveID: archiveID, callID: captureID(),
+      microphoneTrackID: captureID(),
+      applicationTrackID: captureID(), audioManifestID: captureID(), masterID: captureID(),
+      startedAt: startedAt,
       source: source, microphone: microphone)
   }
 
-  /// Replay-safe preparation never overwrites a later canonical/lifecycle state.
+  public var mediaMasterIdentity: MediaMasterIdentity {
+    .init(
+      masterID: UUID(uuidString: masterID)!, callID: UUID(uuidString: callID)!,
+      microphoneTrackID: UUID(uuidString: microphoneTrackID)!,
+      applicationTrackID: UUID(uuidString: applicationTrackID)!)
+  }
+
+  /// The caller retains this session if admission fails before its single commit.
   public func prepare(
-    interruption: @Sendable (CapturePreparationPoint) throws -> Void = { _ in }
+    interruption: @escaping @Sendable (CapturePreparationPoint) throws -> Void = { _ in }
   ) async throws {
-    if FileManager.default.fileExists(atPath: sessionURL.path) {
-      guard try JSONDecoder().decode(Self.self, from: Data(contentsOf: sessionURL)) == self else {
-        throw CaptureError.corruptCheckpoint
-      }
-    } else {
-      try AtomicFileWriter(interruption: { _ in }).write(
-        try JSONEncoder().encode(self), to: sessionURL, domain: .archive)
+    let repository = try LocalRepository(root: root, archiveID: archiveID)
+    _ = try await repository.beginCapture(self) { point in
+      if point == .beforeRepositoryCommit { try interruption(.beforeCommit) }
+      if point == .afterRepositoryCommit { try interruption(.afterCommit) }
     }
-    try interruption(.afterSessionMetadata)
-    let archive = try LocalArchive(root: root, archiveID: archiveID)
-    do { _ = try await archive.loadCall(callID: callID) } catch LocalPersistenceError.callNotFound {
-      _ = try await archive.publishManifest(
-        callBytes(media: nil, reason: nil, version: 1, reference: nil))
-    }
-    try interruption(.afterCallManifest)
-    let lifecycle = try LocalLifecycleStore(root: root, archiveID: archiveID)
-    if try await lifecycle.load(callID: callID) == nil {
-      _ = try await lifecycle.publish(.initial(archiveID: archiveID, callID: callID))
-    }
-    try interruption(.afterLifecycle)
+    try FileManager.default.createDirectory(
+      at: mediaDirectory.deletingLastPathComponent(),
+      withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+  }
+
+  public func requestStop(reason: String?) async throws {
+    let repository = try LocalRepository(root: root, archiveID: archiveID)
+    try await repository.requestCaptureStop(callID: callID, reason: reason)
   }
 
   public func finish(
     media: CapturedMedia, interruptionReason: String?,
-    interruption: @Sendable (CaptureFinalizationPoint) throws -> Void = { _ in }
-  ) async throws
-    -> LocalCallAggregate
-  {
+    interruption: @escaping @Sendable (CaptureFinalizationPoint) throws -> Void = { _ in }
+  ) async throws -> LocalCallAggregate {
     try requireCaptureInterruptionReason(interruptionReason)
-    let archive = try LocalArchive(root: root, archiveID: archiveID)
-    let existing = try await archive.loadCall(callID: callID)
-    let current = existing.manifest.value
-    // A final canonical reference is immutable. Repeated recovery does not replace its object IDs.
-    if current.audioManifest != nil {
-      try await publishLifecycle(reason: current.interruptionReason)
-      return existing
+    let repository = try LocalRepository(root: root, archiveID: archiveID)
+    try await repository.requestCaptureStop(callID: callID, reason: interruptionReason)
+    try interruption(.afterStopIntent)
+    return try await repository.finalizeCapture(self, media: media, reason: interruptionReason) {
+      point in
+      if point == .beforeRepositoryCommit { try interruption(.beforeCommit) }
+      if point == .afterRepositoryCommit { try interruption(.afterCommit) }
     }
-    let finalization: CaptureFinalization
-    if FileManager.default.fileExists(atPath: finalizationURL.path) {
-      finalization = try JSONDecoder().decode(
-        CaptureFinalization.self, from: Data(contentsOf: finalizationURL))
-    } else {
-      finalization = .init(media: media, reason: interruptionReason)
-      try AtomicFileWriter(interruption: { _ in }).write(
-        try JSONEncoder().encode(finalization),
-        to: finalizationURL, domain: .archive)
-    }
-    try interruption(.afterFinalizationIntent)
-    let media = finalization.media
-    let interruptionReason = finalization.reason
-    try requireCaptureInterruptionReason(interruptionReason)
-    let audio = try audioBytes(media)
-    let preReference = try callBytes(
-      media: media, reason: interruptionReason, version: 2, reference: nil)
-    if (existing.manifest.documentVersion ?? 0) < 2 {
-      _ = try await archive.publishManifest(preReference)
-    }
-    _ = try await archive.publishAudioManifest(audio)
-    try interruption(.afterAudioManifest)
-    _ = try await archive.publishManifest(
-      callBytes(
-        media: media, reason: interruptionReason, version: 3,
-        reference: .init(manifestId: audioManifestID, sha256: Contract.hash(audio))))
-    try await publishLifecycle(reason: interruptionReason)
-    return try await archive.loadCall(callID: callID)
   }
 
-  public static func recover(root: URL, callID: String) async throws -> LocalCallAggregate {
-    try requireCanonicalIdentifier(callID)
-    let url = root.appendingPathComponent(callID).appendingPathComponent("capture-session.json")
-    let session = try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
-    guard session.root.standardizedFileURL.path == root.standardizedFileURL.path,
-      session.callID == callID
-    else {
-      throw CaptureError.corruptCheckpoint
+  public static func recover(root: URL, archiveID: String, callID: String) async throws
+    -> LocalCallAggregate
+  {
+    let repository = try LocalRepository(root: root, archiveID: archiveID)
+    guard let session = try await repository.captureSession(callID: callID) else {
+      throw LocalPersistenceError.callNotFound(callID)
     }
     return try await session.recover()
   }
 
-  /// Also handles an in-process failure before session metadata could be persisted.
+  /// SQLite already recovers atomic metadata. This recovery only reconciles the external
+  /// media boundary, without replaying the removed sequence of metadata file publications.
   public func recover() async throws -> LocalCallAggregate {
     try await prepare()
-    let session = self
-    let archive = try LocalArchive(root: root, archiveID: session.archiveID)
-    let existing = try await archive.loadCall(callID: callID)
-    if existing.manifest.value.audioManifest != nil {
-      try await session.publishLifecycle(
-        reason: existing.manifest.value.interruptionReason)
-      return existing
-    }
-    if FileManager.default.fileExists(atPath: session.finalizationURL.path) {
-      let finalization = try JSONDecoder().decode(
-        CaptureFinalization.self, from: Data(contentsOf: session.finalizationURL))
-      return try await session.finish(
-        media: finalization.media, interruptionReason: finalization.reason)
-    }
+    let repository = try LocalRepository(root: root, archiveID: archiveID)
+    let existing = try await repository.loadCall(callID: callID)
+    if existing.manifest.value.audioManifest != nil { return existing }
+    if let sealed = try await repository.resumeLegacyCaptureSeal(callID: callID) { return sealed }
+    let requested = try await repository.captureStopRequest(callID: callID)
     guard
       FileManager.default.fileExists(
-        atPath: session.mediaDirectory.appendingPathComponent("media-checkpoint.json").path)
+        atPath: mediaDirectory.appendingPathComponent("media-checkpoint.json").path)
     else {
-      return try await session.finish(
-        media: CapturedMedia(objects: [], durationMs: 0), interruptionReason: "process_terminated")
+      return try await finish(
+        media: CapturedMedia(objects: [], durationMs: 0),
+        interruptionReason: requested.map { $0.reason } ?? "process_terminated")
     }
-    let recovered = try CaptureMediaWriter.recover(directory: session.mediaDirectory)
-    return try await session.finish(
+    let recovered = try CaptureMediaWriter.recover(directory: mediaDirectory)
+    return try await finish(
       media: recovered.media,
-      interruptionReason: recovered.interruptionReason)
+      interruptionReason: requested.map { $0.reason } ?? recovered.interruptionReason)
   }
 
-  private var sessionURL: URL {
-    root.appendingPathComponent(callID).appendingPathComponent("capture-session.json")
-  }
-
-  private var finalizationURL: URL {
-    root.appendingPathComponent(callID).appendingPathComponent("capture-finalization.json")
-  }
-
-  private func publishLifecycle(reason: String?) async throws {
-    let store = try LocalLifecycleStore(root: root, archiveID: archiveID)
-    if try await store.load(callID: callID) == nil {
-      _ = try await store.publish(.initial(archiveID: archiveID, callID: callID))
-    }
-    _ = try await store.update(callID: callID) { snapshot in
-      snapshot.capture = .init(
-        state: reason == nil ? .stopped : .interrupted,
-        failure: try reason.map { try .init(code: $0, retry: .never) })
-    }
-  }
-
-  private func callBytes(
+  func callBytes(
     media: CapturedMedia?, reason: String?, version: Int,
     reference: AudioManifestReference?
   ) throws -> Data {
@@ -235,7 +172,7 @@ public struct CaptureArchiveSession: Codable, Equatable, Sendable {
         speakerNames: [:]))
   }
 
-  private func audioBytes(_ media: CapturedMedia) throws -> Data {
+  func audioBytes(_ media: CapturedMedia) throws -> Data {
     try Contract.encode(
       AudioManifest(
         schemaVersion: 1, callId: callID, manifestId: audioManifestID,

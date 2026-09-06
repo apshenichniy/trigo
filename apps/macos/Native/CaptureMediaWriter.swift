@@ -59,7 +59,7 @@ public final class CaptureMediaWriter {
   private var handle: FileHandle?
   private var closed = false
   private let interruption: (CaptureWritePoint) throws -> Void
-  private let atomic = AtomicFileWriter(interruption: { _ in })
+  private let atomic = CaptureMediaFileWriter()
 
   public init(directory: URL, interruption: @escaping (CaptureWritePoint) throws -> Void = { _ in })
     throws
@@ -159,7 +159,7 @@ public final class CaptureMediaWriter {
   }
 
   private func save() throws {
-    try atomic.write(try JSONEncoder().encode(checkpoint), to: checkpointURL, domain: .archive)
+    try atomic.write(try JSONEncoder().encode(checkpoint), to: checkpointURL)
   }
 
   private func seal() throws {
@@ -173,7 +173,7 @@ public final class CaptureMediaWriter {
       objectID: checkpoint.activeID, index: checkpoint.objects.count,
       byteLength: wave.count, sha256: captureHash(wave),
       startMs: checkpoint.objects.last?.endMs ?? 0, endMs: durationMs)
-    try atomic.write(wave, to: directory.appendingPathComponent(object.filename), domain: .archive)
+    try atomic.write(wave, to: directory.appendingPathComponent(object.filename))
     try interruption(.afterObjectSync)
     checkpoint.objects.append(object)
     checkpoint.activeID = UUID().uuidString.lowercased()
@@ -241,8 +241,8 @@ public final class CaptureMediaWriter {
           objectID: id, index: objects.count, byteLength: wave.count,
           sha256: captureHash(wave), startMs: start,
           endMs: start + pcm.count / profile.captureBytesPerMs)
-        try AtomicFileWriter(interruption: { _ in }).write(
-          wave, to: directory.appendingPathComponent(object.filename), domain: .archive)
+        try CaptureMediaFileWriter().write(
+          wave, to: directory.appendingPathComponent(object.filename))
         objects.append(object)
       }
     }
