@@ -77,7 +77,7 @@ Two successive `bun run contracts:generate` executions produced identical bytes.
 A subsequent `bun run contracts:check` preserved both contents and mtimes of every
 output; the check path computes artifacts in memory and performs no writes.
 Generation uses portable Bun/Node and the pinned Oxfmt library, with no Swift
-executable dependency. Linux execution remains pending the coordinator's integration CI.
+executable dependency. Linux execution passed in the integrated CI run below.
 
 Generated output SHA-256:
 
@@ -119,6 +119,26 @@ Run on the repository's pinned mise toolchain and Xcode baseline:
 An earlier exploratory native gate passed its tests, builds, and smoke but correctly
 rejected a concurrent deliberate lockfile cleanup at its final lock check. The
 stable-lock rerun above is the acceptance result.
+
+## Integrated CI
+
+[Actions run 34062457638](https://github.com/apshenichniy/trigo/actions/runs/34062457638)
+passed on source `56097d3ca7185951833b0ecbb95395f6fb4ca431` on 2026-09-06 UTC.
+The integrated implementation commit `d9d628e6d7dca53f8ef472574d68687ffebdb3cb`
+has exactly the tested worker tree `4514ac6b98959ee0aaea1500ac5a835c96496eb0`;
+the following source commit changes only the epic acceptance table.
+
+- [Linux server checks](https://github.com/apshenichniy/trigo/actions/runs/34062457638/job/101565279372)
+  passed generation, formatting/lint/types, 262 unit tests, 17 Worker tests,
+  both Worker bundles, and the final tracked-file diff check.
+- [macOS checks](https://github.com/apshenichniy/trigo/actions/runs/34062457638/job/101565279557)
+  passed locked setup after both native cache misses, eight contract tests,
+  96 Release native tests, both Debug app builds, the network-denied local smoke,
+  missing nested-lock restoration, and the final tracked-file diff check.
+  The native suite retained the full one-/three-hour fixtures and reported
+  `0.0 ms` one-hour source-relative drift. The whole job took 338 seconds,
+  including setup and cache publication; no warm-run performance claim is made
+  for this contract change.
 
 No SQLite persistence, media-container change, installed-app/permission exercise,
 cloud deployment, issue closure, or merge is part of this slice. Installed behavior
