@@ -4,7 +4,7 @@ import TrigoNative
 @main struct TrigoApp: App {
   @NSApplicationDelegateAdaptor(RecordingAppDelegate.self) private var appDelegate
   @Environment(\.openWindow) private var openWindow
-  @StateObject private var coordinator: RecordingCoordinator
+  @StateObject private var application: RecordingApplication
   @State private var didRestore = false
   private let variant: AppVariant
   private let namespace: AppNamespace
@@ -15,24 +15,33 @@ import TrigoNative
     let namespace = try! AppNamespace.installed()
     self.variant = variant
     self.namespace = namespace
-    _coordinator = StateObject(
-      wrappedValue: RecordingCoordinator(
-        connection: .live(namespace: namespace, variant: variant), namespace: namespace))
+    _application = StateObject(
+      wrappedValue: RecordingApplication(namespace: namespace, variant: variant))
   }
 
   var body: some Scene {
     Window("Archive connection", id: "connection") {
-      ConnectionView(appName: variant.appName, model: coordinator)
-        .defaultAppStorage(UserDefaults(suiteName: namespace.preferences)!)
-        .task {
-          appDelegate.configure(coordinator: coordinator, appName: variant.appName) {
-            openWindow(id: "connection")
-            NSApp.activate(ignoringOtherApps: true)
+      if let coordinator = application.coordinator {
+        ConnectionView(appName: variant.appName, model: coordinator)
+          .defaultAppStorage(UserDefaults(suiteName: namespace.preferences)!)
+          .task {
+            appDelegate.configure(coordinator: coordinator, appName: variant.appName) {
+              openWindow(id: "connection")
+              NSApp.activate(ignoringOtherApps: true)
+            }
+            guard !didRestore else { return }
+            didRestore = true
+            await coordinator.restore()
           }
-          guard !didRestore else { return }
-          didRestore = true
-          await coordinator.restore()
+      } else if let failure = application.startupFailure {
+        VStack(alignment: .leading, spacing: 16) {
+          Text(failure.title).font(.headline)
+          Text(failure.message).textSelection(.enabled)
+          Button("Quit this copy") { NSApp.terminate(nil) }
         }
+        .padding(24)
+        .frame(width: 460)
+      }
     }
     .commands {
       CommandGroup(after: .windowArrangement) {

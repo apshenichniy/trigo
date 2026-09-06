@@ -8,6 +8,16 @@ and a three-hour explicit capture limit.
 
 ## Integration boundary for #16
 
+The desktop entry point first creates `RecordingApplication`, which holds an
+exclusive OS file lock for the lifetime of its variant/worktree namespace. Only
+the admitted instance constructs a coordinator or starts connection recovery,
+shortcut registration, permission checks or capture. A second installed/build
+copy displays an actionable startup error without touching archive recovery.
+The kernel releases ownership when the process exits, including after a crash.
+The owner-only `application.lock` file stays in place; never delete it while an
+instance is running, because a replacement inode would defeat exclusion. Separate
+dev worktree namespaces remain independent.
+
 `ScreenCaptureRecording` is a main-actor facade. From an explicit user action,
 request permissions through `SystemCaptureSource.requestPermissions()`. Resolve
 the chosen frontmost application window with `SystemCaptureSource.frontmost()`
