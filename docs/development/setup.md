@@ -13,13 +13,18 @@ mise trust
 mise install
 mise exec -- bun install --frozen-lockfile
 mise exec -- bun run doctor
+mise exec -- bun run macos:setup
 mise exec -- bun run check
 ```
 
 Git is a prerequisite. Package setup can access registries; subsequent
 ordinary development/checks require no cloud credentials or real ASR. Native
-Swift dependencies are fetched automatically from tracked resolutions on the
-first build. A clean clone needs network access for that dependency fetch.
+Swift dependencies are fetched from tracked resolutions by `macos:setup`; run it
+after a clean clone or a dependency/toolchain cache miss. It never updates the
+locks. Subsequent native builds/tests need no network access; automatic version
+updates remain disabled. A clean clone or missing dependency needs network access
+for setup before checking. The local Worker smoke retains its OS-enforced external
+network denial. SwiftPM and Xcode retain their own sandbox behavior.
 Use `mise exec --` in a shell without mise activation.
 
 | Tool/package                                       | Exact version           |
@@ -180,6 +185,19 @@ must include a smoke test under external-network denial; unsupported resources
 must fail, never opt into Alchemy's remote fallback.
 
 ## Native variants and signing
+
+The native check runs the complete native test suite in Release so long-call
+fixtures retain their full duration at optimized speed. The separate Swift
+contract suite and both app builds remain Debug. Each test invocation follows a
+successful build of current sources; restored build products never skip that
+step. See [issue #49 evidence](acceptance-49.md) for timings and cache boundaries.
+
+`macos:setup` restores the generated project lock and resolves the locked SwiftPM
+and Xcode graphs. It is distinct from `macos:dependencies`, which intentionally
+updates dependency versions. `bun scripts/macos.ts prepare` only generates the
+project and restores its nested lock; it is also the cache-hit lock-repair probe.
+Native checks print phase durations. Set `TRIGO_TIMINGS_FILE` to an ignored JSONL
+file to retain them; GitHub Actions also includes them in the job summary.
 
 | Variant     | Bundle ID / shared scheme                        | Install path                   |
 | ----------- | ------------------------------------------------ | ------------------------------ |

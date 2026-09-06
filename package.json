@@ -22,6 +22,7 @@
     "macos:run": "bun scripts/macos.ts run",
     "macos:archive": "bun scripts/macos.ts archive",
     "macos:build": "bun scripts/macos.ts build",
+    "macos:setup": "bun scripts/macos.ts setup",
     "macos:dependencies": "bun scripts/macos.ts dependencies",
     "contracts:generate": "bun scripts/generate.ts",
     "contracts:check": "bun scripts/generate.ts --check",

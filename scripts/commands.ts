@@ -1,6 +1,8 @@
 import { toolOutput as output, requireNativeTools } from "./toolchain.ts";
 import { snapshotLocks, assertLocksUnchanged } from "./locks.ts";
 import { run } from "./process.ts";
+import { lockedSwiftArguments, swiftTests } from "./native-check.ts";
+import { timedRun } from "./timing.ts";
 const command = process.argv[2] ?? "doctor";
 function native() {
   if (process.platform !== "darwin")
@@ -40,7 +42,7 @@ const tsformat = (write = false) =>
   run(["node", "node_modules/oxfmt/bin/oxfmt", write ? "--write" : "--check", "."]);
 const swiftformat = (write = false) => {
   native();
-  run([
+  timedRun("Swift format", [
     "swift",
     "format",
     write ? "format" : "lint",
@@ -67,19 +69,11 @@ const workers = () => run(["bun", "run", "test:workers"]);
 const generation = () => run(["bun", "run", "contracts:check"]);
 const swiftTest = () => {
   native();
-  for (const path of ["packages/contracts", "apps/macos"])
-    run(["swift", "test", "--package-path", path, "--force-resolved-versions", "--skip-update"]);
+  swiftTests();
 };
 const swiftBuild = () => {
   native();
-  run([
-    "swift",
-    "build",
-    "--package-path",
-    "apps/macos",
-    "--force-resolved-versions",
-    "--skip-update",
-  ]);
+  timedRun("Native Debug typecheck", ["swift", "build", ...lockedSwiftArguments("apps/macos")]);
 };
 const macosBuild = () => {
   native();
@@ -124,7 +118,7 @@ try {
       units();
       workers();
       swiftTest();
-      run(["bun", "run", "test:local"]);
+      timedRun("Local Worker smoke", ["bun", "run", "test:local"]);
       break;
     case "build":
       native();
@@ -147,7 +141,7 @@ try {
       swiftformat();
       swiftTest();
       macosBuild();
-      run(["bun", "run", "test:local"]);
+      timedRun("Local Worker smoke", ["bun", "run", "test:local"]);
       break;
     case "check":
       native();
@@ -162,7 +156,7 @@ try {
       swiftTest();
       await serverBuild();
       macosBuild();
-      run(["bun", "run", "test:local"]);
+      timedRun("Local Worker smoke", ["bun", "run", "test:local"]);
       break;
     default:
       throw new Error(`Unknown command: ${command}`);

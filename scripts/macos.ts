@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 import { homedir } from "node:os";
 import { run } from "./process.ts";
 import { restoreLock } from "./macos-lock.ts";
+import { lockedSwiftArguments, swiftPackages } from "./native-check.ts";
+import { timedRun } from "./timing.ts";
 requireNativeTools();
 const root = realpathSync(new URL("..", import.meta.url).pathname);
 process.chdir(root);
@@ -14,7 +16,7 @@ const variantIndex = process.argv.indexOf("--variant");
 const variant = variantIndex < 0 ? "dev" : process.argv[variantIndex + 1];
 if (variant !== "dev" && variant !== "personal")
   throw new Error("--variant must be dev or personal");
-if (!["build", "archive", "run", "dependencies"].includes(action))
+if (!["build", "archive", "run", "dependencies", "setup", "prepare"].includes(action))
   throw new Error(`Unknown native action: ${action}`);
 const scheme = variant === "dev" ? "Trigo Dev" : "Trigo";
 const project = "apps/macos/Trigo.xcodeproj";
@@ -24,7 +26,8 @@ const before = action === "dependencies" ? new Map<string, string>() : snapshotL
 const derived = resolve(root, ".local/DerivedData");
 const worktree = createHash("sha256").update(root).digest("hex").slice(0, 12);
 mkdirSync(".local", { recursive: true });
-run(
+timedRun(
+  "Xcode project generation",
   [
     "xcodegen",
     "generate",
@@ -61,59 +64,84 @@ if (action === "dependencies") {
       ? ["CODE_SIGN_IDENTITY=-", "CODE_SIGNING_ALLOWED=YES"]
       : ["CODE_SIGNING_ALLOWED=NO"];
   try {
-    run([
-      "xcodebuild",
-      "-project",
-      project,
-      "-scheme",
-      scheme,
-      "-configuration",
-      action === "archive" ? "Release" : "Debug",
-      "-destination",
-      "platform=macOS",
-      "-derivedDataPath",
-      derived,
-      "-disableAutomaticPackageResolution",
-      "-onlyUsePackageVersionsFromResolvedFile",
-      "-skipPackageUpdates",
-      `TRIGO_WORKTREE_ID=${worktree}`,
-      ...signing,
-      ...(action === "archive"
-        ? ["-archivePath", resolve(root, `.local/archives/${scheme}.xcarchive`), "archive"]
-        : ["build"]),
-    ]);
+    if (action === "prepare") {
+      console.log("Generated project and restored the canonical dependency lock.");
+    } else if (action === "setup") {
+      for (const { path } of swiftPackages)
+        timedRun(`${path} locked dependency setup`, [
+          "swift",
+          "package",
+          ...lockedSwiftArguments(path),
+          "resolve",
+        ]);
+      timedRun("Xcode locked dependency setup", [
+        "xcodebuild",
+        "-resolvePackageDependencies",
+        "-project",
+        project,
+        "-scheme",
+        scheme,
+        "-derivedDataPath",
+        derived,
+        "-disableAutomaticPackageResolution",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "-skipPackageUpdates",
+      ]);
+    } else {
+      timedRun(`${scheme} ${action === "archive" ? "Release archive" : "Debug build"}`, [
+        "xcodebuild",
+        "-project",
+        project,
+        "-scheme",
+        scheme,
+        "-configuration",
+        action === "archive" ? "Release" : "Debug",
+        "-destination",
+        "platform=macOS",
+        "-derivedDataPath",
+        derived,
+        "-disableAutomaticPackageResolution",
+        "-onlyUsePackageVersionsFromResolvedFile",
+        "-skipPackageUpdates",
+        `TRIGO_WORKTREE_ID=${worktree}`,
+        ...signing,
+        ...(action === "archive"
+          ? ["-archivePath", resolve(root, `.local/archives/${scheme}.xcarchive`), "archive"]
+          : ["build"]),
+      ]);
+      const bundle =
+        action === "archive"
+          ? resolve(root, `.local/archives/${scheme}.xcarchive/Products/Applications/${scheme}.app`)
+          : resolve(derived, `Build/Products/Debug/${scheme}.app`);
+      const info = resolve(bundle, "Contents/Info.plist");
+      const bundleId =
+        variant === "dev" ? "io.github.apshenichniy.trigo.dev" : "io.github.apshenichniy.trigo";
+      for (const [key, expected] of [
+        ["CFBundleIdentifier", bundleId],
+        ["TrigoWorktreeID", worktree],
+        [
+          "NSScreenCaptureUsageDescription",
+          "Trigo records audio from your selected application into a local call archive. No screen images are saved.",
+        ],
+        [
+          "NSMicrophoneUsageDescription",
+          "Trigo records your microphone as a separate audio track in your local call archive.",
+        ],
+      ]) {
+        if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
+          throw new Error(`Built app identity mismatch: ${key}`);
+      }
+      if (action === "run") {
+        const applications = resolve(homedir(), "Applications");
+        mkdirSync(applications, { recursive: true });
+        const destination = resolve(applications, `${scheme}.app`);
+        run(["ditto", resolve(derived, `Build/Products/Debug/${scheme}.app`), destination]);
+        run(["open", destination]);
+        console.log(`Installed ${destination}`);
+      }
+    }
     if (readFileSync(nested, "utf8") !== readFileSync(canonical, "utf8"))
       throw new Error("Xcode changed the restored dependency lock");
-    const bundle =
-      action === "archive"
-        ? resolve(root, `.local/archives/${scheme}.xcarchive/Products/Applications/${scheme}.app`)
-        : resolve(derived, `Build/Products/Debug/${scheme}.app`);
-    const info = resolve(bundle, "Contents/Info.plist");
-    const bundleId =
-      variant === "dev" ? "io.github.apshenichniy.trigo.dev" : "io.github.apshenichniy.trigo";
-    for (const [key, expected] of [
-      ["CFBundleIdentifier", bundleId],
-      ["TrigoWorktreeID", worktree],
-      [
-        "NSScreenCaptureUsageDescription",
-        "Trigo records audio from your selected application into a local call archive. No screen images are saved.",
-      ],
-      [
-        "NSMicrophoneUsageDescription",
-        "Trigo records your microphone as a separate audio track in your local call archive.",
-      ],
-    ]) {
-      if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
-        throw new Error(`Built app identity mismatch: ${key}`);
-    }
-    if (action === "run") {
-      const applications = resolve(homedir(), "Applications");
-      mkdirSync(applications, { recursive: true });
-      const destination = resolve(applications, `${scheme}.app`);
-      run(["ditto", resolve(derived, `Build/Products/Debug/${scheme}.app`), destination]);
-      run(["open", destination]);
-      console.log(`Installed ${destination}`);
-    }
   } finally {
     assertLocksUnchanged(before);
   }

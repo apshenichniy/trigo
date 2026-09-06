@@ -25,15 +25,41 @@ jobs:
     runs-on: macos-26
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      TRIGO_TIMINGS_FILE: .local/check-timings.jsonl
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
           version: 2026.9.1
       - run: bun install --frozen-lockfile
+      - name: Validate native toolchain and compute cache identity
+        id: native-cache
+        run: |
+          identity=$(bun scripts/native-cache.ts)
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+      - name: Restore SwiftPM dependencies and build intermediates
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            .local/SwiftPMCache
+            packages/contracts/.build
+            apps/macos/.build
+          key: native-v1-swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-contracts-debug-native-release-${{ github.sha }}
+          restore-keys: |
+            native-v1-swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-contracts-debug-native-release-
+      - name: Restore Xcode DerivedData
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .local/DerivedData
+          key: native-v1-xcode-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-debug-${{ github.sha }}
+          restore-keys: |
+            native-v1-xcode-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-debug-
+      - name: Set up locked native dependencies (cache misses may fetch)
+        run: bun run macos:setup
       - run: bun run check:macos
       - name: Verify generator cache hit restores missing nested lock
         run: |
           rm apps/macos/Trigo.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
-          bun run macos:build --variant dev
+          bun scripts/macos.ts prepare
+          cmp apps/macos/Locks/Package.resolved apps/macos/Trigo.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
       - run: git diff --exit-code
