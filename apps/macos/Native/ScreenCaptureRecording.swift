@@ -45,7 +45,10 @@ public enum ScreenCapturePhase: Equatable, Sendable {
 @MainActor public final class ScreenCaptureRecording {
   public private(set) var session: CaptureArchiveSession?
   public private(set) var snapshot: CaptureRecordingSnapshot?
-  public private(set) var phase: ScreenCapturePhase = .idle
+  public private(set) var phase: ScreenCapturePhase = .idle {
+    didSet { onPhaseChange?(phase) }
+  }
+  public var onPhaseChange: (@MainActor @Sendable (ScreenCapturePhase) -> Void)?
   public var onChange: (@MainActor @Sendable (CaptureRecordingSnapshot) -> Void)?
   public var onFailure: (@MainActor @Sendable (String) -> Void)?
   private var applicationStream: (any CaptureTransport)?
