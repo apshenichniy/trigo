@@ -25,6 +25,10 @@ HTTP boundary, documents the explicit ledger and no-retry procedure, decodes the
 normalization input through branded and constrained schemas, uses
 `Schema.DateTimeUtcFromString`, models an absent cause with `Schema.optionalKey`,
 and gives Swift closed vocabulary enum types plus exact selected-profile checks.
+The final standards re-review also found that the CLI duplicated the Worker's
+response-envelope shapes. The shared contracts package now owns the language,
+error, upload and transcription schemas; the Worker constructs those schemas and
+the CLI decodes the same definitions.
 
 ## Spec
 
@@ -59,7 +63,7 @@ integer input.
 ## Verification
 
 - `mise exec -- bun run check`
-- TypeScript unit tests — 130 passed
+- TypeScript unit tests — 134 passed
 - Worker tests — 17 passed
 - Swift contract tests — 5 passed
 - Native Swift tests — 21 passed, with the opt-in live pairing test skipped

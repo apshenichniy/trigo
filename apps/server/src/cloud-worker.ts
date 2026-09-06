@@ -1,5 +1,5 @@
 import { WorkflowEntrypoint } from "cloudflare:workers";
-import type { ErrorEnvelope, StatusResponse } from "@trigo/contracts";
+import { AsrProbeErrorEnvelope, type StatusResponse } from "@trigo/contracts";
 import { Effect } from "effect";
 import { type AsrProbeEnvironment, AsrProbeError, asrProbeResponse } from "./asr-probe.ts";
 import {
@@ -26,11 +26,11 @@ function errorResponse(
   retry: "never" | "after_correction" | "retryable",
   message: string,
 ): Response {
-  const body = {
+  const body = AsrProbeErrorEnvelope.make({
     schemaVersion: 1,
     // oxlint-disable-next-line effecttsgo/crypto-random-uuid -- Web Crypto owns Worker request IDs at this platform boundary.
     error: { code, retry, message, requestId: crypto.randomUUID() },
-  } satisfies ErrorEnvelope;
+  });
   return Response.json(body, { status });
 }
 

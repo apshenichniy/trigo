@@ -7,54 +7,23 @@ import { fileURLToPath } from "node:url";
 import { Console, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
 import {
+  AsrProbeErrorEnvelope,
+  AsrProbeTranscriptionResponse,
+  AsrProbeUploadResponse,
   inspectWaveObject,
   makeWaveHeader,
   selectedMediaProfile,
+  type AsrProbeLanguageCode,
 } from "../packages/contracts/src/index.ts";
 import { cloudTargetFor, parseCloudStage, readCloudConfiguration } from "./cloud.ts";
 
-type ProbeLanguage = "en" | "ru" | "uk";
+type ProbeLanguage = AsrProbeLanguageCode;
 
 class AsrProbeCliError extends Schema.TaggedError<AsrProbeCliError>()("AsrProbeCliError", {
   message: Schema.String,
   cause: Schema.optionalKey(Schema.Defect()),
 }) {}
 const isAsrProbeCliError = Schema.is(AsrProbeCliError);
-
-const CanonicalUuidV4 = Schema.String.check(
-  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
-);
-const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
-const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0));
-const ProbeErrorEnvelope = Schema.Struct({
-  schemaVersion: Schema.Literal(1),
-  error: Schema.Struct({
-    code: Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9_]*$/)),
-    retry: Schema.Literals(["never", "after_correction", "retryable"]),
-    message: Schema.String,
-    requestId: CanonicalUuidV4,
-  }),
-});
-const UploadEvidence = Schema.Struct({
-  fixture: Schema.NonEmptyString,
-  language: Schema.Literals(["en", "ru", "uk"]),
-  profileId: Schema.Literal("trigo-call-wav-s16le-16khz-stereo-60s-v1"),
-  byteLength: PositiveInt,
-  durationMs: PositiveInt,
-  inputKey: Schema.NonEmptyString,
-});
-const TranscriptionEvidence = Schema.Struct({
-  fixture: Schema.NonEmptyString,
-  language: Schema.Literals(["en", "ru", "uk"]),
-  profileId: Schema.Literal("trigo-call-wav-s16le-16khz-stereo-60s-v1"),
-  byteLength: PositiveInt,
-  durationMs: PositiveInt,
-  providerLatencyMs: NonNegativeInt,
-  channelCount: PositiveInt,
-  speakerCount: NonNegativeInt,
-  turnCount: NonNegativeInt,
-  retainedKeys: Schema.Array(Schema.NonEmptyString),
-});
 
 function probeCliError(message: string, cause?: unknown): AsrProbeCliError {
   return new AsrProbeCliError(cause === undefined ? { message } : { message, cause });
@@ -212,7 +181,7 @@ const request = Effect.fn("AsrProbeCli.request")(function* <Success>(
     );
     return { ok: true, status: response.status, body: decoded } as const;
   }
-  const failure = yield* Schema.decodeUnknownEffect(ProbeErrorEnvelope)(responseBody).pipe(
+  const failure = yield* Schema.decodeUnknownEffect(AsrProbeErrorEnvelope)(responseBody).pipe(
     Effect.mapError((cause) =>
       probeCliError(
         `Nova-3 probe returned an invalid error envelope: HTTP ${response.status} ${method} ${url}`,
@@ -248,12 +217,12 @@ const probe = Effect.fn("AsrProbeCli.probe")(function* (
           });
           const fixture = `two-source-${language}`;
           const url = `${apiUrl}/__trigo/asr-probe/${fixture}?language=${language}`;
-          const upload = yield* request(url, token, "PUT", 201, UploadEvidence, bytes);
+          const upload = yield* request(url, token, "PUT", 201, AsrProbeUploadResponse, bytes);
           if (!upload.ok)
             return yield* probeCliError(
               `${language} fixture upload failed: HTTP ${upload.status} ${upload.error.code}`,
             );
-          const result = yield* request(url, token, "POST", 200, TranscriptionEvidence);
+          const result = yield* request(url, token, "POST", 200, AsrProbeTranscriptionResponse);
           if (!result.ok) {
             yield* Console.log(
               `${language}: HTTP ${result.status} ${result.error.code}; ${result.error.message}`,

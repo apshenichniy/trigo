@@ -1,14 +1,17 @@
 import {
+  AsrProbeLanguage,
+  AsrProbeTranscriptionResponse,
+  AsrProbeUploadResponse,
   inspectWaveObject,
   selectedMediaProfile,
   storedByteHash,
+  type AsrProbeLanguageCode,
   type AudioManifest,
 } from "@trigo/contracts";
 import { Clock, DateTime, Effect, Schema } from "effect";
 import { normalizeNova3 } from "./nova-3.ts";
 
-const ProbeLanguage = Schema.Literals(["en", "ru", "uk"]);
-type ProbeLanguage = typeof ProbeLanguage.Type;
+type ProbeLanguage = AsrProbeLanguageCode;
 
 export interface Nova3Runner {
   readonly run: (
@@ -67,7 +70,7 @@ function providerInvocationError(cause: unknown): ProviderInvocationError {
 
 function parseLanguage(url: URL): ProbeLanguage {
   try {
-    return Schema.decodeUnknownSync(ProbeLanguage)(url.searchParams.get("language"));
+    return Schema.decodeUnknownSync(AsrProbeLanguage)(url.searchParams.get("language"));
   } catch {
     throw probeError(
       400,
@@ -160,14 +163,14 @@ const upload = Effect.fn("AsrProbe.upload")(function* (
       probeError(503, "asr_probe_storage_failed", "retryable", "Private fixture storage failed."),
   });
   return Response.json(
-    {
+    AsrProbeUploadResponse.make({
       fixture,
       language,
       profileId: selectedMediaProfile.id,
       byteLength: inspection.byteLength,
       durationMs: inspection.durationMs,
       inputKey: keys.input,
-    },
+    }),
     { status: 201 },
   );
 });
@@ -387,18 +390,20 @@ const transcribe = Effect.fn("AsrProbe.transcribe")(function* (
       ),
   });
 
-  return Response.json({
-    fixture,
-    language,
-    profileId: selectedMediaProfile.id,
-    byteLength: bytes.byteLength,
-    durationMs: inspection.durationMs,
-    providerLatencyMs,
-    channelCount: selectedMediaProfile.channels.length,
-    speakerCount: normalized.speakers.length,
-    turnCount: normalized.turns.length,
-    retainedKeys: [keys.input, keys.manifest, keys.raw, keys.normalized],
-  });
+  return Response.json(
+    AsrProbeTranscriptionResponse.make({
+      fixture,
+      language,
+      profileId: selectedMediaProfile.id,
+      byteLength: bytes.byteLength,
+      durationMs: inspection.durationMs,
+      providerLatencyMs,
+      channelCount: selectedMediaProfile.channels.length,
+      speakerCount: normalized.speakers.length,
+      turnCount: normalized.turns.length,
+      retainedKeys: [keys.input, keys.manifest, keys.raw, keys.normalized],
+    }),
+  );
 });
 
 const cleanup = Effect.fn("AsrProbe.cleanup")(function* (
