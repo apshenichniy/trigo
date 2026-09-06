@@ -60,8 +60,13 @@ remain owned and block replacements until a confirmed retirement. Application
 stream, shared timeline or media-write failures interrupt the recording.
 
 The native PCM converter handles hardware sample rates and pulls only the frame
-count requested by AVAudioConverter. Source PTS places samples on the shared
-timeline rather than accumulating callback durations. The timeline permits a
+count requested by AVAudioConverter. Adjacent hardware packets retain the
+converter's fractional output-frame phase: independently rounding every packet's
+PTS would introduce periodic single-sample holes at rates such as 48 kHz with
+512-frame callbacks. Continuity requires adjacent input PTS and placement within
+one output frame of the common host clock. Real gaps, format/origin changes, or
+drift outside that bound reset the converter and re-anchor to source PTS; this
+also prevents filter history from leaking across a discontinuity. The timeline permits a
 bounded two-second reorder window; a 500 ms timer flushes behind a 250 ms delivery
 allowance. Missing samples are silence with unavailable intervals. Physical device
 absence takes precedence over muted intervals while mute policy remains unchanged.

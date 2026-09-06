@@ -12,6 +12,9 @@ public struct CaptureAudioFrames: Sendable {
 /// profile rate. Each source owns one converter; both use the same host-clock origin.
 public final class CaptureAudioDecoder {
   private var converter: AVAudioConverter?
+  private var nextInputTime: CMTime?
+  private var nextOutputFrame: Int?
+  private var clockOrigin: CMTime?
   private let profile: MediaProfile
   public init() throws { profile = try .selected() }
 
@@ -37,7 +40,27 @@ public final class CaptureAudioDecoder {
         sample, at: 0, frameCount: Int32(sample.numSamples),
         into: input.mutableAudioBufferList) == noErr
     else { throw CaptureError.invalidAudio }
-    if converter?.inputFormat != format {
+    let relative = CMTimeSubtract(sample.presentationTimeStamp, origin)
+    let seconds = CMTimeGetSeconds(relative)
+    guard seconds.isFinite, seconds >= -2, seconds <= Double(profile.maxCallDurationMs) / 1000 + 2
+    else { throw CaptureError.invalidAudio }
+    let hostFrame = Int((seconds * Double(profile.sampleRateHz)).rounded())
+    let contiguousFrame: Int?
+    if converter?.inputFormat == format, clockOrigin == origin,
+      let nextInputTime, let nextOutputFrame,
+      abs(CMTimeGetSeconds(CMTimeSubtract(sample.presentationTimeStamp, nextInputTime)))
+        <= 1 / format.sampleRate,
+      abs(nextOutputFrame - hostFrame) <= 1
+    {
+      contiguousFrame = nextOutputFrame
+    } else {
+      contiguousFrame = nil
+    }
+    // Streaming resampling carries a fractional frame between native packets.
+    // Keep adjacent output contiguous only while both input PTS and the common
+    // host clock agree. Real gaps, format changes and drift re-anchor the converter.
+    let startFrame = contiguousFrame ?? hostFrame
+    if contiguousFrame == nil {
       converter = AVAudioConverter(from: format, to: outputFormat)
       converter?.primeMethod = .none
     }
@@ -55,12 +78,6 @@ public final class CaptureAudioDecoder {
     guard error == nil, status != .error, let floats = output.floatChannelData?[0] else {
       throw CaptureError.invalidAudio
     }
-    let relative = CMTimeSubtract(sample.presentationTimeStamp, origin)
-    let seconds = CMTimeGetSeconds(relative)
-    guard seconds.isFinite, seconds >= -2, seconds <= Double(profile.maxCallDurationMs) / 1000 + 2
-    else {
-      throw CaptureError.invalidAudio
-    }
     var samples = [Int16]()
     samples.reserveCapacity(Int(output.frameLength))
     for index in 0..<Int(output.frameLength) {
@@ -68,8 +85,13 @@ public final class CaptureAudioDecoder {
       guard value.isFinite else { throw CaptureError.invalidAudio }
       samples.append(Int16(max(-32_768, min(32_767, (value * 32_768).rounded()))))
     }
-    return .init(
-      startFrame: Int((seconds * Double(profile.sampleRateHz)).rounded()), samples: samples)
+    nextInputTime = CMTimeAdd(
+      sample.presentationTimeStamp,
+      CMTime(
+        seconds: Double(sample.numSamples) / format.sampleRate, preferredTimescale: 1_000_000_000))
+    nextOutputFrame = startFrame + samples.count
+    clockOrigin = origin
+    return .init(startFrame: startFrame, samples: samples)
   }
 }
 
