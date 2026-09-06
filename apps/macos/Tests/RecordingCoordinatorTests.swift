@@ -39,7 +39,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
     if shouldHold {
       await withCheckedContinuation { continuation in
         held = continuation
-        waiting.forEach { $0.resume() }
+        for continuation in waiting { continuation.resume() }
         waiting = []
       }
     }
@@ -86,7 +86,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
   }
   private func signalStart() {
     entered = true
-    observers.forEach { $0.resume() }
+    for continuation in observers { continuation.resume() }
     observers = []
   }
 }
