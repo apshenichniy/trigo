@@ -31,6 +31,7 @@ import ScreenCaptureKit
   let namespace: AppNamespace
   let os = RecordingOSFixture()
   let status = RecordingStatusFixture()
+  let metadata = RecordingMetadataFixture()
   let connection: ServerConnection
   let capture: ScreenCaptureRecording
   let coordinator: RecordingCoordinator
@@ -40,7 +41,7 @@ import ScreenCaptureKit
       "trigo-coordinator-\(UUID())")
     namespace = try AppNamespace(variant: .dev, worktree: "fixture", support: support)
     connection = ServerConnection(
-      expectedStage: .dev, metadataStore: RecordingMetadataFixture(),
+      expectedStage: .dev, metadataStore: metadata,
       credentialStore: RecordingCredentialsFixture(), statusClient: status)
     let os = self.os
     capture = ScreenCaptureRecording(

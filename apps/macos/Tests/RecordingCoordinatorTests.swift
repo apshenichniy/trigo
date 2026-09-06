@@ -6,8 +6,13 @@ import Testing
 
 actor RecordingMetadataFixture: ConnectionMetadataStoring {
   var value: ConnectionMetadata?
+  private var loadFails = false
   init(_ value: ConnectionMetadata? = nil) { self.value = value }
-  func load() -> ConnectionMetadata? { value }
+  func setLoadFailure(_ fails: Bool) { loadFails = fails }
+  func load() throws -> ConnectionMetadata? {
+    if loadFails { throw ConnectionIssue.persistence }
+    return value
+  }
   func save(_ metadata: ConnectionMetadata) { value = metadata }
 }
 

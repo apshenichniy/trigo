@@ -83,7 +83,7 @@ struct RecordingPanel: View {
           .accessibilityIdentifier("microphone-toggle")
         }
         Text(
-          "Captures the whole selected application, not one browser tab. Microphone recording is independent of the call app's mute. Audio levels are not measured."
+          "Captures the whole selected application, not one browser tab. Microphone recording is independent of the call app's mute. Audio levels and activity are not measured."
         )
         .font(.caption).foregroundStyle(.secondary)
 
@@ -97,6 +97,13 @@ struct RecordingPanel: View {
           .accessibilityIdentifier("recording-error")
         }
         recoveryStatus
+        if let issue = coordinator.connectionRecoveryIssue {
+          Text(
+            "\(issue.title). \(issue.recoverySuggestion) Open Archive connection to retry the saved connection."
+          )
+          .font(.caption).foregroundStyle(.orange)
+          .accessibilityIdentifier("recording-connection-error")
+        }
         if let issue = shortcut.issue {
           Text(issue).font(.caption).foregroundStyle(.orange)
             .accessibilityIdentifier("shortcut-error")
@@ -124,9 +131,13 @@ struct RecordingPanel: View {
     } else {
       if !coordinator.recoveryReport.recoveredCallIDs.isEmpty {
         Text(
-          "Recovered \(coordinator.recoveryReport.recoveredCallIDs.count) interrupted local recording(s). Retained media is preserved; recording was not resumed."
+          "Recovered \(coordinator.recoveryReport.recoveredCallIDs.count) local recording(s). Retained media is preserved; recording was not resumed."
         )
         .font(.caption).accessibilityIdentifier("recording-recovery-summary")
+      }
+      ForEach(coordinator.recoveryReport.recoveredCalls) { recovered in
+        Text("\(recovered.callID): \(recovered.explanation)").font(.caption)
+          .accessibilityIdentifier("recording-recovery-cause")
       }
       ForEach(coordinator.recoveryReport.failures) { failure in
         Text("\(failure.callID): \(failure.message)").font(.caption).foregroundStyle(.orange)
@@ -138,7 +149,7 @@ struct RecordingPanel: View {
           .accessibilityIdentifier("recording-recovery-warning")
       }
     }
-    if coordinator.phase == .recoveryRequired || coordinator.phase == .interrupted {
+    if coordinator.canRetryLocalRecovery {
       Button("Retry local recovery") { Task { await coordinator.retryRecovery() } }
         .disabled(coordinator.isRecovering)
         .accessibilityIdentifier("recording-recovery")

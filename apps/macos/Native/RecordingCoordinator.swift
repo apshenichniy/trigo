@@ -44,6 +44,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   @Published public private(set) var recoveryReport = RecordingRecoveryReport()
   @Published public private(set) var isRecovering = false
   private var recoveredArchiveID: String?
+  private var noticeTracksMicrophoneAvailability = false
   @Published private var capturePhase: ScreenCapturePhase = .idle
   @Published private var attempt: RecordingControlAttempt?
   @Published private var isStopping = false
@@ -75,9 +76,17 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       guard let self else { return }
       recordingSnapshot = snapshot
       if !isMicrophoneChanging { microphoneRecordingEnabled = snapshot.microphoneEnabled }
+      if noticeTracksMicrophoneAvailability,
+        snapshot.microphone != nil || snapshot.state != .recording
+      {
+        notice = nil
+        noticeTracksMicrophoneAvailability = false
+      }
     }
     capture.onFailure = { [weak self] reason in
-      self?.notice = .init(
+      guard let self else { return }
+      noticeTracksMicrophoneAvailability = reason == "microphone_unavailable"
+      notice = .init(
         title: "Capture needs attention",
         message: Self.captureRecoverySuggestion(reason)
       )
@@ -97,7 +106,11 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     if attempt != nil { return .starting }
     if !recoveryReport.failures.isEmpty { return .recoveryRequired }
     if recordingSnapshot?.state == .interrupted { return .interrupted }
-    if recordingSnapshot == nil, !recoveryReport.recoveredCallIDs.isEmpty { return .interrupted }
+    if recordingSnapshot == nil,
+      recoveryReport.recoveredCalls.contains(where: { $0.interruptionReason != nil })
+    {
+      return .interrupted
+    }
     switch connectionSnapshot.recordingEligibility {
     case .requiresSetup: return .setupRequired
     case .unavailableUntilRecovery: return .recoveryRequired
@@ -106,6 +119,20 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   }
 
   public var canStop: Bool { phase == .starting || phase == .recording }
+  public var connectionRecoveryIssue: ConnectionIssue? {
+    guard case .unavailableUntilRecovery = connectionSnapshot.recordingEligibility,
+      case .recoveryRequired(let issue) = connectionSnapshot.health
+    else { return nil }
+    return issue
+  }
+
+  public var canRetryLocalRecovery: Bool {
+    guard case .eligible = connectionSnapshot.recordingEligibility,
+      !isRecovering, attempt == nil, !isStopping, !isTerminating
+    else { return false }
+    if case .needsRecovery = capturePhase { return true }
+    return capturePhase == .idle && !recoveryReport.failures.isEmpty
+  }
   public var canStart: Bool {
     guard case .eligible = connectionSnapshot.recordingEligibility else { return false }
     return attempt == nil && !isStopping && !isTerminating && !isMicrophoneChanging
@@ -239,6 +266,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     let current = RecordingControlAttempt()
     attempt = current
     notice = nil
+    noticeTracksMicrophoneAvailability = false
     recordingSnapshot = nil
     let task = Task { [self] in
       defer {
@@ -297,6 +325,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         }
         try await capture.start(root: namespace.archive, archiveID: archiveID, source: selected)
         recordingSnapshot = capture.snapshot
+        recoveryReport.recoveredCalls = []
+        recoveryReport.warnings = []
       } catch {
         guard !current.cancelled else { return }
         report(error)
@@ -307,19 +337,15 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   }
 
   private func mayStart() -> Bool {
-    guard !isRecovering, recoveryReport.failures.isEmpty else { return false }
-    guard attempt == nil, !isStopping, !isTerminating, !isMicrophoneChanging,
-      capturePhase == .idle
-    else { return false }
-    guard case .eligible = connectionSnapshot.recordingEligibility else {
+    if case .requiresSetup = connectionSnapshot.recordingEligibility {
       notice = .init(
         title: "Setup required", message: "Connect to your archive before the first recording.")
-      return false
     }
-    return true
+    return canStart
   }
 
   private func report(_ error: any Error) {
+    noticeTracksMicrophoneAvailability = false
     if let failure = error as? CaptureStartFailure {
       notice = .init(title: "Recording could not start", message: failure.recoverySuggestion)
     } else {

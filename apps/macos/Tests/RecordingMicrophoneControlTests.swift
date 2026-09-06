@@ -56,5 +56,15 @@ func unavailableMicrophoneIsNotReportedAsMutedAndDoesNotStopApplicationAudio(str
   #expect(fixture.coordinator.microphoneState == .unavailable)
   #expect(fixture.coordinator.phase == .recording)
   #expect(fixture.os.application.running)
+  if streamFails {
+    fixture.os.microphone.failsStart = false
+    for _ in 0..<300 {
+      if fixture.coordinator.recordingSnapshot?.microphone != nil { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    #expect(fixture.coordinator.microphoneState == .muted)
+    #expect(!fixture.coordinator.microphoneRecordingEnabled)
+    #expect(fixture.coordinator.notice == nil)
+  }
   await fixture.coordinator.stop()
 }

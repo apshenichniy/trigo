@@ -81,7 +81,7 @@ struct ConnectionView: View {
             .font(.headline)
           Text(issue.title + ". " + issue.recoverySuggestion).foregroundStyle(.secondary)
         }
-        if snapshot.binding != nil {
+        if snapshot.binding != nil || snapshot.recordingEligibility == .unavailableUntilRecovery {
           Button("Retry saved connection") {
             Task { await model.restore() }
           }
