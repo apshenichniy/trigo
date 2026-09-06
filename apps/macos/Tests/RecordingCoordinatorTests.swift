@@ -151,7 +151,7 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
     system: .init(
       permissions: { .init(screenAudio: true, microphone: true) },
       filter: { _ in SCContentFilter() }, microphone: { nil },
-      stream: { _, _, _ in RecordingTransportFixture() }))
+      stream: { _, _, _ in RecordingTransportFixture() }, sourceIsAvailable: { $0 == original }))
   let coordinator = RecordingCoordinator(
     connection: connection, namespace: namespace, capture: capture,
     sources: .init(
@@ -167,6 +167,7 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
   #expect(coordinator.connectionSnapshot.health == .blocked(healthFailure))
   #expect(!coordinator.connectionSnapshot.serverOperationsAvailable)
   await coordinator.shortcutPressed()
+  #expect(coordinator.recordingSnapshot?.interruptionReason == nil)
   #expect(coordinator.phase == .recording)
   #expect(coordinator.pinnedSource == original)
   let callID = try #require(coordinator.callID)
