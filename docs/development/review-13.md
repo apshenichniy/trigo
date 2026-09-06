@@ -48,6 +48,12 @@ TypeScript and Swift aggregate validation. The normalizer now receives a
 validated two-role track set and rejects a swapped channel map; focused
 regressions cover both boundaries.
 
+A full-range re-review then found that an individually decodable object could
+declare more than the selected 60-second duration and exceed the selected object
+and upload byte bounds while remaining semantically valid. TypeScript and Swift
+now enforce all three limits, and `oversized-object.json` proves that a 60,001 ms
+object is rejected.
+
 ## Verification
 
 - `mise exec -- bun run check`

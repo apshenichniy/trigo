@@ -234,6 +234,13 @@
     "expected": "semantics"
   },
   {
+    "name": "oversized-object",
+    "kind": "AudioManifest",
+    "document": "oversized-object.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
     "name": "orphan-name",
     "kind": "CallDocument",
     "document": "orphan-name.json",

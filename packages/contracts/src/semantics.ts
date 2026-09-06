@@ -78,7 +78,10 @@ export function validateAudio(audio: import("./generated/documents.d.ts").AudioM
     const durationMs = object.endMs - object.startMs;
     requireValid(
       object.contentType === selectedMediaProfile.contentType &&
+        durationMs <= selectedMediaProfile.objectDurationMs &&
         object.byteLength === waveByteLength(frameCountForDuration(durationMs)) &&
+        object.byteLength <= selectedMediaProfile.maxObjectBytes &&
+        object.byteLength <= selectedMediaProfile.limits.uploadRequestBytes &&
         object.channelMap.length === selectedMediaProfile.channels.length &&
         selectedMediaProfile.channels.every((expected) =>
           object.channelMap.some((channel) => channel.channelIndex === expected.index),
