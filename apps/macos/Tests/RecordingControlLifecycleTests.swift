@@ -13,6 +13,7 @@ import Testing
   let attempt = Task { await fixture.coordinator.shortcutPressed() }
   await fixture.os.application.waitForStart()
   #expect(fixture.coordinator.phase == .starting)
+  #expect(fixture.coordinator.microphoneState == .starting)
   await fixture.coordinator.shortcutPressed()
   #expect(fixture.coordinator.phase == .stopping)
   await fixture.coordinator.startPinnedSource()

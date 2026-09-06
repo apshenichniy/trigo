@@ -11,7 +11,7 @@ public struct RecordingNotice: Equatable, Sendable {
 }
 
 public enum MicrophoneRecordingState: Equatable, Sendable {
-  case inactive, recording, muted, unavailable
+  case inactive, starting, recording, muted, unavailable
 }
 
 @MainActor struct RecordingSourceAccess {
@@ -176,7 +176,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
 
   public var microphoneState: MicrophoneRecordingState {
     guard phase == .recording || phase == .starting else { return .inactive }
-    guard recordingSnapshot?.microphone != nil else { return .unavailable }
+    guard let recordingSnapshot else { return .starting }
+    guard recordingSnapshot.microphone != nil else { return .unavailable }
     return microphoneRecordingEnabled ? .recording : .muted
   }
 

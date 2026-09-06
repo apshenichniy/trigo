@@ -183,6 +183,7 @@ struct RecordingPanel: View {
   private var microphoneState: String {
     switch coordinator.microphoneState {
     case .inactive: "Microphone: not recording"
+    case .starting: "Microphone: starting"
     case .recording: "Microphone: recording"
     case .muted: "Microphone: muted in Trigo"
     case .unavailable: "Microphone: unavailable"
