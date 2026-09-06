@@ -26,6 +26,8 @@ targetTemplates:
       path: Generated/Info.plist
       properties:
         TrigoWorktreeID: $(TRIGO_WORKTREE_ID)
+        NSScreenCaptureUsageDescription: Trigo records audio from your selected application into a local call archive. No screen images are saved.
+        NSMicrophoneUsageDescription: Trigo records your microphone as a separate audio track in your local call archive.
     dependencies:
       - package: TrigoNative
 targets:

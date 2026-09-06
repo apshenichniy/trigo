@@ -94,6 +94,14 @@ if (action === "dependencies") {
     for (const [key, expected] of [
       ["CFBundleIdentifier", bundleId],
       ["TrigoWorktreeID", worktree],
+      [
+        "NSScreenCaptureUsageDescription",
+        "Trigo records audio from your selected application into a local call archive. No screen images are saved.",
+      ],
+      [
+        "NSMicrophoneUsageDescription",
+        "Trigo records your microphone as a separate audio track in your local call archive.",
+      ],
     ]) {
       if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
         throw new Error(`Built app identity mismatch: ${key}`);
