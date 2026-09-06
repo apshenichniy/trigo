@@ -36,7 +36,9 @@ import TrigoContracts
   #expect(
     media.microphoneIntervals == [
       .init(startMs: 0, endMs: 100, state: .unavailable),
-      .init(startMs: 100, endMs: 500, state: .muted),
+      .init(startMs: 100, endMs: 200, state: .muted),
+      .init(startMs: 200, endMs: 300, state: .unavailable),
+      .init(startMs: 300, endMs: 500, state: .muted),
     ])
   #expect(throws: CaptureError.closed) {
     try engine.receive(
@@ -69,4 +71,16 @@ import TrigoContracts
   let bytes = try Data(
     contentsOf: root.appendingPathComponent(#require(media.objects.first).filename))
   #expect(bytes.dropFirst(44).allSatisfy { $0 == 0 })
+}
+
+@Test func invalidInterruptionIdentityCannotFinalizeEitherStore() throws {
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+    "trigo-invalid-reason-\(UUID())")
+  defer { try? FileManager.default.removeItem(at: root) }
+  let engine = try CaptureRecordingEngine(directory: root, origin: .zero, microphone: nil)
+  #expect(throws: LocalPersistenceError.invalidFailureCode("Bad reason")) {
+    try engine.stop(at: .zero, reason: "Bad reason")
+  }
+  #expect(engine.snapshot.state == .recording)
+  #expect(try CaptureMediaWriter.recover(directory: root).wasInterrupted)
 }

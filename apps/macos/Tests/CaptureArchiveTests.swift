@@ -52,3 +52,49 @@ import TrigoContracts
   #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
   #expect(recovered.manifest.value.object?["interruptionReason"]?.string == "system_sleep")
 }
+
+@Test func recoveryAfterImmutableAudioPublicationReusesTheSameFinalization() async throws {
+  struct Crash: Error {}
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+    "trigo-finalize-\(UUID())")
+  defer { try? FileManager.default.removeItem(at: root) }
+  let source = CaptureSource(
+    applicationName: "Fixture", bundleID: "test.fixture", processID: 123,
+    windowID: 456, windowTitle: nil, processLaunchDate: Date())
+  let session = try await CaptureArchiveSession.begin(
+    root: root, archiveID: UUID().uuidString.lowercased(),
+    source: source, microphone: nil)
+  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
+  try writer.append(interleaved: Array(repeating: 123, count: 3_200))
+  let firstRecovery = try CaptureMediaWriter.recover(directory: session.mediaDirectory)
+  await #expect(throws: Crash.self) {
+    try await session.finish(media: firstRecovery.media, interruptionReason: "process_terminated") {
+      point in
+      if point == .afterAudioManifest { throw Crash() }
+    }
+  }
+  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
+  let audio = try jsonObject(#require(recovered.audioManifest))
+  let objects = try #require(audio["objects"] as? [[String: Any]])
+  #expect(objects.first?["objectId"] as? String == firstRecovery.media.objects.first?.objectID)
+}
+
+@Test func durableSessionWithoutAnOpenedWriterRecoversAsZeroDurationInterrupted() async throws {
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+    "trigo-partial-start-\(UUID())")
+  defer { try? FileManager.default.removeItem(at: root) }
+  let source = CaptureSource(
+    applicationName: "Fixture", bundleID: "test.fixture", processID: 123,
+    windowID: 456, windowTitle: nil, processLaunchDate: Date())
+  let session = try await CaptureArchiveSession.begin(
+    root: root, archiveID: UUID().uuidString.lowercased(),
+    source: source, microphone: nil)
+  // A filesystem failure between durable session creation and stream/writer setup.
+  try Data().write(to: session.mediaDirectory)
+  #expect(throws: (any Error).self) {
+    try CaptureRecordingEngine(directory: session.mediaDirectory, origin: .zero, microphone: nil)
+  }
+  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
+  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
+  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+}

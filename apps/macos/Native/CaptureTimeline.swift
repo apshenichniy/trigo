@@ -11,16 +11,18 @@ public struct CaptureInterval: Codable, Equatable, Sendable {
   public let state: CaptureIntervalState
 }
 
-/// A bounded reorder window on a single 16 kHz, call-relative clock. No raw microphone
+/// A bounded reorder window on the profile's call-relative clock. No raw microphone
 /// sample leaves this in-memory boundary until its effective recording policy is applied.
 /// The stream's serial queue owns the timeline and writer; UI acknowledgement follows
 /// completion on that queue, never merely enqueueing a mute request.
 public final class CaptureTimeline {
   private let writer: CaptureMediaWriter
+  private var profile: MediaProfile { writer.profile }
   private var samples: [[Int16?]] = [[], []]
   private var committedFrame = 0
   private var spans: [[CaptureInterval]] = [[], []]
   private var microphonePolicy: [(frame: Int, enabled: Bool)] = [(0, true)]
+  private var microphoneAvailability: [(frame: Int, available: Bool)] = [(0, true)]
   private var lastControlMs = 0
   public private(set) var microphoneEnabled = true
 
@@ -29,8 +31,10 @@ public final class CaptureTimeline {
   public func intervals(for role: MediaSourceRole) -> [CaptureInterval] { spans[channel(role)] }
 
   public func append(role: MediaSourceRole, startFrame: Int, samples incoming: [Int16]) throws {
-    guard startFrame >= -32_000, startFrame <= committedFrame + 32_000,
-      incoming.count <= 32_000, startFrame + incoming.count <= committedFrame + 32_000
+    guard startFrame >= -(profile.sampleRateHz * 2),
+      startFrame <= committedFrame + (profile.sampleRateHz * 2),
+      incoming.count <= (profile.sampleRateHz * 2),
+      startFrame + incoming.count <= committedFrame + (profile.sampleRateHz * 2)
     else { throw CaptureError.invalidAudio }
     let end = startFrame + incoming.count
     guard end > committedFrame else { return }  // Late input cannot rewrite durable media.
@@ -47,47 +51,67 @@ public final class CaptureTimeline {
   }
 
   public func setMicrophoneEnabled(_ enabled: Bool, atMs: Int) throws {
-    guard atMs >= lastControlMs, atMs >= committedFrame / 16 else {
+    guard atMs >= lastControlMs, atMs >= committedFrame / profile.captureFramesPerMs,
+      atMs <= profile.maxCallDurationMs
+    else {
       throw CaptureError.invalidAudio
     }
     lastControlMs = atMs
     microphoneEnabled = enabled
-    microphonePolicy.append((atMs * 16, enabled))
+    microphonePolicy.append((atMs * profile.captureFramesPerMs, enabled))
     if !enabled { try discardMicrophone(fromMs: atMs) }
   }
 
   public func discardMicrophone(fromMs: Int) throws {
-    guard fromMs >= committedFrame / 16 else { throw CaptureError.invalidAudio }
-    let start = max(0, fromMs * 16 - committedFrame)
+    guard fromMs >= committedFrame / profile.captureFramesPerMs, fromMs <= profile.maxCallDurationMs
+    else { throw CaptureError.invalidAudio }
+    let start = max(0, fromMs * profile.captureFramesPerMs - committedFrame)
     if start < samples[0].count {
       for index in start..<samples[0].count { samples[0][index] = nil }
     }
   }
 
+  public func setMicrophoneAvailable(_ available: Bool, atMs: Int) throws {
+    guard atMs >= committedFrame / profile.captureFramesPerMs, atMs <= profile.maxCallDurationMs,
+      atMs * profile.captureFramesPerMs >= (microphoneAvailability.last?.frame ?? 0)
+    else { throw CaptureError.invalidAudio }
+    microphoneAvailability.append((atMs * profile.captureFramesPerMs, available))
+    if !available { try discardMicrophone(fromMs: atMs) }
+  }
+
   public func flush(throughMs: Int) throws {
-    guard throughMs >= committedFrame / 16, throughMs <= 10_800_000 else {
+    guard throughMs >= committedFrame / profile.captureFramesPerMs,
+      throughMs <= profile.maxCallDurationMs
+    else {
       throw CaptureError.durationLimit
     }
-    while committedFrame < throughMs * 16 {
-      let count = min(16_000, throughMs * 16 - committedFrame)
+    while committedFrame < throughMs * profile.captureFramesPerMs {
+      let count = min(profile.sampleRateHz, throughMs * profile.captureFramesPerMs - committedFrame)
       ensureCapacity(count)
       var interleaved = [Int16]()
       interleaved.reserveCapacity(count * 2)
       var nextSpans: [[CaptureInterval]] = [[], []]
-      for millisecond in stride(from: 0, to: count, by: 16) {
-        let absoluteMs = (committedFrame + millisecond) / 16
+      for millisecond in stride(from: 0, to: count, by: profile.captureFramesPerMs) {
+        let absoluteMs = (committedFrame + millisecond) / profile.captureFramesPerMs
+        let microphonePresent =
+          microphoneAvailability.last(where: { $0.frame <= committedFrame + millisecond })?
+          .available ?? true
         for track in 0...1 {
           let muted = track == 0 && !microphoneAllowed(at: committedFrame + millisecond)
-          let available = samples[track][millisecond..<(millisecond + 16)].allSatisfy { $0 != nil }
+          let available = samples[track][millisecond..<(millisecond + profile.captureFramesPerMs)]
+            .allSatisfy { $0 != nil }
           mergeCaptureInterval(
             .init(
               startMs: absoluteMs, endMs: absoluteMs + 1,
-              state: muted ? .muted : available ? .recorded : .unavailable), into: &nextSpans[track]
+              state: track == 0 && !microphonePresent
+                ? .unavailable : muted ? .muted : available ? .recorded : .unavailable),
+            into: &nextSpans[track]
           )
         }
-        for index in millisecond..<(millisecond + 16) {
+        for index in millisecond..<(millisecond + profile.captureFramesPerMs) {
           interleaved.append(
-            microphoneAllowed(at: committedFrame + index) ? samples[0][index] ?? 0 : 0)
+            microphonePresent && microphoneAllowed(at: committedFrame + index)
+              ? samples[0][index] ?? 0 : 0)
           interleaved.append(samples[1][index] ?? 0)
         }
       }
@@ -102,6 +126,9 @@ public final class CaptureTimeline {
       // Retain only the policy active at the committed boundary and later changes.
       while microphonePolicy.count > 1 && microphonePolicy[1].frame <= committedFrame {
         microphonePolicy.removeFirst()
+      }
+      while microphoneAvailability.count > 1 && microphoneAvailability[1].frame <= committedFrame {
+        microphoneAvailability.removeFirst()
       }
     }
   }

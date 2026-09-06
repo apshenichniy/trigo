@@ -39,7 +39,7 @@ func controlledAudioBuffer(sampleRate: Double, frames: Int, time: CMTime, value:
 }
 
 @Test func nativeSampleBufferConversionPreservesHostClockOffsetAndMonoLevel() throws {
-  let decoder = CaptureAudioDecoder()
+  let decoder = try CaptureAudioDecoder()
   let origin = CMTime(seconds: 100, preferredTimescale: 1_000_000_000)
   let sample = try controlledAudioBuffer(
     sampleRate: 48_000, frames: 4_800,

@@ -10,6 +10,13 @@ public struct CaptureMicrophone: Codable, Equatable, Sendable {
   }
 }
 
+public enum CaptureFinalizationPoint: Sendable { case afterFinalizationIntent, afterAudioManifest }
+
+private struct CaptureFinalization: Codable {
+  let media: CapturedMedia
+  let reason: String?
+}
+
 /// Durable capture identities are allocated locally before a stream is opened. Canonical
 /// publication uses LocalArchive's validation and LocalLifecycleStore's independent state.
 public struct CaptureArchiveSession: Codable, Sendable {
@@ -46,9 +53,13 @@ public struct CaptureArchiveSession: Codable, Sendable {
     return session
   }
 
-  public func finish(media: CapturedMedia, interruptionReason: String?) async throws
+  public func finish(
+    media: CapturedMedia, interruptionReason: String?,
+    interruption: @Sendable (CaptureFinalizationPoint) throws -> Void = { _ in }
+  ) async throws
     -> LocalCallAggregate
   {
+    try requireCaptureInterruptionReason(interruptionReason)
     let archive = try LocalArchive(root: root, archiveID: archiveID)
     let existing = try await archive.loadCall(callID: callID)
     let current = try jsonObject(existing.manifest.storedBytes)
@@ -57,6 +68,20 @@ public struct CaptureArchiveSession: Codable, Sendable {
       try await publishLifecycle(reason: current["interruptionReason"] as? String)
       return existing
     }
+    let finalization: CaptureFinalization
+    if FileManager.default.fileExists(atPath: finalizationURL.path) {
+      finalization = try JSONDecoder().decode(
+        CaptureFinalization.self, from: Data(contentsOf: finalizationURL))
+    } else {
+      finalization = .init(media: media, reason: interruptionReason)
+      try AtomicFileWriter(interruption: { _ in }).write(
+        try JSONEncoder().encode(finalization),
+        to: finalizationURL, domain: .archive)
+    }
+    try interruption(.afterFinalizationIntent)
+    let media = finalization.media
+    let interruptionReason = finalization.reason
+    try requireCaptureInterruptionReason(interruptionReason)
     let audio = try audioBytes(media)
     let preReference = try callBytes(
       media: media, reason: interruptionReason, version: 2, reference: nil)
@@ -64,6 +89,7 @@ public struct CaptureArchiveSession: Codable, Sendable {
       _ = try await archive.publishManifest(preReference)
     }
     _ = try await archive.publishAudioManifest(audio)
+    try interruption(.afterAudioManifest)
     _ = try await archive.publishManifest(
       callBytes(
         media: media, reason: interruptionReason, version: 3,
@@ -88,6 +114,19 @@ public struct CaptureArchiveSession: Codable, Sendable {
         reason: jsonObject(existing.manifest.storedBytes)["interruptionReason"] as? String)
       return existing
     }
+    if FileManager.default.fileExists(atPath: session.finalizationURL.path) {
+      let finalization = try JSONDecoder().decode(
+        CaptureFinalization.self, from: Data(contentsOf: session.finalizationURL))
+      return try await session.finish(
+        media: finalization.media, interruptionReason: finalization.reason)
+    }
+    guard
+      FileManager.default.fileExists(
+        atPath: session.mediaDirectory.appendingPathComponent("media-checkpoint.json").path)
+    else {
+      return try await session.finish(
+        media: CapturedMedia(objects: [], durationMs: 0), interruptionReason: "process_terminated")
+    }
     let recovered = try CaptureMediaWriter.recover(directory: session.mediaDirectory)
     return try await session.finish(
       media: recovered.media,
@@ -96,6 +135,10 @@ public struct CaptureArchiveSession: Codable, Sendable {
 
   private var sessionURL: URL {
     root.appendingPathComponent(callID).appendingPathComponent("capture-session.json")
+  }
+
+  private var finalizationURL: URL {
+    root.appendingPathComponent(callID).appendingPathComponent("capture-finalization.json")
   }
 
   private func publishLifecycle(reason: String?) async throws {

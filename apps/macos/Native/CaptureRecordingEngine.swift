@@ -16,9 +16,10 @@ public final class CaptureRecordingEngine {
   private let directory: URL
   private let origin: CMTime
   private let writer: CaptureMediaWriter
+  private var profile: MediaProfile { writer.profile }
   private let timeline: CaptureTimeline
-  private var applicationDecoder = CaptureAudioDecoder()
-  private var microphoneDecoder = CaptureAudioDecoder()
+  private var applicationDecoder: CaptureAudioDecoder
+  private var microphoneDecoder: CaptureAudioDecoder
   private var microphoneEpochFrame = 0
   public private(set) var snapshot: CaptureRecordingSnapshot
 
@@ -30,6 +31,9 @@ public final class CaptureRecordingEngine {
     self.origin = origin
     writer = try CaptureMediaWriter(directory: directory, interruption: interruption)
     timeline = CaptureTimeline(writer: writer)
+    applicationDecoder = try CaptureAudioDecoder()
+    microphoneDecoder = try CaptureAudioDecoder()
+    try timeline.setMicrophoneAvailable(microphone != nil, atMs: 0)
     snapshot = .init(
       state: .recording, elapsedMs: 0, microphoneEnabled: true,
       microphone: microphone, interruptionReason: nil)
@@ -42,7 +46,7 @@ public final class CaptureRecordingEngine {
       let relative = CMTimeGetSeconds(CMTimeSubtract(sample.presentationTimeStamp, origin))
       guard relative.isFinite else { throw CaptureError.invalidAudio }
       // Reject before conversion: resampler history must never retain suppressed speech.
-      if relative * 16_000 < Double(microphoneEpochFrame) { return }
+      if relative * Double(profile.sampleRateHz) < Double(microphoneEpochFrame) { return }
     }
     let decoded = try (role == .microphone ? microphoneDecoder : applicationDecoder).decode(
       sample, origin: origin)
@@ -54,7 +58,7 @@ public final class CaptureRecordingEngine {
   public func advance(at time: CMTime) throws {
     guard snapshot.state == .recording else { throw CaptureError.closed }
     let ms = try relativeMs(time)
-    guard ms <= 10_800_000 else { throw CaptureError.durationLimit }
+    guard ms <= profile.maxCallDurationMs else { throw CaptureError.durationLimit }
     try timeline.flush(throughMs: max(0, ms - 250))
     snapshot.elapsedMs = ms
   }
@@ -62,25 +66,26 @@ public final class CaptureRecordingEngine {
   public func setMicrophoneEnabled(_ enabled: Bool, at time: CMTime) throws {
     guard snapshot.state == .recording else { throw CaptureError.closed }
     try timeline.setMicrophoneEnabled(enabled, atMs: relativeMs(time))
-    microphoneDecoder = CaptureAudioDecoder()
-    microphoneEpochFrame = try relativeMs(time) * 16
+    microphoneDecoder = try CaptureAudioDecoder()
+    microphoneEpochFrame = try relativeMs(time) * profile.captureFramesPerMs
     snapshot.microphoneEnabled = enabled
   }
 
   public func microphoneChanged(_ microphone: CaptureMicrophone?, at time: CMTime) throws {
     guard snapshot.state == .recording else { throw CaptureError.closed }
-    microphoneEpochFrame = try relativeMs(time) * 16
-    try timeline.discardMicrophone(fromMs: relativeMs(time))
-    microphoneDecoder = CaptureAudioDecoder()
+    microphoneEpochFrame = try relativeMs(time) * profile.captureFramesPerMs
+    try timeline.setMicrophoneAvailable(microphone != nil, atMs: relativeMs(time))
+    microphoneDecoder = try CaptureAudioDecoder()
     snapshot.microphone = microphone
   }
 
   public func stop(at time: CMTime, reason: String? = nil) throws -> CapturedMedia {
+    try requireCaptureInterruptionReason(reason)
     guard snapshot.state == .recording else { throw CaptureError.closed }
     var failure = reason
     let media: CapturedMedia
     do {
-      try timeline.flush(throughMs: min(10_800_000, relativeMs(time)))
+      try timeline.flush(throughMs: min(profile.maxCallDurationMs, relativeMs(time)))
       media = try writer.finish(interruptionReason: reason)
     } catch {
       failure = "media_write_failed"
@@ -96,5 +101,11 @@ public final class CaptureRecordingEngine {
     let seconds = CMTimeGetSeconds(CMTimeSubtract(time, origin))
     guard seconds.isFinite, seconds >= 0, seconds <= 86_400 else { throw CaptureError.invalidAudio }
     return Int((seconds * 1000).rounded(.down))
+  }
+}
+
+func requireCaptureInterruptionReason(_ reason: String?) throws {
+  if let reason, !isStableFailureCode(reason) {
+    throw LocalPersistenceError.invalidFailureCode(reason)
   }
 }

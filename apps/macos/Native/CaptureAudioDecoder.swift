@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreMedia
 import Foundation
+import TrigoContracts
 
 public struct CaptureAudioFrames: Sendable {
   public let startFrame: Int
@@ -11,7 +12,8 @@ public struct CaptureAudioFrames: Sendable {
 /// profile rate. Each source owns one converter; both use the same host-clock origin.
 public final class CaptureAudioDecoder {
   private var converter: AVAudioConverter?
-  public init() {}
+  private let profile: MediaProfile
+  public init() throws { profile = try .selected() }
 
   public func decode(_ sample: CMSampleBuffer, origin: CMTime) throws -> CaptureAudioFrames {
     guard sample.isValid, CMSampleBufferDataIsReady(sample),
@@ -26,7 +28,8 @@ public final class CaptureAudioDecoder {
       Double(sample.numSamples) / format.sampleRate <= 1,
       let input = AVAudioPCMBuffer(
         pcmFormat: format, frameCapacity: AVAudioFrameCount(sample.numSamples)),
-      let outputFormat = AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1)
+      let outputFormat = AVAudioFormat(
+        standardFormatWithSampleRate: Double(profile.sampleRateHz), channels: 1)
     else { throw CaptureError.invalidAudio }
     input.frameLength = AVAudioFrameCount(sample.numSamples)
     guard
@@ -42,7 +45,7 @@ public final class CaptureAudioDecoder {
       let output = AVAudioPCMBuffer(
         pcmFormat: outputFormat,
         frameCapacity: AVAudioFrameCount(
-          ceil(Double(sample.numSamples) * 16_000 / format.sampleRate)) + 64)
+          ceil(Double(sample.numSamples) * Double(profile.sampleRateHz) / format.sampleRate)) + 64)
     else { throw CaptureError.invalidAudio }
     let supply = CaptureConverterInput(input)
     var error: NSError?
@@ -54,7 +57,8 @@ public final class CaptureAudioDecoder {
     }
     let relative = CMTimeSubtract(sample.presentationTimeStamp, origin)
     let seconds = CMTimeGetSeconds(relative)
-    guard seconds.isFinite, seconds >= -2, seconds <= 10_802 else {
+    guard seconds.isFinite, seconds >= -2, seconds <= Double(profile.maxCallDurationMs) / 1000 + 2
+    else {
       throw CaptureError.invalidAudio
     }
     var samples = [Int16]()
@@ -64,7 +68,8 @@ public final class CaptureAudioDecoder {
       guard value.isFinite else { throw CaptureError.invalidAudio }
       samples.append(Int16(max(-32_768, min(32_767, (value * 32_768).rounded()))))
     }
-    return .init(startFrame: Int((seconds * 16_000).rounded()), samples: samples)
+    return .init(
+      startFrame: Int((seconds * Double(profile.sampleRateHz)).rounded()), samples: samples)
   }
 }
 
