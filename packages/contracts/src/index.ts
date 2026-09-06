@@ -1,6 +1,18 @@
 import { validateCall, validateRevision, validateAudio } from "./semantics.ts";
 import { selectedMediaProfile } from "./media-profile.ts";
 export {
+  AsrProbeErrorEnvelope,
+  AsrProbeLanguage,
+  AsrProbeTranscriptionResponse,
+  AsrProbeUploadResponse,
+} from "./asr-probe.ts";
+export type {
+  AsrProbeErrorEnvelope as AsrProbeErrorEnvelopeDocument,
+  AsrProbeLanguage as AsrProbeLanguageCode,
+  AsrProbeTranscriptionResponse as AsrProbeTranscriptionResponseDocument,
+  AsrProbeUploadResponse as AsrProbeUploadResponseDocument,
+} from "./asr-probe.ts";
+export {
   frameCountForDuration,
   inspectWaveObject,
   makeWaveHeader,
