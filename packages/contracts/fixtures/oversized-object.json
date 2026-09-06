@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "callId": "00000000-0000-4000-8000-000000000001",
+  "manifestId": "00000000-0000-4000-8000-000000000004",
+  "durationMs": 60001,
+  "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+  "objects": [
+    {
+      "objectId": "00000000-0000-4000-8000-000000000005",
+      "index": 0,
+      "contentType": "audio/wav",
+      "byteLength": 3840108,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "startMs": 0,
+      "endMs": 60001,
+      "channelMap": [
+        {
+          "channelIndex": 0,
+          "trackId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "channelIndex": 1,
+          "trackId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  ]
+}
