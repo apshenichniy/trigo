@@ -9,7 +9,10 @@ let package = Package(
     .target(
       name: "TrigoContracts",
       dependencies: [.product(name: "JSONSchema", package: "swift-json-schema")],
-      resources: [.copy("Resources/v1.schema.json")]),
+      resources: [
+        .copy("Resources/v1.schema.json"),
+        .copy("Resources/media-profile.v1.json"),
+      ]),
     .testTarget(name: "TrigoContractsTests", dependencies: ["TrigoContracts"], path: "Tests"),
   ]
 )

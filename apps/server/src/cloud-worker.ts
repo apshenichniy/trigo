@@ -1,6 +1,7 @@
 import { WorkflowEntrypoint } from "cloudflare:workers";
 import type { ErrorEnvelope, StatusResponse } from "@trigo/contracts";
 import { Effect } from "effect";
+import { type AsrProbeEnvironment, AsrProbeError, asrProbeResponse } from "./asr-probe.ts";
 import {
   authenticateOwner,
   type OwnerContext,
@@ -12,11 +13,9 @@ export interface PendingArchiveWorkflowInput {
   readonly operationId: string;
 }
 
-export interface CloudEnvironmentProbe {
-  readonly ARCHIVE: { readonly get: unknown };
+export interface CloudEnvironmentProbe extends AsrProbeEnvironment {
   readonly CATALOG: Pick<D1Database, "prepare">;
   readonly ARCHIVE_WORKFLOW: { readonly create: unknown };
-  readonly AI: { readonly run: unknown };
   readonly DEPLOYMENT_STAGE: "dev" | "personal";
   readonly DEPLOYMENT_IDENTITY: string;
 }
@@ -111,6 +110,38 @@ export default {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/__trigo/infrastructure")
       return Effect.runPromise(infrastructureResponse(env));
+    const asrProbe = /^\/__trigo\/asr-probe\/([a-z0-9-]+)$/.exec(url.pathname);
+    if (asrProbe && env.DEPLOYMENT_STAGE === "dev") {
+      const fixture = asrProbe[1];
+      if (fixture === undefined) return new Response(null, { status: 404 });
+      return Effect.runPromise(
+        authenticateOwner(env.CATALOG, request).pipe(
+          Effect.flatMap(() => asrProbeResponse(request, env, fixture)),
+          Effect.catchTags({
+            "OwnerState.OwnerAuthenticationError": (_error: OwnerAuthenticationError) =>
+              Effect.succeed(
+                errorResponse(
+                  401,
+                  "owner_unauthorized",
+                  "after_correction",
+                  "Provide the current Trigo owner token.",
+                ),
+              ),
+            "OwnerState.OwnerPersistenceError": (_error: OwnerPersistenceError) =>
+              Effect.succeed(
+                errorResponse(
+                  503,
+                  "owner_persistence_unavailable",
+                  "retryable",
+                  "Owner authentication storage is temporarily unavailable; retry the request.",
+                ),
+              ),
+            "AsrProbe.Error": (error: AsrProbeError) =>
+              Effect.succeed(errorResponse(error.status, error.code, error.retry, error.message)),
+          }),
+        ),
+      );
+    }
     if (url.pathname.startsWith("/v1/"))
       return Effect.runPromise(
         ownerResponse(request, env).pipe(

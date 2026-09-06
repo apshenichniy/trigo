@@ -24,7 +24,12 @@ Retain original UTF-8 bytes for immutable publication. Parsing and lossless fiel
 round-tripping do not promise identical JSON formatting. Object-media bytes are
 validated by the later media finalization adapter; this package validates their
 identity/size/hash descriptors and logical mappings, not codec/decoding internals.
-Media-profile identifiers remain opaque until #13 selects that contract.
+The selected #13 media profile is the checked
+`schema/media-profile.v1.json` artifact. It fixes two interleaved logical sources
+in independently decodable 60-second WAVE objects: microphone on channel 0 and
+application audio on channel 1. TypeScript and Swift consumers load the same
+generated resource, including the exact upload, playback, ASR assembly, timing,
+and speaker-scope rules.
 
 Both languages run `fixtures/cases.json` with the same outcomes and failure
 categories: `structure`, `semantics`, `reference`, `checksum`. Valid no-speech and

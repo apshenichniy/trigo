@@ -24,7 +24,7 @@ function token(): OwnerTokenType {
 
 function cloudBindings(): CloudEnvironmentProbe {
   return {
-    ARCHIVE: { get: vi.fn() },
+    ARCHIVE: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
     CATALOG: env.CATALOG,
     ARCHIVE_WORKFLOW: { create: vi.fn() },
     AI: { run: vi.fn() },

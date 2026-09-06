@@ -27,12 +27,12 @@ it("cloud:preflight rejects forwarded arguments before local profile validation"
   expect(result.stderr).toContain("Unexpected preflight argument: --bogus");
   expect(result.stdout).not.toContain("Cloud preflight passed");
 });
-it("test:asr remains the #13 ownership placeholder", () => {
-  const result = spawnSync("bun", ["run", "test:asr", "--stage", "dev"], {
+it("test:asr refuses the personal stage before generating a fixture", () => {
+  const result = spawnSync("bun", ["run", "test:asr", "--stage", "personal"], {
     encoding: "utf8",
   });
   expect(result.status).toBe(1);
-  expect(result.stderr).toContain("#13");
+  expect(result.stderr).toContain("Nova-3 probes may target only --stage dev");
 });
 it("doctor remains a read-only local diagnostic after cloud commands are available", () => {
   const result = spawnSync("bun", ["run", "doctor"], { encoding: "utf8" });

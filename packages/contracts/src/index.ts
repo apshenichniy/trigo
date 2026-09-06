@@ -1,4 +1,18 @@
 import { validateCall, validateRevision, validateAudio } from "./semantics.ts";
+export {
+  frameCountForDuration,
+  inspectWaveObject,
+  makeWaveHeader,
+  MediaProfile,
+  MediaSourceRole,
+  objectCountForDuration,
+  selectedMediaProfile,
+  waveByteLength,
+} from "./media-profile.ts";
+export type {
+  MediaProfile as MediaProfileDocument,
+  WaveObjectInspection,
+} from "./media-profile.ts";
 import type {
   CallDocument,
   TranscriptRevision,
