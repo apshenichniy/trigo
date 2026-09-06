@@ -1,4 +1,5 @@
 import type { CallDocument } from "./generated/documents.d.ts";
+import { frameCountForDuration, selectedMediaProfile, waveByteLength } from "./media-profile.ts";
 export function requireValid(condition: unknown): asserts condition {
   if (!condition) throw new Error("semantics");
 }
@@ -58,6 +59,7 @@ export function validateRevision(
   }
 }
 export function validateAudio(audio: import("./generated/documents.d.ts").AudioManifest): void {
+  requireValid(audio.mediaProfileId === selectedMediaProfile.id);
   unique(audio.objects.map((o) => o.objectId));
   unique(audio.objects.map((o) => o.index));
   let index = -1;
@@ -73,5 +75,14 @@ export function validateAudio(audio: import("./generated/documents.d.ts").AudioM
     start = object.startMs;
     unique(object.channelMap.map((c) => c.channelIndex));
     unique(object.channelMap.map((c) => c.trackId));
+    const durationMs = object.endMs - object.startMs;
+    requireValid(
+      object.contentType === selectedMediaProfile.contentType &&
+        object.byteLength === waveByteLength(frameCountForDuration(durationMs)) &&
+        object.channelMap.length === selectedMediaProfile.channels.length &&
+        selectedMediaProfile.channels.every((expected) =>
+          object.channelMap.some((channel) => channel.channelIndex === expected.index),
+        ),
+    );
   }
 }

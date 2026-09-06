@@ -17,9 +17,44 @@ type ProbeLanguage = "en" | "ru" | "uk";
 
 class AsrProbeCliError extends Schema.TaggedError<AsrProbeCliError>()("AsrProbeCliError", {
   message: Schema.String,
-  cause: Schema.optional(Schema.Defect()),
+  cause: Schema.optionalKey(Schema.Defect()),
 }) {}
 const isAsrProbeCliError = Schema.is(AsrProbeCliError);
+
+const CanonicalUuidV4 = Schema.String.check(
+  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+);
+const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
+const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0));
+const ProbeErrorEnvelope = Schema.Struct({
+  schemaVersion: Schema.Literal(1),
+  error: Schema.Struct({
+    code: Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9_]*$/)),
+    retry: Schema.Literals(["never", "after_correction", "retryable"]),
+    message: Schema.String,
+    requestId: CanonicalUuidV4,
+  }),
+});
+const UploadEvidence = Schema.Struct({
+  fixture: Schema.NonEmptyString,
+  language: Schema.Literals(["en", "ru", "uk"]),
+  profileId: Schema.Literal("trigo-call-wav-s16le-16khz-stereo-60s-v1"),
+  byteLength: PositiveInt,
+  durationMs: PositiveInt,
+  inputKey: Schema.NonEmptyString,
+});
+const TranscriptionEvidence = Schema.Struct({
+  fixture: Schema.NonEmptyString,
+  language: Schema.Literals(["en", "ru", "uk"]),
+  profileId: Schema.Literal("trigo-call-wav-s16le-16khz-stereo-60s-v1"),
+  byteLength: PositiveInt,
+  durationMs: PositiveInt,
+  providerLatencyMs: NonNegativeInt,
+  channelCount: PositiveInt,
+  speakerCount: NonNegativeInt,
+  turnCount: NonNegativeInt,
+  retainedKeys: Schema.Array(Schema.NonEmptyString),
+});
 
 function probeCliError(message: string, cause?: unknown): AsrProbeCliError {
   return new AsrProbeCliError(cause === undefined ? { message } : { message, cause });
@@ -133,14 +168,16 @@ function readOwnerToken(root: string): Redacted.Redacted<string> {
   return Redacted.make(result.stdout.trim());
 }
 
-const request = Effect.fn("AsrProbeCli.request")(function* (
+const request = Effect.fn("AsrProbeCli.request")(function* <Success>(
   url: string,
   token: Redacted.Redacted<string>,
   method: "PUT" | "POST",
+  successStatus: number,
+  successSchema: Schema.Decoder<Success, never>,
   body?: Uint8Array,
 ) {
   let outgoing = method === "PUT" ? HttpClientRequest.put(url) : HttpClientRequest.post(url);
-  outgoing = HttpClientRequest.bearerToken(outgoing, token);
+  outgoing = HttpClientRequest.acceptJson(HttpClientRequest.bearerToken(outgoing, token));
   if (method === "PUT") {
     outgoing = HttpClientRequest.setHeader(
       outgoing,
@@ -156,25 +193,35 @@ const request = Effect.fn("AsrProbeCli.request")(function* (
       probeCliError(`Nova-3 probe request failed: ${method} ${url}`, cause),
     ),
   );
-  const responseBody = yield* response.json.pipe(Effect.orElseSucceed(() => null));
-  return { status: response.status, body: responseBody };
+  const responseBody = yield* response.json.pipe(
+    Effect.mapError((cause) =>
+      probeCliError(
+        `Nova-3 probe returned invalid JSON: HTTP ${response.status} ${method} ${url}`,
+        cause,
+      ),
+    ),
+  );
+  if (response.status === successStatus) {
+    const decoded = yield* Schema.decodeEffect(successSchema)(responseBody).pipe(
+      Effect.mapError((cause) =>
+        probeCliError(
+          `Nova-3 probe returned an invalid success envelope: HTTP ${response.status} ${method} ${url}`,
+          cause,
+        ),
+      ),
+    );
+    return { ok: true, status: response.status, body: decoded } as const;
+  }
+  const failure = yield* Schema.decodeUnknownEffect(ProbeErrorEnvelope)(responseBody).pipe(
+    Effect.mapError((cause) =>
+      probeCliError(
+        `Nova-3 probe returned an invalid error envelope: HTTP ${response.status} ${method} ${url}`,
+        cause,
+      ),
+    ),
+  );
+  return { ok: false, status: response.status, error: failure.error } as const;
 });
-
-function errorCode(value: unknown): string {
-  if (typeof value !== "object" || value === null) return "unknown_error";
-  const error = Reflect.get(value, "error");
-  if (typeof error !== "object" || error === null) return "unknown_error";
-  const code = Reflect.get(error, "code");
-  return typeof code === "string" ? code : "unknown_error";
-}
-
-function errorMessage(value: unknown): string {
-  if (typeof value !== "object" || value === null) return "No error detail";
-  const error = Reflect.get(value, "error");
-  if (typeof error !== "object" || error === null) return "No error detail";
-  const message = Reflect.get(error, "message");
-  return typeof message === "string" ? message : "No error detail";
-}
 
 const probe = Effect.fn("AsrProbeCli.probe")(function* (
   apiUrl: string,
@@ -201,22 +248,20 @@ const probe = Effect.fn("AsrProbeCli.probe")(function* (
           });
           const fixture = `two-source-${language}`;
           const url = `${apiUrl}/__trigo/asr-probe/${fixture}?language=${language}`;
-          const upload = yield* request(url, token, "PUT", bytes);
-          if (upload.status !== 201)
+          const upload = yield* request(url, token, "PUT", 201, UploadEvidence, bytes);
+          if (!upload.ok)
             return yield* probeCliError(
-              `${language} fixture upload failed: HTTP ${upload.status} ${errorCode(upload.body)}`,
+              `${language} fixture upload failed: HTTP ${upload.status} ${upload.error.code}`,
             );
-          const result = yield* request(url, token, "POST");
-          if (result.status !== 200) {
+          const result = yield* request(url, token, "POST", 200, TranscriptionEvidence);
+          if (!result.ok) {
             yield* Console.log(
-              `${language}: HTTP ${result.status} ${errorCode(result.body)}; ${errorMessage(result.body)}`,
+              `${language}: HTTP ${result.status} ${result.error.code}; ${result.error.message}`,
             );
             return;
           }
-          if (typeof result.body !== "object" || result.body === null)
-            return yield* probeCliError(`${language}: probe returned an invalid evidence envelope`);
           yield* Console.log(
-            `${language}: accepted; bytes=${String(Reflect.get(result.body, "byteLength"))}; durationMs=${String(Reflect.get(result.body, "durationMs"))}; providerLatencyMs=${String(Reflect.get(result.body, "providerLatencyMs"))}; channels=${String(Reflect.get(result.body, "channelCount"))}; turns=${String(Reflect.get(result.body, "turnCount"))}; speakers=${String(Reflect.get(result.body, "speakerCount"))}`,
+            `${language}: accepted; bytes=${result.body.byteLength}; durationMs=${result.body.durationMs}; providerLatencyMs=${result.body.providerLatencyMs}; channels=${result.body.channelCount}; turns=${result.body.turnCount}; speakers=${result.body.speakerCount}`,
           );
         }),
       (directory) =>

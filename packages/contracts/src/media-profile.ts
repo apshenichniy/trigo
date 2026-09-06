@@ -4,32 +4,37 @@ import source from "../schema/media-profile.v1.json";
 export const MediaSourceRole = Schema.Literals(["microphone", "application"]);
 export type MediaSourceRole = typeof MediaSourceRole.Type;
 
-const Channel = Schema.Struct({
-  index: Schema.Int,
-  role: MediaSourceRole,
+const MicrophoneChannel = Schema.Struct({
+  index: Schema.Literal(0),
+  role: Schema.Literal("microphone"),
+});
+
+const ApplicationChannel = Schema.Struct({
+  index: Schema.Literal(1),
+  role: Schema.Literal("application"),
 });
 
 export const MediaProfile = Schema.Struct({
   schemaVersion: Schema.Literal(1),
-  id: Schema.String,
+  id: Schema.Literal("trigo-call-wav-s16le-16khz-stereo-60s-v1"),
   container: Schema.Literal("wave"),
   contentType: Schema.Literal("audio/wav"),
   codec: Schema.Literal("pcm_s16le"),
-  sampleRateHz: Schema.Int,
-  bitsPerSample: Schema.Int,
-  interleaved: Schema.Boolean,
-  objectDurationMs: Schema.Int,
-  checkpointDurationMs: Schema.Int,
-  waveHeaderBytes: Schema.Int,
-  maxObjectBytes: Schema.Int,
-  maxCallDurationMs: Schema.Int,
-  maxObjectsPerCall: Schema.Int,
+  sampleRateHz: Schema.Literal(16_000),
+  bitsPerSample: Schema.Literal(16),
+  interleaved: Schema.Literal(true),
+  objectDurationMs: Schema.Literal(60_000),
+  checkpointDurationMs: Schema.Literal(2_000),
+  waveHeaderBytes: Schema.Literal(44),
+  maxObjectBytes: Schema.Literal(3_840_044),
+  maxCallDurationMs: Schema.Literal(10_800_000),
+  maxObjectsPerCall: Schema.Literal(180),
   limits: Schema.Struct({
-    uploadRequestBytes: Schema.Int,
-    batchEnvelopeBytes: Schema.Int,
-    base64ObjectBytes: Schema.Int,
+    uploadRequestBytes: Schema.Literal(8_388_608),
+    batchEnvelopeBytes: Schema.Literal(10_000_000),
+    base64ObjectBytes: Schema.Literal(5_120_060),
   }),
-  channels: Schema.Array(Channel),
+  channels: Schema.Tuple([MicrophoneChannel, ApplicationChannel]),
   assembly: Schema.Struct({
     ordering: Schema.Literal("object-index"),
     timeline: Schema.Literal("manifest-start-end-ms"),
@@ -40,9 +45,9 @@ export const MediaProfile = Schema.Struct({
     model: Schema.Literal("@cf/deepgram/nova-3"),
     requestContentType: Schema.Literal("audio/wav"),
     encoding: Schema.Null,
-    channels: Schema.Int,
-    multichannel: Schema.Boolean,
-    diarize: Schema.Boolean,
+    channels: Schema.Literal(2),
+    multichannel: Schema.Literal(true),
+    diarize: Schema.Literal(true),
     submission: Schema.Literal("one-object-per-request"),
     timestampOrigin: Schema.Literal("object"),
     speakerScope: Schema.Literal("object-channel"),

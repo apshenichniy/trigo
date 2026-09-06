@@ -47,7 +47,7 @@
   ],
   "audioManifest": {
     "manifestId": "00000000-0000-4000-8000-000000000004",
-    "sha256": "9a25c290a20fac1166297836992d43c973359be0d188c3bf5e5e3778faf3a28d"
+    "sha256": "88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2"
   },
   "revisions": [
     {
@@ -58,7 +58,7 @@
     {
       "revisionId": "00000000-0000-4000-8000-000000000011",
       "createdAt": "2026-09-05T10:01:00Z",
-      "sha256": "32b25e032301da9e4c5f1f430e562b47c1d5ede8cae891e003d69cbb32a436c3"
+      "sha256": "6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d"
     }
   ],
   "activeRevisionId": "00000000-0000-4000-8000-000000000011",

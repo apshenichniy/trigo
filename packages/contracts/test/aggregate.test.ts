@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { validateArchive, storedByteHash } from "../src/index.ts";
+import { parseStored, validateArchive, storedByteHash } from "../src/index.ts";
 const read = (name: string) =>
   new Uint8Array(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url)));
 it("validates retained revisions and annotations against stored bytes", async () => {
@@ -12,6 +12,25 @@ it("validates retained revisions and annotations against stored bytes", async ()
   await expect(validateArchive(read("call"), refs)).resolves.toBeDefined();
   refs.delete("00000000-0000-4000-8000-000000000006");
   await expect(validateArchive(read("call"), refs)).rejects.toThrow("reference");
+});
+it("rejects an audio channel map that swaps microphone and application tracks", async () => {
+  const call = parseStored("CallDocument", read("call"));
+  const audio = parseStored("AudioManifest", read("audio"));
+  const first = audio.objects[0]?.channelMap[0];
+  const second = audio.objects[0]?.channelMap[1];
+  if (call.audioManifest === null || first === undefined || second === undefined)
+    throw new Error("fixture");
+  [first.trackId, second.trackId] = [second.trackId, first.trackId];
+  const audioBytes = new TextEncoder().encode(JSON.stringify(audio));
+  call.audioManifest.sha256 = await storedByteHash(audioBytes);
+  const callBytes = new TextEncoder().encode(JSON.stringify(call));
+  const refs = new Map([
+    ["00000000-0000-4000-8000-000000000004", audioBytes],
+    ["00000000-0000-4000-8000-000000000006", read("revision")],
+    ["00000000-0000-4000-8000-000000000011", read("no-speech")],
+  ]);
+
+  await expect(validateArchive(callBytes, refs)).rejects.toThrow("reference");
 });
 it("hashes stored bytes rather than equivalent parsed JSON", async () => {
   expect(await storedByteHash(new TextEncoder().encode("abc"))).toBe(

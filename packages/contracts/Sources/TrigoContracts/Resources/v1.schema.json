@@ -139,7 +139,7 @@
                 ]
               },
               "mediaProfileId": {
-                "type": "string"
+                "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
               },
               "intervals": {
                 "type": "array",
@@ -322,7 +322,7 @@
               "type": "string"
             },
             "profileId": {
-              "type": "string"
+              "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
             },
             "requestedLanguage": {
               "type": "string"
@@ -511,7 +511,7 @@
           "maximum": 9007199254740991
         },
         "mediaProfileId": {
-          "type": "string"
+          "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
         },
         "objects": {
           "type": "array",
@@ -528,7 +528,7 @@
                 "maximum": 9007199254740991
               },
               "contentType": {
-                "type": "string"
+                "const": "audio/wav"
               },
               "byteLength": {
                 "type": "integer",

@@ -8,9 +8,9 @@
     {
       "objectId": "00000000-0000-4000-8000-000000000005",
       "index": 0,
-      "contentType": "application/octet-stream",
-      "byteLength": 3,
-      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "contentType": "audio/wav",
+      "byteLength": 64044,
+      "sha256": "ee1cb0c155d7c174f1f9b1d0bb4f10edd3f5aa06f0fe58bf698161e6cb784727",
       "startMs": 0,
       "endMs": 1000,
       "channelMap": [
@@ -27,9 +27,9 @@
     {
       "objectId": "00000000-0000-4000-8000-000000000005",
       "index": 0,
-      "contentType": "application/octet-stream",
-      "byteLength": 3,
-      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "contentType": "audio/wav",
+      "byteLength": 64044,
+      "sha256": "ee1cb0c155d7c174f1f9b1d0bb4f10edd3f5aa06f0fe58bf698161e6cb784727",
       "startMs": 0,
       "endMs": 1000,
       "channelMap": [

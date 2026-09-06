@@ -1,9 +1,39 @@
-import { selectedMediaProfile, type TranscriptRevision, validateDocument } from "@trigo/contracts";
-import { Effect, Schema } from "effect";
+import {
+  MediaSourceRole,
+  selectedMediaProfile,
+  type TranscriptRevision,
+  validateDocument,
+} from "@trigo/contracts";
+import { DateTime, Effect, Schema } from "effect";
 
 const Seconds = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0));
 const Confidence = Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }));
 const ProviderSpeaker = Schema.Union([Schema.String, Schema.Finite]);
+const CanonicalUuidV4 = Schema.String.check(
+  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+);
+const CallId = CanonicalUuidV4.pipe(Schema.brand("CallId"));
+const RevisionId = CanonicalUuidV4.pipe(Schema.brand("RevisionId"));
+const ManifestId = CanonicalUuidV4.pipe(Schema.brand("ManifestId"));
+const ObjectId = CanonicalUuidV4.pipe(Schema.brand("ObjectId"));
+const TrackId = CanonicalUuidV4.pipe(Schema.brand("TrackId"));
+const Sha256 = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/)).pipe(Schema.brand("Sha256"));
+const NonNegativeMilliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).pipe(
+  Schema.brand("NonNegativeMilliseconds"),
+);
+const MediaObjectIndex = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).pipe(
+  Schema.brand("MediaObjectIndex"),
+);
+const MediaChannelIndex = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).pipe(
+  Schema.brand("MediaChannelIndex"),
+);
+const LanguageTag = Schema.NonEmptyString.check(
+  Schema.isPattern(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/),
+).pipe(Schema.brand("LanguageTag"));
+const ProviderRequestId = Schema.NonEmptyString.pipe(Schema.brand("ProviderRequestId"));
+const MakeId = Schema.declare((value): value is () => string => typeof value === "function", {
+  expected: "UUID factory",
+});
 
 const Nova3Word = Schema.Struct({
   word: Schema.String,
@@ -36,29 +66,42 @@ const Nova3Response = Schema.Struct({
 type DecodedResponse = typeof Nova3Response.Type;
 type DecodedWord = typeof Nova3Word.Type;
 
-export interface Nova3ObjectResult {
-  readonly objectId: string;
-  readonly index: number;
-  readonly startMs: number;
-  readonly endMs: number;
-  readonly channelMap: ReadonlyArray<{
-    readonly channelIndex: number;
-    readonly trackId: string;
-  }>;
-  readonly providerRequestId: string | null;
-  readonly response: unknown;
-}
+const Nova3ObjectResult = Schema.Struct({
+  objectId: ObjectId,
+  index: MediaObjectIndex,
+  startMs: NonNegativeMilliseconds,
+  endMs: NonNegativeMilliseconds,
+  channelMap: Schema.Array(
+    Schema.Struct({
+      channelIndex: MediaChannelIndex,
+      trackId: TrackId,
+    }),
+  ),
+  providerRequestId: Schema.NullOr(ProviderRequestId),
+  response: Schema.Unknown,
+});
 
-export interface Nova3NormalizationInput {
-  readonly callId: string;
-  readonly revisionId: string;
-  readonly createdAt: string;
-  readonly audioManifest: TranscriptRevision["audioManifest"];
-  readonly requestedLanguage: string;
-  readonly detectedLanguages: ReadonlyArray<string>;
-  readonly objects: ReadonlyArray<Nova3ObjectResult>;
-  readonly makeId: () => string;
-}
+const Nova3NormalizationInput = Schema.Struct({
+  callId: CallId,
+  revisionId: RevisionId,
+  createdAt: Schema.DateTimeUtcFromString,
+  audioManifest: Schema.Struct({
+    manifestId: ManifestId,
+    sha256: Sha256,
+  }),
+  requestedLanguage: LanguageTag,
+  detectedLanguages: Schema.Array(LanguageTag),
+  tracks: Schema.Array(
+    Schema.Struct({
+      trackId: TrackId,
+      role: MediaSourceRole,
+    }),
+  ),
+  objects: Schema.Array(Nova3ObjectResult),
+  makeId: MakeId,
+});
+
+type DecodedNormalizationInput = typeof Nova3NormalizationInput.Type;
 
 export class Nova3NormalizationError extends Schema.TaggedError<Nova3NormalizationError>()(
   "Nova3.NormalizationError",
@@ -82,8 +125,11 @@ function textFor(word: DecodedWord): string {
 }
 
 export const normalizeNova3 = Effect.fn("Nova3.normalize")(function* (
-  input: Nova3NormalizationInput,
+  unknownInput: unknown,
 ): Effect.fn.Return<TranscriptRevision, Nova3NormalizationError> {
+  const input = yield* Schema.decodeUnknownEffect(Nova3NormalizationInput)(unknownInput).pipe(
+    Effect.mapError(() => failure("Nova3.decodeInput", "Normalization input is invalid")),
+  );
   const decoded = yield* Effect.forEach(input.objects, (object) =>
     Schema.decodeUnknownEffect(Nova3Response)(object.response).pipe(
       Effect.mapError(() =>
@@ -105,11 +151,17 @@ export const normalizeNova3 = Effect.fn("Nova3.normalize")(function* (
 });
 
 function buildRevision(
-  input: Nova3NormalizationInput,
+  input: DecodedNormalizationInput,
   responses: ReadonlyArray<DecodedResponse>,
 ): TranscriptRevision {
   if (input.objects.length !== responses.length)
     throw failure("Nova3.normalize", "Every media object must have one provider result");
+  if (
+    input.tracks.length !== selectedMediaProfile.channels.length ||
+    new Set(input.tracks.map((track) => track.trackId)).size !== input.tracks.length ||
+    new Set(input.tracks.map((track) => track.role)).size !== input.tracks.length
+  )
+    throw failure("Nova3.normalize", "Normalization input must identify both source tracks");
 
   const speakers: TranscriptRevision["speakers"] = [];
   const turns: TranscriptRevision["turns"] = [];
@@ -141,12 +193,17 @@ function buildRevision(
       const channelMapping = object.channelMap.find(
         (mapping) => mapping.channelIndex === expectedChannel.index,
       );
+      const mappedTrack = input.tracks.find((track) => track.trackId === channelMapping?.trackId);
       const channel = channels[expectedChannel.index];
       const alternative = channel?.alternatives?.[0];
-      if (channelMapping === undefined || alternative === undefined)
+      if (
+        channelMapping === undefined ||
+        mappedTrack?.role !== expectedChannel.role ||
+        alternative === undefined
+      )
         throw failure(
           "Nova3.normalize",
-          `Object ${object.index} is missing channel ${expectedChannel.index}`,
+          `Object ${object.index} channel ${expectedChannel.index} does not map to ${expectedChannel.role}`,
         );
 
       const words = alternative.words ?? [];
@@ -164,7 +221,7 @@ function buildRevision(
         throw failure("Nova3.normalize", "Provider word list changed during normalization");
       let currentWords: TranscriptRevision["turns"][number]["words"] = [];
       let currentLabel = labelFor(firstProviderWord);
-      let previousWordEndMs = object.startMs;
+      let previousWordEndMs: number = object.startMs;
 
       const finishTurn = () => {
         const firstWord = currentWords[0];
@@ -176,12 +233,12 @@ function buildRevision(
         if (currentLabel !== null) {
           let scopeId = scopeIds.get(scopeKey);
           if (scopeId === undefined) {
-            scopeId = input.makeId();
+            scopeId = CanonicalUuidV4.make(input.makeId());
             scopeIds.set(scopeKey, scopeId);
           }
           speakerId = speakerIds.get(speakerKey) ?? null;
           if (speakerId === null) {
-            speakerId = input.makeId();
+            speakerId = CanonicalUuidV4.make(input.makeId());
             speakerIds.set(speakerKey, speakerId);
             speakers.push({
               speakerId,
@@ -192,7 +249,7 @@ function buildRevision(
           }
         }
         turns.push({
-          turnId: input.makeId(),
+          turnId: CanonicalUuidV4.make(input.makeId()),
           trackId: channelMapping.trackId,
           speakerId,
           startMs: firstWord.startMs,
@@ -244,7 +301,7 @@ function buildRevision(
     schemaVersion: 1,
     callId: input.callId,
     revisionId: input.revisionId,
-    createdAt: input.createdAt,
+    createdAt: DateTime.formatIso(input.createdAt),
     audioManifest: input.audioManifest,
     normalizationVersion: 1,
     asr: {
