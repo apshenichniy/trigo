@@ -244,7 +244,9 @@ public actor ServerConnection {
 
   public func snapshot() -> ConnectionSnapshot { current }
 
-  public func restore() async -> ConnectionSnapshot {
+  public func restore(
+    onBindingRestored: @Sendable (ConnectionSnapshot) async -> Void = { _ in }
+  ) async -> ConnectionSnapshot {
     guard beginOperation() else { return current }
     defer { operationInProgress = false }
 
@@ -270,6 +272,8 @@ public actor ServerConnection {
     current = ConnectionSnapshot(
       binding: committed.binding, health: .checking,
       lastAttemptIssue: recovered ? nil : .persistence)
+    // Local capture can recover and become eligible before the remote health request completes.
+    await onBindingRestored(current)
     let token: String
     do {
       guard let savedToken = try await credentialStore.load(account: committed.credentialAccount)

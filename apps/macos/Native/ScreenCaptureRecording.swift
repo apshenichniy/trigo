@@ -118,6 +118,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     filter = selectedFilter
     let output = try CaptureStreamSink(
       directory: created.mediaDirectory,
+      queue: system.audioQueue(),
       origin: CMClockGetTime(CMClockGetHostTimeClock()), microphone: microphone,
       onSnapshot: { [weak self] value in
         Task { @MainActor in
@@ -290,12 +291,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
 
   private func checkSourceAndMicrophone() async {
     guard !stopping, let source = session?.source, applicationStream != nil else { return }
-    guard let application = NSRunningApplication(processIdentifier: source.processID),
-      !application.isTerminated,
-      source.matches(
-        processID: application.processIdentifier, bundleID: application.bundleIdentifier,
-        launchDate: application.launchDate)
-    else {
+    guard system.sourceIsAvailable(source) else {
       await interrupt("source_exited")
       return
     }
@@ -398,7 +394,7 @@ private final class CaptureStreamDelegate: NSObject, SCStreamDelegate, @unchecke
 
 /// All mutable engine/stream-admission state is confined to queue. No Task is created per audio buffer.
 private final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
-  let queue = DispatchQueue(label: "trigo.capture.audio", qos: .userInitiated)
+  let queue: DispatchQueue
   private let engine: CaptureRecordingEngine
   private let routing: CaptureAudioRouting
   private var timer: DispatchSourceTimer?
@@ -408,11 +404,12 @@ private final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Send
   private let onMicrophoneFailure: @Sendable (ObjectIdentifier) -> Void
 
   init(
-    directory: URL, origin: CMTime, microphone: CaptureMicrophone?,
+    directory: URL, queue: DispatchQueue, origin: CMTime, microphone: CaptureMicrophone?,
     onSnapshot: @escaping @Sendable (CaptureRecordingSnapshot) -> Void,
     onMicrophoneFailure: @escaping @Sendable (ObjectIdentifier) -> Void,
     onFailure: @escaping @Sendable (String) -> Void
   ) throws {
+    self.queue = queue
     engine = try CaptureRecordingEngine(
       directory: directory, origin: origin, microphone: microphone)
     routing = CaptureAudioRouting(engine: engine)

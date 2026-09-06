@@ -21,8 +21,28 @@ actor RecordingCredentialsFixture: CredentialStoring {
 actor RecordingStatusFixture: ServerStatusFetching {
   let archiveID = "00000000-0000-4000-8000-000000000016"
   var failure: ConnectionIssue?
+  private var shouldHold = false
+  private var held: CheckedContinuation<Void, Never>?
+  private var waiting: [CheckedContinuation<Void, Never>] = []
   func setFailure(_ issue: ConnectionIssue?) { failure = issue }
-  func fetch(serverURL: URL, token: String) throws -> ServerStatus {
+  func holdNextFetch() { shouldHold = true }
+  func waitForHeldFetch() async {
+    if held != nil { return }
+    await withCheckedContinuation { waiting.append($0) }
+  }
+  func releaseFetch() {
+    shouldHold = false
+    held?.resume()
+    held = nil
+  }
+  func fetch(serverURL: URL, token: String) async throws -> ServerStatus {
+    if shouldHold {
+      await withCheckedContinuation { continuation in
+        held = continuation
+        waiting.forEach { $0.resume() }
+        waiting = []
+      }
+    }
     if let failure { throw failure }
     return .init(
       schemaVersion: 1, apiVersion: 1, archiveId: archiveID, stage: .dev,
@@ -33,12 +53,42 @@ actor RecordingStatusFixture: ServerStatusFetching {
 }
 
 @MainActor final class RecordingTransportFixture: CaptureTransport {
+  struct Unavailable: Error {}
   var running = false
+  var failsStart = false
+  var suspendStart = false
+  private var entered = false
+  private var observers: [CheckedContinuation<Void, Never>] = []
+  private var pending: CheckedContinuation<Void, Never>?
   func addCaptureOutput(
     _ output: any SCStreamOutput, type: SCStreamOutputType, queue: DispatchQueue
   ) throws {}
-  func startCapture() async throws { running = true }
+  func startCapture() async throws {
+    if failsStart { throw Unavailable() }
+    if suspendStart {
+      await withCheckedContinuation {
+        pending = $0
+        signalStart()
+      }
+    } else {
+      signalStart()
+    }
+    running = true
+  }
   func stopForRetirement() async throws { running = false }
+  func waitForStart() async {
+    if entered { return }
+    await withCheckedContinuation { observers.append($0) }
+  }
+  func finishStart() {
+    pending?.resume()
+    pending = nil
+  }
+  private func signalStart() {
+    entered = true
+    observers.forEach { $0.resume() }
+    observers = []
+  }
 }
 
 @Test @MainActor func recordingRequiresSetupBeforeAnySourceOrPermissionAction() async throws {
@@ -54,6 +104,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
   let coordinator = RecordingCoordinator(
     connection: connection, namespace: namespace, capture: ScreenCaptureRecording(),
     sources: .init(
+      permissions: { .init(screenAudio: false, microphone: false) },
       frontmost: {
         sourceReads += 1
         throw CaptureStartFailure.unsupportedSource
@@ -97,6 +148,7 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
   let coordinator = RecordingCoordinator(
     connection: connection, namespace: namespace, capture: capture,
     sources: .init(
+      permissions: { .init(screenAudio: true, microphone: true) },
       frontmost: {
         sourceReads += 1
         return frontmost

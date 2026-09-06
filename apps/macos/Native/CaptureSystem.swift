@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import ScreenCaptureKit
 
@@ -22,4 +23,15 @@ extension SCStream: CaptureTransport {
   var filter: (CaptureSource) async throws -> SCContentFilter
   var microphone: () -> CaptureMicrophone?
   var stream: (SCContentFilter, SCStreamConfiguration, any SCStreamDelegate) -> any CaptureTransport
+  var audioQueue: () -> DispatchQueue = {
+    DispatchQueue(label: "trigo.capture.audio", qos: .userInitiated)
+  }
+  var sourceIsAvailable: (CaptureSource) -> Bool = { source in
+    guard let application = NSRunningApplication(processIdentifier: source.processID),
+      !application.isTerminated
+    else { return false }
+    return source.matches(
+      processID: application.processIdentifier,
+      bundleID: application.bundleIdentifier, launchDate: application.launchDate)
+  }
 }
