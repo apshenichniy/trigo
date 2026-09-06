@@ -181,6 +181,6 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
   #expect(sourceReads == 1)
   let archive = try LocalArchive(root: namespace.archive, archiveID: status.archiveID)
   #expect(
-    try await archive.loadCall(callID: callID).manifest.value.object?["captureState"]?.string
+    try await archive.loadCall(callID: callID).manifest.value.captureState
       == "stopped")
 }

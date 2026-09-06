@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import TrigoContracts
 
 @testable import TrigoNative
 
@@ -369,4 +370,25 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
 
   let relaunchedCommitted = try LocalArchive(root: root, archiveID: archiveID)
   #expect(try await relaunchedCommitted.loadCall(callID: callID).manifest.documentVersion == 2)
+}
+
+@Test func typedTranscriptExportKeepsOriginalIdentityAndRejectsReencodedBytes() async throws {
+  let root = try temporaryRoot()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let archive = try LocalArchive(root: root, archiveID: archiveID)
+  try await publishCompleteCall(into: archive)
+  let original = try await archive.transcriptRevisionBytes(
+    callID: callID, revisionID: firstRevisionID)
+  let stored = try Contract.decode(TranscriptRevision.self, bytes: original)
+  let reencoded = try Contract.encode(stored.value)
+  #expect(reencoded != original)
+  #expect(try Contract.decode(TranscriptRevision.self, bytes: reencoded).value == stored.value)
+  #expect(try await archive.publishTranscriptRevision(stored.storedBytes) == .alreadyPresent)
+  await #expect(throws: LocalPersistenceError.immutableConflict(firstRevisionID)) {
+    try await archive.publishTranscriptRevision(reencoded)
+  }
+  let retained = try await archive.transcriptRevisionBytes(
+    callID: callID, revisionID: firstRevisionID)
+  #expect(retained == original)
+  #expect(Contract.hash(retained) == stored.sha256)
 }

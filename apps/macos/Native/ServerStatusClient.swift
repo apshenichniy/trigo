@@ -4,8 +4,19 @@ import TrigoContracts
 enum ServerStatusDecoder {
   static func decode(_ data: Data) throws -> ServerStatus {
     do {
-      _ = try Contract.validate("StatusResponse", bytes: data)
-      return try JSONDecoder().decode(ServerStatus.self, from: data)
+      let value = try Contract.decode(StatusResponse.self, bytes: data).value
+      guard let stage = ServerStage(rawValue: value.stage),
+        let transcription = TranscriptionReadiness(rawValue: value.readiness.transcription),
+        let operations = CallOperationsReadiness(rawValue: value.readiness.callOperations)
+      else { throw ConnectionIssue.incompatible }
+      return ServerStatus(
+        schemaVersion: value.schemaVersion, apiVersion: value.apiVersion,
+        archiveId: value.archiveId, stage: stage,
+        readiness: .init(
+          archive: value.readiness.archive,
+          ownerAuthentication: value.readiness.ownerAuthentication,
+          transcription: transcription, callOperations: operations),
+        errors: value.errors.map { .init(code: $0.code, retry: $0.retry, message: $0.message) })
     } catch {
       throw ConnectionIssue.incompatible
     }

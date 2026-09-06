@@ -83,8 +83,8 @@ enum RecordingRecovery {
           }
           guard try await needsRecovery(session) else { continue }
           let aggregate = try await CaptureArchiveSession.recover(root: root, callID: callID)
-          let manifest = try jsonObject(aggregate.manifest.storedBytes)
-          let reason = manifest["interruptionReason"] as? String
+          let manifest = aggregate.manifest.value
+          let reason = manifest.interruptionReason
           report.recoveredCalls.append(.init(callID: callID, interruptionReason: reason))
           if reason == "corrupt_media_tail" {
             report.warnings.append(
@@ -119,13 +119,13 @@ enum RecordingRecovery {
     let lifecycle = try LocalLifecycleStore(root: session.root, archiveID: session.archiveID)
     do {
       let call = try await archive.loadCall(callID: session.callID)
-      let manifest = try jsonObject(call.manifest.storedBytes)
-      guard manifest["audioManifest"] is [String: Any],
-        let state = manifest["captureState"] as? String, state != "recording"
+      let manifest = call.manifest.value
+      let state = manifest.captureState
+      guard manifest.audioManifest != nil, state != "recording"
       else { return true }
       let current = try await lifecycle.load(callID: session.callID)
       return current?.capture.state.rawValue != state
-        || current?.capture.failure?.code != manifest["interruptionReason"] as? String
+        || current?.capture.failure?.code != manifest.interruptionReason
     } catch LocalPersistenceError.callNotFound {
       return true
     }

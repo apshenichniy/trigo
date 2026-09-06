@@ -43,7 +43,7 @@ public enum PublicationResult: Sendable, Equatable {
 
 /// A validated canonical call and the exact immutable bytes referenced by its manifest.
 public struct LocalCallAggregate: Sendable {
-  public let manifest: ValidatedDocument
+  public let manifest: StoredDocument<CallDocument>
   public let transcriptRevisions: [String: Data]
   public let audioManifest: Data?
 }
@@ -141,11 +141,4 @@ func isCanonicalIdentifier(_ value: String) -> Bool {
 
 func requireCanonicalIdentifier(_ value: String) throws {
   guard isCanonicalIdentifier(value) else { throw LocalPersistenceError.invalidIdentifier(value) }
-}
-
-func jsonObject(_ bytes: Data) throws -> [String: Any] {
-  guard let value = try JSONSerialization.jsonObject(with: bytes) as? [String: Any] else {
-    throw LocalPersistenceError.invalidStoredDocument("Expected a JSON object")
-  }
-  return value
 }

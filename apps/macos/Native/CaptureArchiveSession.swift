@@ -101,10 +101,10 @@ public struct CaptureArchiveSession: Codable, Equatable, Sendable {
     try requireCaptureInterruptionReason(interruptionReason)
     let archive = try LocalArchive(root: root, archiveID: archiveID)
     let existing = try await archive.loadCall(callID: callID)
-    let current = try jsonObject(existing.manifest.storedBytes)
+    let current = existing.manifest.value
     // A final canonical reference is immutable. Repeated recovery does not replace its object IDs.
-    if current["audioManifest"] is [String: Any] {
-      try await publishLifecycle(reason: current["interruptionReason"] as? String)
+    if current.audioManifest != nil {
+      try await publishLifecycle(reason: current.interruptionReason)
       return existing
     }
     let finalization: CaptureFinalization
@@ -132,7 +132,7 @@ public struct CaptureArchiveSession: Codable, Equatable, Sendable {
     _ = try await archive.publishManifest(
       callBytes(
         media: media, reason: interruptionReason, version: 3,
-        reference: ["manifestId": audioManifestID, "sha256": Contract.hash(audio)]))
+        reference: .init(manifestId: audioManifestID, sha256: Contract.hash(audio))))
     try await publishLifecycle(reason: interruptionReason)
     return try await archive.loadCall(callID: callID)
   }
@@ -155,9 +155,9 @@ public struct CaptureArchiveSession: Codable, Equatable, Sendable {
     let session = self
     let archive = try LocalArchive(root: root, archiveID: session.archiveID)
     let existing = try await archive.loadCall(callID: callID)
-    if try jsonObject(existing.manifest.storedBytes)["audioManifest"] is [String: Any] {
+    if existing.manifest.value.audioManifest != nil {
       try await session.publishLifecycle(
-        reason: jsonObject(existing.manifest.storedBytes)["interruptionReason"] as? String)
+        reason: existing.manifest.value.interruptionReason)
       return existing
     }
     if FileManager.default.fileExists(atPath: session.finalizationURL.path) {
@@ -201,75 +201,64 @@ public struct CaptureArchiveSession: Codable, Equatable, Sendable {
 
   private func callBytes(
     media: CapturedMedia?, reason: String?, version: Int,
-    reference: [String: Any]?
+    reference: AudioManifestReference?
   ) throws -> Data {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions.insert(.withFractionalSeconds)
     let profile = try MediaProfile.selected()
-    let tracks: [[String: Any]] = [
-      [
-        "trackId": microphoneTrackID, "role": "microphone",
-        "inputDevice": microphone.map {
-          ["id": $0.id, "name": $0.name]
-        } as Any? ?? NSNull(), "mediaProfileId": profile.id.rawValue,
-        "intervals": intervalObjects(media?.microphoneIntervals ?? []),
-      ],
-      [
-        "trackId": applicationTrackID, "role": "application", "inputDevice": NSNull(),
-        "mediaProfileId": profile.id.rawValue,
-        "intervals": intervalObjects(media?.applicationIntervals ?? []),
-      ],
+    let tracks: [AudioTrack] = [
+      .init(
+        trackId: microphoneTrackID, role: "microphone",
+        inputDevice: microphone.map { .init(id: $0.id, name: $0.name) },
+        mediaProfileId: profile.id.rawValue,
+        intervals: intervalDocuments(media?.microphoneIntervals ?? [])),
+      .init(
+        trackId: applicationTrackID, role: "application", inputDevice: nil,
+        mediaProfileId: profile.id.rawValue,
+        intervals: intervalDocuments(media?.applicationIntervals ?? [])),
     ]
-    return try captureJSON([
-      "schemaVersion": 1, "archiveId": archiveID, "callId": callID, "documentVersion": version,
-      "startedAt": formatter.string(from: startedAt),
-      "endedAt": media.map {
-        formatter.string(from: startedAt.addingTimeInterval(Double($0.durationMs) / 1000))
-      } as Any? ?? NSNull(),
-      "durationMs": media?.durationMs as Any? ?? NSNull(),
-      "captureState": media == nil ? "recording" : reason == nil ? "stopped" : "interrupted",
-      "interruptionReason": reason as Any? ?? NSNull(),
-      "source": [
-        "applicationName": source.applicationName, "bundleId": source.bundleID,
-        "processId": source.processID, "windowId": source.windowID,
-        "windowTitle": source.windowTitle as Any? ?? NSNull(),
-      ],
-      "tracks": tracks, "audioManifest": reference as Any? ?? NSNull(),
-      "revisions": [], "activeRevisionId": NSNull(), "speakerNames": [:],
-    ])
+    return try Contract.encode(
+      CallDocument(
+        schemaVersion: 1, archiveId: archiveID, callId: callID, documentVersion: version,
+        startedAt: formatter.string(from: startedAt),
+        endedAt: media.map {
+          formatter.string(from: startedAt.addingTimeInterval(Double($0.durationMs) / 1000))
+        },
+        durationMs: media?.durationMs,
+        captureState: media == nil ? "recording" : reason == nil ? "stopped" : "interrupted",
+        interruptionReason: reason,
+        source: .init(
+          applicationName: source.applicationName, bundleId: source.bundleID,
+          processId: Int(source.processID), windowId: Int(source.windowID),
+          windowTitle: source.windowTitle),
+        tracks: tracks, audioManifest: reference, revisions: [], activeRevisionId: nil,
+        speakerNames: [:]))
   }
 
   private func audioBytes(_ media: CapturedMedia) throws -> Data {
-    try captureJSON([
-      "schemaVersion": 1, "callId": callID, "manifestId": audioManifestID,
-      "durationMs": media.durationMs, "mediaProfileId": MediaProfile.selected().id.rawValue,
-      "objects": media.objects.map { object -> [String: Any] in
-        [
-          "objectId": object.objectID, "index": object.index, "contentType": "audio/wav",
-          "byteLength": object.byteLength, "sha256": object.sha256, "startMs": object.startMs,
-          "endMs": object.endMs,
-          "channelMap": [
-            ["channelIndex": 0, "trackId": microphoneTrackID],
-            ["channelIndex": 1, "trackId": applicationTrackID],
-          ],
-        ]
-      },
-    ])
+    try Contract.encode(
+      AudioManifest(
+        schemaVersion: 1, callId: callID, manifestId: audioManifestID,
+        durationMs: media.durationMs, mediaProfileId: MediaProfile.selected().id.rawValue,
+        objects: media.objects.map { object in
+          .init(
+            objectId: object.objectID, index: object.index, contentType: "audio/wav",
+            byteLength: object.byteLength, sha256: object.sha256, startMs: object.startMs,
+            endMs: object.endMs,
+            channelMap: [
+              .init(channelIndex: 0, trackId: microphoneTrackID),
+              .init(channelIndex: 1, trackId: applicationTrackID),
+            ])
+        }))
   }
 }
 
 private func captureID() -> String { UUID().uuidString.lowercased() }
 
-private func intervalObjects(_ intervals: [CaptureInterval]) -> [[String: Any]] {
+private func intervalDocuments(_ intervals: [CaptureInterval]) -> [TrackInterval] {
   intervals.map {
-    [
-      "startMs": $0.startMs, "endMs": $0.endMs, "state": $0.state.rawValue,
-      "reason": $0.state == .recorded ? NSNull() : $0.state.rawValue as Any,
-    ]
+    .init(
+      startMs: $0.startMs, endMs: $0.endMs, state: $0.state.rawValue,
+      reason: $0.state == .recorded ? nil : $0.state.rawValue)
   }
-}
-
-private func captureJSON(_ object: [String: Any]) throws -> Data {
-  try JSONSerialization.data(
-    withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes])
 }

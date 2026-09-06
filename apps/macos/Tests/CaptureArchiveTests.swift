@@ -18,13 +18,13 @@ import TrigoContracts
     microphone: .init(id: "fixture-mic", name: "Fixture microphone"))
   let archive = try LocalArchive(root: root, archiveID: archiveID)
   let initial = try await archive.loadCall(callID: session.callID)
-  #expect(initial.manifest.value.object?["captureState"]?.string == "recording")
+  #expect(initial.manifest.value.captureState == "recording")
   let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
   try writer.append(interleaved: Array(repeating: Int16(123), count: 64_000))
   let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
-  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 2_000)
-  #expect(recovered.manifest.value.object?["interruptionReason"]?.string == "process_terminated")
+  #expect(recovered.manifest.value.captureState == "interrupted")
+  #expect(recovered.manifest.value.durationMs == 2_000)
+  #expect(recovered.manifest.value.interruptionReason == "process_terminated")
   let media = try Contract.validate("AudioManifest", bytes: #require(recovered.audioManifest))
   #expect(media.value.object?["objects"]?.array?.count == 1)
   let object = try #require(media.value.object?["objects"]?.array?.first)
@@ -49,8 +49,8 @@ import TrigoContracts
     directory: session.mediaDirectory, origin: .zero, microphone: nil)
   _ = try engine.stop(at: CMTime(seconds: 0.1, preferredTimescale: 16_000), reason: "system_sleep")
   let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
-  #expect(recovered.manifest.value.object?["interruptionReason"]?.string == "system_sleep")
+  #expect(recovered.manifest.value.captureState == "interrupted")
+  #expect(recovered.manifest.value.interruptionReason == "system_sleep")
 }
 
 @Test func recoveryAfterImmutableAudioPublicationReusesTheSameFinalization() async throws {
@@ -95,8 +95,8 @@ import TrigoContracts
     try CaptureRecordingEngine(directory: session.mediaDirectory, origin: .zero, microphone: nil)
   }
   let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+  #expect(recovered.manifest.value.durationMs == 0)
+  #expect(recovered.manifest.value.captureState == "interrupted")
 }
 
 @Test(arguments: [
@@ -119,9 +119,9 @@ func partiallyPreparedCaptureRecoversWithItsAllocatedIdentity(_ boundary: Captur
   }
   // A relaunch has only the session metadata, not the caller's in-memory handle.
   let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["callId"]?.string == session.callID)
-  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+  #expect(recovered.manifest.value.callId == session.callID)
+  #expect(recovered.manifest.value.durationMs == 0)
+  #expect(recovered.manifest.value.captureState == "interrupted")
   let lifecycle = try LocalLifecycleStore(root: root, archiveID: session.archiveID)
   #expect(try await lifecycle.load(callID: session.callID)?.capture.state == .interrupted)
   let repeated = try await session.recover()
@@ -143,8 +143,8 @@ func partiallyPreparedCaptureRecoversWithItsAllocatedIdentity(_ boundary: Captur
   } catch let failure as CapturePreparationFailure {
     try FileManager.default.removeItem(at: root)
     let recovered = try await failure.session.recover()
-    #expect(recovered.manifest.value.object?["callId"]?.string == failure.session.callID)
-    #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
-    #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+    #expect(recovered.manifest.value.callId == failure.session.callID)
+    #expect(recovered.manifest.value.durationMs == 0)
+    #expect(recovered.manifest.value.captureState == "interrupted")
   }
 }

@@ -20,10 +20,30 @@ it("rejects an audio channel map that swaps microphone and application tracks", 
   const second = audio.objects[0]?.channelMap[1];
   if (call.audioManifest === null || first === undefined || second === undefined)
     throw new Error("fixture");
-  [first.trackId, second.trackId] = [second.trackId, first.trackId];
-  const audioBytes = new TextEncoder().encode(JSON.stringify(audio));
-  call.audioManifest.sha256 = await storedByteHash(audioBytes);
-  const callBytes = new TextEncoder().encode(JSON.stringify(call));
+  const swapped = {
+    ...audio,
+    objects: audio.objects.map((object, index) =>
+      index === 0
+        ? {
+            ...object,
+            channelMap: [
+              { ...first, trackId: second.trackId },
+              { ...second, trackId: first.trackId },
+            ],
+          }
+        : object,
+    ),
+  };
+  const audioBytes = new TextEncoder().encode(JSON.stringify(swapped));
+  const callBytes = new TextEncoder().encode(
+    JSON.stringify({
+      ...call,
+      audioManifest: {
+        ...call.audioManifest,
+        sha256: await storedByteHash(audioBytes),
+      },
+    }),
+  );
   const refs = new Map([
     ["00000000-0000-4000-8000-000000000004", audioBytes],
     ["00000000-0000-4000-8000-000000000006", read("revision")],

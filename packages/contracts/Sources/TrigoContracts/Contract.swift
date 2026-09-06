@@ -39,6 +39,28 @@ struct UTCFormat: FormatValidator {
 }
 
 public enum Contract {
+  // Each schema/context is compiled once. The pinned validator's Sendable context protects caches.
+  private static let schemas: Result<[String: Schema], any Error> = Result {
+    guard let url = Bundle.module.url(forResource: "v1.schema", withExtension: "json"),
+      var root = try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url)).object,
+      let definitions = root["$defs"]?.object
+    else { throw ContractError.structure }
+    root.removeValue(forKey: "anyOf")
+    root.removeValue(forKey: "oneOf")
+    return try Dictionary(
+      uniqueKeysWithValues: GeneratedContract.documentKinds.map { kind in
+        guard definitions[kind] != nil else { throw ContractError.structure }
+        var selected = root
+        selected["$ref"] = .string("#/$defs/\(kind)")
+        let bytes = try JSONEncoder().encode(JSONValue.object(selected))
+        return (
+          kind,
+          try Schema(
+            instance: String(decoding: bytes, as: UTF8.self), formatValidators: [UTCFormat()])
+        )
+      })
+  }
+
   public static func hash(_ bytes: Data) -> String {
     SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
   }
@@ -51,14 +73,7 @@ public enum Contract {
   public static func validateStructure(_ kind: String, bytes: Data) throws -> ValidatedDocument {
     guard let text = String(data: bytes, encoding: .utf8) else { throw ContractError.structure }
     do {
-      let url = Bundle.module.url(forResource: "v1.schema", withExtension: "json")!
-      var root = try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url)).object!
-      guard root["$defs"]?[kind] != .null else { throw ContractError.structure }
-      root.removeValue(forKey: "oneOf")
-      root["$ref"] = .string("#/$defs/\(kind)")
-      let schemaBytes = try JSONEncoder().encode(JSONValue.object(root))
-      let schema = try Schema(
-        instance: String(decoding: schemaBytes, as: UTF8.self), formatValidators: [UTCFormat()])
+      guard let schema = try schemas.get()[kind] else { throw ContractError.structure }
       let value = try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8))
       try require(schema.validate(value).isValid, .structure)
       return ValidatedDocument(kind: kind, value: value, storedBytes: bytes)

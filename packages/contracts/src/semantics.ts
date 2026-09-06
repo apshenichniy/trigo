@@ -1,4 +1,4 @@
-import type { CallDocument } from "./generated/documents.d.ts";
+import type { CallDocument } from "./document-schema.ts";
 import { frameCountForDuration, selectedMediaProfile, waveByteLength } from "./media-profile.ts";
 export function requireValid(condition: unknown): asserts condition {
   if (!condition) throw new Error("semantics");
@@ -37,7 +37,7 @@ export function validateCall(call: CallDocument): void {
   );
 }
 export function validateRevision(
-  revision: import("./generated/documents.d.ts").TranscriptRevision,
+  revision: import("./document-schema.ts").TranscriptRevision,
 ): void {
   unique(revision.speakers.map((s) => s.speakerId));
   unique(revision.turns.map((t) => t.turnId));
@@ -58,7 +58,7 @@ export function validateRevision(
     }
   }
 }
-export function validateAudio(audio: import("./generated/documents.d.ts").AudioManifest): void {
+export function validateAudio(audio: import("./document-schema.ts").AudioManifest): void {
   requireValid(audio.mediaProfileId === selectedMediaProfile.id);
   unique(audio.objects.map((o) => o.objectId));
   unique(audio.objects.map((o) => o.index));

@@ -1,3 +1,4 @@
+import { CanonicalUUIDv4, SHA256 } from "@trigo/contracts";
 import {
   MediaSourceRole,
   selectedMediaProfile,
@@ -9,15 +10,12 @@ import { DateTime, Effect, Schema } from "effect";
 const Seconds = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0));
 const Confidence = Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }));
 const ProviderSpeaker = Schema.Union([Schema.String, Schema.Finite]);
-const CanonicalUuidV4 = Schema.String.check(
-  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
-);
-const CallId = CanonicalUuidV4.pipe(Schema.brand("CallId"));
-const RevisionId = CanonicalUuidV4.pipe(Schema.brand("RevisionId"));
-const ManifestId = CanonicalUuidV4.pipe(Schema.brand("ManifestId"));
-const ObjectId = CanonicalUuidV4.pipe(Schema.brand("ObjectId"));
-const TrackId = CanonicalUuidV4.pipe(Schema.brand("TrackId"));
-const Sha256 = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/)).pipe(Schema.brand("Sha256"));
+const CallId = CanonicalUUIDv4.pipe(Schema.brand("CallId"));
+const RevisionId = CanonicalUUIDv4.pipe(Schema.brand("RevisionId"));
+const ManifestId = CanonicalUUIDv4.pipe(Schema.brand("ManifestId"));
+const ObjectId = CanonicalUUIDv4.pipe(Schema.brand("ObjectId"));
+const TrackId = CanonicalUUIDv4.pipe(Schema.brand("TrackId"));
+const Sha256 = SHA256.pipe(Schema.brand("Sha256"));
 const NonNegativeMilliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).pipe(
   Schema.brand("NonNegativeMilliseconds"),
 );
@@ -163,8 +161,8 @@ function buildRevision(
   )
     throw failure("Nova3.normalize", "Normalization input must identify both source tracks");
 
-  const speakers: TranscriptRevision["speakers"] = [];
-  const turns: TranscriptRevision["turns"] = [];
+  const speakers: Array<TranscriptRevision["speakers"][number]> = [];
+  const turns: Array<TranscriptRevision["turns"][number]> = [];
   const speakerIds = new Map<string, string>();
   const scopeIds = new Map<string, string>();
   let previousObjectEndMs = 0;
@@ -219,7 +217,7 @@ function buildRevision(
       const firstProviderWord = words[0];
       if (firstProviderWord === undefined)
         throw failure("Nova3.normalize", "Provider word list changed during normalization");
-      let currentWords: TranscriptRevision["turns"][number]["words"] = [];
+      let currentWords: Array<TranscriptRevision["turns"][number]["words"][number]> = [];
       let currentLabel = labelFor(firstProviderWord);
       let previousWordEndMs: number = object.startMs;
 
@@ -233,12 +231,12 @@ function buildRevision(
         if (currentLabel !== null) {
           let scopeId = scopeIds.get(scopeKey);
           if (scopeId === undefined) {
-            scopeId = CanonicalUuidV4.make(input.makeId());
+            scopeId = CanonicalUUIDv4.make(input.makeId());
             scopeIds.set(scopeKey, scopeId);
           }
           speakerId = speakerIds.get(speakerKey) ?? null;
           if (speakerId === null) {
-            speakerId = CanonicalUuidV4.make(input.makeId());
+            speakerId = CanonicalUUIDv4.make(input.makeId());
             speakerIds.set(speakerKey, speakerId);
             speakers.push({
               speakerId,
@@ -249,7 +247,7 @@ function buildRevision(
           }
         }
         turns.push({
-          turnId: CanonicalUuidV4.make(input.makeId()),
+          turnId: CanonicalUUIDv4.make(input.makeId()),
           trackId: channelMapping.trackId,
           speakerId,
           startMs: firstWord.startMs,
