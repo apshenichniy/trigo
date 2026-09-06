@@ -87,10 +87,10 @@ extension Contract {
       try unique(object["channelMap"].items.map { $0["channelIndex"] })
       try unique(object["channelMap"].items.map { $0["trackId"] })
       let durationMs = object["endMs"].integerValue - object["startMs"].integerValue
+      try require(durationMs <= profile.objectDurationMs)
       let frameCount = profile.frameCount(durationMs: durationMs)
       try require(
         object["contentType"].text == profile.contentType.rawValue
-          && durationMs <= profile.objectDurationMs
           && object["byteLength"].integerValue == profile.waveByteLength(frameCount: frameCount)
           && object["byteLength"].integerValue <= profile.maxObjectBytes
           && object["byteLength"].integerValue <= profile.limits.uploadRequestBytes

@@ -50,10 +50,16 @@ and upload byte bounds while remaining semantically valid. TypeScript and Swift
 now enforce all three limits, and `oversized-object.json` proves that a 60,001 ms
 object is rejected.
 
+The next spec re-review found that Swift calculated frames before applying the
+duration bound, so a structurally valid overflow-scale duration could trap rather
+than return a semantic rejection. Swift now checks the 60-second bound before any
+frame arithmetic, and `overflow-scale-object.json` covers the maximum schema-valid
+integer input.
+
 ## Verification
 
 - `mise exec -- bun run check`
-- TypeScript unit tests — 129 passed
+- TypeScript unit tests — 130 passed
 - Worker tests — 17 passed
 - Swift contract tests — 5 passed
 - Native Swift tests — 21 passed, with the opt-in live pairing test skipped
