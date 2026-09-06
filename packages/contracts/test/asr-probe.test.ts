@@ -17,7 +17,7 @@ const common = {
 
 it("shares the ASR upload envelope across producer and consumer", () => {
   expect(
-    Schema.decodeUnknownSync(AsrProbeUploadResponse)({
+    Schema.decodeSync(AsrProbeUploadResponse)({
       ...common,
       inputKey: "acceptance/issue-13/two-source-en/input.wav",
     }),
@@ -26,7 +26,7 @@ it("shares the ASR upload envelope across producer and consumer", () => {
 
 it("shares the ASR transcription envelope across producer and consumer", () => {
   expect(
-    Schema.decodeUnknownSync(AsrProbeTranscriptionResponse)({
+    Schema.decodeSync(AsrProbeTranscriptionResponse)({
       ...common,
       providerLatencyMs: 500,
       channelCount: 2,
@@ -49,7 +49,7 @@ it("rejects profile drift in ASR probe evidence", () => {
 
 it("shares the ASR error envelope across producer and consumer", () => {
   expect(
-    Schema.decodeUnknownSync(AsrProbeErrorEnvelope)({
+    Schema.decodeSync(AsrProbeErrorEnvelope)({
       schemaVersion: 1,
       error: {
         code: "asr_probe_attempt_exists",
