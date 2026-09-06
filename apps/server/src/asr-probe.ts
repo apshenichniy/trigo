@@ -401,7 +401,12 @@ const transcribe = Effect.fn("AsrProbe.transcribe")(function* (
       channelCount: selectedMediaProfile.channels.length,
       speakerCount: normalized.speakers.length,
       turnCount: normalized.turns.length,
-      retainedKeys: [keys.input, keys.manifest, keys.raw, keys.normalized],
+      retained: {
+        inputKey: keys.input,
+        manifestKey: keys.manifest,
+        rawProviderKey: keys.raw,
+        normalizedRevisionKey: keys.normalized,
+      },
     }),
   );
 });
