@@ -10,8 +10,8 @@ import Testing
       .init(index: 1, role: .application),
     ])
   #expect(profile.interleaved)
-  #expect(profile.assembly.missingFrames == "silence")
-  #expect(profile.asr.speakerScope == "object-channel")
+  #expect(profile.assembly.missingFrames == .silence)
+  #expect(profile.asr.speakerScope == .objectChannel)
 }
 
 @Test func mediaProfileFitsTransportLimits() throws {

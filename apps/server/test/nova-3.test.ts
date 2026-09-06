@@ -40,6 +40,10 @@ const inputBase = {
   },
   requestedLanguage: "en",
   detectedLanguages: ["en"],
+  tracks: [
+    { trackId: microphoneTrack, role: "microphone" },
+    { trackId: applicationTrack, role: "application" },
+  ],
 };
 
 it.effect("preserves channel provenance, gaps, and independent speaker scopes", () =>
@@ -181,6 +185,34 @@ it.effect("rejects a channel result that cannot prove both source roles", () =>
 
     expect(error).toBeInstanceOf(Nova3NormalizationError);
     expect(error.message).toContain("must return 2 channels");
+  }),
+);
+
+it.effect("rejects a channel map that swaps microphone and application tracks", () =>
+  Effect.gen(function* () {
+    const swapped = object(0, {
+      results: {
+        channels: [
+          { alternatives: [{ transcript: "", words: [] }] },
+          { alternatives: [{ transcript: "", words: [] }] },
+        ],
+      },
+    });
+    const error = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        {
+          ...swapped,
+          channelMap: [
+            { channelIndex: 0, trackId: applicationTrack },
+            { channelIndex: 1, trackId: microphoneTrack },
+          ],
+        },
+      ],
+    }).pipe(Effect.flip);
+
+    expect(error.message).toContain("does not map to microphone");
   }),
 );
 

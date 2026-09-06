@@ -50,6 +50,14 @@ sequential repeat from invoking the provider again; a deliberate retry requires
 deleting only that exact task-owned fixture first. The route is unavailable in
 the personal stage.
 
+The checked `valid-audio.json` fixture now describes a canonical one-second
+stereo WAVE object whose byte length and SHA-256 match deterministically
+reconstructed profile bytes. The generated archive contract fixes the selected
+profile ID and `audio/wav` object type. Aggregate validation in both TypeScript
+and Swift proves that channel 0 references the call's microphone track and
+channel 1 its application track; the Nova normalizer independently receives the
+two typed source roles and rejects a swapped channel map.
+
 The generated English control file was independently inspected with `ffprobe`:
 18.000 seconds, `pcm_s16le`, 16 kHz, two channels and 1,152,044 bytes. Its SHA-256
 was `d6dc1328c15ccaf0e702ded53700abc06fce7266dec88fbe66b8745fade4216c`.

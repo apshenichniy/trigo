@@ -1,12 +1,16 @@
 import { expect, it } from "vitest";
+import { Schema } from "effect";
 import {
   frameCountForDuration,
   inspectWaveObject,
   makeWaveHeader,
+  MediaProfile,
   objectCountForDuration,
   selectedMediaProfile,
+  storedByteHash,
   waveByteLength,
 } from "../src/index.ts";
+import validAudio from "../fixtures/valid-audio.json";
 
 it("fixes two logical sources to stable stereo channel provenance", () => {
   expect(selectedMediaProfile.channels).toEqual([
@@ -16,6 +20,12 @@ it("fixes two logical sources to stable stereo channel provenance", () => {
   expect(selectedMediaProfile.interleaved).toBe(true);
   expect(selectedMediaProfile.assembly.missingFrames).toBe("silence");
   expect(selectedMediaProfile.asr.speakerScope).toBe("object-channel");
+});
+
+it("rejects drift from the versioned selected profile", () => {
+  expect(() =>
+    Schema.decodeUnknownSync(MediaProfile)({ ...selectedMediaProfile, sampleRateHz: 48_000 }),
+  ).toThrow();
 });
 
 it("writes and inspects the canonical independently decodable WAVE header", () => {
@@ -29,6 +39,21 @@ it("writes and inspects the canonical independently decodable WAVE header", () =
     durationMs: 2_000,
     byteLength: 128_044,
   });
+});
+
+it("keeps the published valid audio fixture aligned with canonical WAVE bytes", async () => {
+  const fixture = validAudio.objects[0];
+  if (fixture === undefined) throw new Error("fixture");
+  const frameCount = frameCountForDuration(fixture.endMs - fixture.startMs);
+  const object = new Uint8Array(waveByteLength(frameCount));
+  object.set(makeWaveHeader(frameCount));
+
+  expect(fixture).toMatchObject({
+    contentType: selectedMediaProfile.contentType,
+    byteLength: object.byteLength,
+    sha256: await storedByteHash(object),
+  });
+  expect(inspectWaveObject(object).durationMs).toBe(fixture.endMs - fixture.startMs);
 });
 
 it("rejects a WAVE object with a source-mapping format mismatch", () => {

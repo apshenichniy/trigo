@@ -336,6 +336,10 @@ const transcribe = Effect.fn("AsrProbe.transcribe")(function* (
     audioManifest: { manifestId, sha256: manifestSha256 },
     requestedLanguage: language,
     detectedLanguages: [],
+    tracks: [
+      { trackId: microphoneTrackId, role: "microphone" },
+      { trackId: applicationTrackId, role: "application" },
+    ],
     objects: [
       {
         objectId,

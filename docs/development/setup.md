@@ -123,7 +123,7 @@ All commands use `bun run <command>` and propagate errors.
 | `cloud:owner:rotate --stage dev --handoff <absolute-path> --expected-generation <n>` | Atomically replace the owner verifier through a private handoff                      |
 | `cloud:owner:revoke --stage dev --handoff <absolute-path> --expected-generation <n>` | Atomically revoke the owner verifier; the handoff contains no token                  |
 | `test:cloud --stage dev`                                                             | Read-only infrastructure checks, fixture seed/verify and owner-status modes          |
-| `test:asr --stage dev`                                                               | Nonzero placeholder; #13 owns paid provider probes                                   |
+| `test:asr --stage dev [--language en\|ru\|uk]`                                       | Explicit live Nova-3 probe; controlled synthetic audio, no automatic retries         |
 
 The full check fails on Linux rather than silently skipping macOS. Verification
 may create ignored build outputs/caches; it must not rewrite tracked sources or
@@ -133,6 +133,16 @@ that branch protection exists. Merge/deployment require the owner's instruction.
 Cloud commands are never part of `doctor`, `check`, `dev`, or offline CI; their
 credentials, recovery procedure and acceptance sequence are documented separately
 in [Cloud operations](cloud.md).
+
+`test:asr` is a live, potentially billable acceptance command and is never part of
+the default verification graph. It targets only the isolated dev stage, requires
+the paired Trigo Dev owner credential, and creates a fresh controlled synthetic
+fixture for each selected language. Without `--language` it attempts `en`, `ru`,
+and `uk` once each; the selector narrows the set to one language. Before running
+it, reserve the bounded request set in the active Goal ledger and confirm that
+actual plus reserved spend remains within the approved ceiling. Afterward, record
+the conservative actual result and release unused reservation. The command never
+retries automatically, and the deployed fixture marker rejects a sequential repeat.
 
 ## Local runtime
 

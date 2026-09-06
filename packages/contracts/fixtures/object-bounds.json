@@ -8,9 +8,9 @@
     {
       "objectId": "00000000-0000-4000-8000-000000000005",
       "index": 0,
-      "contentType": "application/octet-stream",
-      "byteLength": 3,
-      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "contentType": "audio/wav",
+      "byteLength": 64108,
+      "sha256": "bde241804f761c23f9e2c8a147a132f5ca95a1760eab521a0da78e1b8a147d02",
       "startMs": 0,
       "endMs": 1001,
       "channelMap": [
