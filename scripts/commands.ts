@@ -20,7 +20,7 @@ function doctor() {
     if (actual !== expected) throw new Error(`Expected ${expected}`);
   }
   console.log(
-    "Target: local; fake ASR. Cloud commands require an explicit stage and stage config; provider probes (#13) remain unavailable.",
+    "Target: local; fake ASR. Cloud commands require an explicit stage and stage config; the opt-in Nova-3 probe requires test:asr --stage dev.",
   );
 }
 function swiftFiles(): string[] {

@@ -7,6 +7,7 @@ import standalone from "ajv/dist/standalone/index.js";
 import { compile, type JSONSchema } from "json-schema-to-typescript";
 const schemaPath = "packages/contracts/schema/v1.schema.json";
 const schemaText = await readFile(schemaPath, "utf8");
+const mediaProfileText = await readFile("packages/contracts/schema/media-profile.v1.json", "utf8");
 const schema = JSON.parse(schemaText);
 const ajv = new Ajv2020({
   strict: true,
@@ -33,6 +34,7 @@ try {
         .join("\n") + "\n",
     "src/generated/documents.d.ts": declarations,
     "Sources/TrigoContracts/Resources/v1.schema.json": schemaText,
+    "Sources/TrigoContracts/Resources/media-profile.v1.json": mediaProfileText,
   };
   for (const [relative, content] of Object.entries(files)) {
     const target = join("packages/contracts", relative);

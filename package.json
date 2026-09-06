@@ -35,7 +35,7 @@
     "cloud:owner:rotate": "bun scripts/cloud-owner.ts rotate",
     "cloud:owner:revoke": "bun scripts/cloud-owner.ts revoke",
     "test:cloud": "bun scripts/cloud.ts test",
-    "test:asr": "bun scripts/unavailable.ts 13",
+    "test:asr": "bun scripts/asr.ts probe",
     "prepare": "effect-tsgo patch --typescript --oxlint"
   },
   "devDependencies": {
