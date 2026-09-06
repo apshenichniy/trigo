@@ -246,10 +246,13 @@ Final required gates passed on the implementation source:
   explicit fixture type fixed it, and the complete required native gate then
   passed. The failed attempt remains in `51-check-macos.log`.
 
-No fixture accesses a device, TCC, Keychain, real app/call, personal archive,
-provider or cloud credential. This establishes process-termination and filesystem
-fault behavior locally; it does not claim installed-app, physical-device,
-power-loss hardware, live R2 or hosted ASR acceptance.
+The new media fixtures access no device, TCC, Keychain, real app/call, personal
+archive, provider or cloud credential. The required full native suite also runs
+the pre-existing Keychain adapter test with a synthetic token and a UUID-scoped
+`io.github.apshenichniy.trigo.tests` service, separate from installed-app items.
+This establishes process-termination and filesystem fault behavior locally; it
+does not claim installed-app, physical-device, power-loss hardware, live R2 or
+hosted ASR acceptance.
 
 ## Integrated CI evidence
 

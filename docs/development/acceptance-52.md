@@ -215,3 +215,11 @@ synthetic token under a UUID-scoped `io.github.apshenichniy.trigo.tests` service
 it does not target installed-app credentials. Local SQLite/process-termination
 evidence does not replace production capture integration, installed-device
 acceptance, hardware power-loss testing or provider compatibility gates.
+
+## Integrated source
+
+The completed worker commit is `b811b0c7dd7b8d4bc948b7d56d1c48065890108f`.
+It was integrated as `64e729f724e6900d9e03123020dccb35c803e747`; both have the
+exact tree `4499dd3f20bdc65728b8365bd69e2e62a0ed5439`. The scoped integration
+changed the same 35 files and passed `git diff --check`, with no conflicts or
+source changes after the worker's successful gates. Integrated CI is pending.

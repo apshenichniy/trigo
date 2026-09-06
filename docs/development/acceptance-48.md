@@ -13,7 +13,7 @@ Baseline: `36d381e2a6b0eb5d32f0f619625650ef88b4febc`.
 | #49   | macOS check performance                 | Implemented; local and cold/restored CI passed ([evidence](acceptance-49.md))                          |
 | #50   | Effect Schema and typed Swift contracts | Implemented; local and integrated CI passed ([evidence](acceptance-50.md))                             |
 | #51   | Recoverable master format proof         | Implemented; bounded media proofs, local gates and integrated CI passed ([evidence](acceptance-51.md)) |
-| #52   | SQLite archive and durable operations   | Pending                                                                                                |
+| #52   | SQLite archive and durable operations   | Implemented; local transaction, recovery and contention gates passed; integrated CI pending ([evidence](acceptance-52.md)) |
 | #53   | Production stereo master recording      | Pending                                                                                                |
 | #54   | Shared local/cloud product HttpApi      | Pending                                                                                                |
 | #55   | Permissions and Keychain readiness      | Pending                                                                                                |
