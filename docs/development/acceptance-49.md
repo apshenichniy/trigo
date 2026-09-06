@@ -113,10 +113,41 @@ lock-restoration app rebuild 8 s. Its logs report contracts Debug build 41.37 s,
 five contract tests 2.745 s, native Debug build 40.76 s, and 95 native tests
 173.258 s (one-hour fixture 173.257 s, three-hour 14.594 s, 0.0 ms drift).
 
-The changed GitHub job and an actual restored-cache run remain pending integration
-CI. Do not compare local 133.17 s directly against runner 330 s as a measured
-runner speedup. Record the new run links, check/job durations, cache-hit state,
-and cache overhead here after integration.
+## Integrated GitHub Actions measurements
+
+Both attempts of [run 34060187403](https://github.com/apshenichniy/trigo/actions/runs/34060187403)
+passed on source `42e09ba688c3c5a09a8c7067961bc592281765ce` (implementation
+`3e78a0e5cf403c3befc43d9e451d09200401eb1e`). The server gate also passed.
+[Attempt 1](https://github.com/apshenichniy/trigo/actions/runs/34060187403/job/101559209192)
+missed both native caches, fetched locked dependencies, and successfully saved
+both caches. [Attempt 2](https://github.com/apshenichniy/trigo/actions/runs/34060187403/job/101560157420)
+reran only the macOS job on the identical source and restored both exact keys.
+
+| Runner phase                     | Cold caches |                  Restored caches |
+| -------------------------------- | ----------: | -------------------------------: |
+| SwiftPM cache restoration        |  1 s (miss) |                             30 s |
+| DerivedData restoration          |  0 s (miss) |                             12 s |
+| Locked native dependency setup   |        86 s |                             34 s |
+| Complete `check:macos`           |       215 s |                             86 s |
+| Native suite, internal test time |    28.189 s |                         19.687 s |
+| Native cache publication         |        26 s | 0 s (exact keys already present) |
+| Complete macOS job               |       368 s |                            198 s |
+
+The restored SwiftPM archive was about 1154 MiB and DerivedData about 502 MiB.
+Both runs built current sources before running all 95 native tests, passed all
+five Debug contract tests and both Debug application builds, retained 0.0 ms
+one-hour source-relative drift, and passed the network-denied local smoke.
+The missing nested-lock repair and tracked-file diff gates passed in both runs.
+
+The cold total is similar to the earlier 364 s accepted-main baseline. A fresh
+pre-refactor [PR baseline](https://github.com/apshenichniy/trigo/actions/runs/34059126350/job/101556359284)
+also passed its macOS job in 404 s, with 95 native tests taking 189.396 s.
+Faster native tests do not make the first complete job proportionally faster:
+optimized cold compilation, dependency setup and first cache publication remain
+visible costs. With restored caches, the measured 198 s job is about 46% below
+the 364 s accepted-main baseline and 46% below the new cold run. This is one
+measured cold/restored pair, including cache transfer overhead, not a guaranteed
+runner speedup or a local-to-runner comparison.
 
 ## Reproduction and remaining acceptance
 
@@ -150,5 +181,6 @@ successful full native runs left all tracked dependency locks, native sources,
 and fixtures unchanged. `check:server` also passed; the final unit suite contains
 142 tests and the Workers suite contains 17 tests.
 
-Pending: integration CI and its cold/restored-cache runner comparison. Local
-verification and logs are recorded separately from that remaining acceptance.
+Issue #49's implementation, deterministic checks and cold/restored-cache runner
+comparison are verified. The later installed-app acceptance and remaining epic
+work retain their separate requirements.
