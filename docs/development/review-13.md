@@ -28,7 +28,8 @@ and gives Swift closed vocabulary enum types plus exact selected-profile checks.
 The final standards re-review also found that the CLI duplicated the Worker's
 response-envelope shapes. The shared contracts package now owns the language,
 error, upload and transcription schemas; the Worker constructs those schemas and
-the CLI decodes the same definitions.
+the CLI decodes the same definitions. The error envelope now adapts the canonical
+generated contract instead of creating a probe-specific duplicate.
 
 ## Spec
 
@@ -60,10 +61,17 @@ than return a semantic rejection. Swift now checks the 60-second bound before an
 frame arithmetic, and `overflow-scale-object.json` covers the maximum schema-valid
 integer input.
 
+The final spec re-review found that the first shared transcription envelope
+allowed a one-channel success and an incomplete retained-artifact set, and that
+the replacement UUID check admitted uppercase request IDs. The transcription
+envelope now fixes the selected profile to two channels, proves the four named
+canonical artifact paths, and the canonical error contract requires lowercase
+UUIDv4 request IDs.
+
 ## Verification
 
 - `mise exec -- bun run check`
-- TypeScript unit tests — 134 passed
+- TypeScript unit tests — 137 passed
 - Worker tests — 17 passed
 - Swift contract tests — 5 passed
 - Native Swift tests — 21 passed, with the opt-in live pairing test skipped

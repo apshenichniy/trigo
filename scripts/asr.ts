@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 import { Console, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
 import {
-  AsrProbeErrorEnvelope,
   AsrProbeTranscriptionResponse,
   AsrProbeUploadResponse,
+  ErrorEnvelopeSchema,
   inspectWaveObject,
   makeWaveHeader,
   selectedMediaProfile,
@@ -181,7 +181,7 @@ const request = Effect.fn("AsrProbeCli.request")(function* <Success>(
     );
     return { ok: true, status: response.status, body: decoded } as const;
   }
-  const failure = yield* Schema.decodeUnknownEffect(AsrProbeErrorEnvelope)(responseBody).pipe(
+  const failure = yield* Schema.decodeUnknownEffect(ErrorEnvelopeSchema)(responseBody).pipe(
     Effect.mapError((cause) =>
       probeCliError(
         `Nova-3 probe returned an invalid error envelope: HTTP ${response.status} ${method} ${url}`,
