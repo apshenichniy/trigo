@@ -61,6 +61,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
   struct Unavailable: Error {}
   var running = false
   var failsStart = false
+  var failsAfterStart = false
   var suspendStart = false
   private var entered = false
   private var observers: [CheckedContinuation<Void, Never>] = []
@@ -78,6 +79,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
     } else {
       signalStart()
     }
+    if failsAfterStart { throw Unavailable() }
     running = true
   }
   func stopForRetirement() async throws { running = false }

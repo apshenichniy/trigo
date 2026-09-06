@@ -337,19 +337,24 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       microphoneStream = stream
       try stream.addCaptureOutput(output, type: .microphone, queue: output.queue)
       output.acceptMicrophoneStream(stream)
+      try await stream.startCapture()
+      guard owns(output), microphoneStream.map(ObjectIdentifier.init) == ObjectIdentifier(stream)
+      else {
+        try await retirement.retire(stream)
+        return
+      }
+      // Availability is acknowledged only by this stream's successful native Start.
+      // Samples arriving before acknowledgement remain suppressed by the unavailable engine.
       let available = try await output.perform { engine in
         try engine.microphoneChanged(device, at: CMClockGetTime(CMClockGetHostTimeClock()))
         return engine.snapshot
       }
-      guard owns(output) else {
+      guard owns(output), microphoneStream.map(ObjectIdentifier.init) == ObjectIdentifier(stream)
+      else {
         try await retirement.retire(stream)
         return
       }
       publish(available)
-      try await stream.startCapture()
-      if !owns(output) || microphoneStream.map(ObjectIdentifier.init) != ObjectIdentifier(stream) {
-        try await retirement.retire(stream)
-      }
     } catch {
       if let replacement { try? await retirement.retire(replacement) }
       guard owns(output) else { return }

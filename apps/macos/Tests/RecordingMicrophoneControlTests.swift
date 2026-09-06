@@ -2,6 +2,27 @@ import Testing
 
 @testable import TrigoNative
 
+@Test(arguments: [false, true]) @MainActor
+func microphoneStartIsNotPublishedBeforeNativeAcknowledgement(failsAfterStart: Bool) async throws {
+  let fixture = try RecordingControlFixture()
+  defer { fixture.cleanup() }
+  await fixture.bind()
+  fixture.os.microphone.suspendStart = true
+  let start = Task { await fixture.coordinator.shortcutPressed() }
+  await fixture.os.microphone.waitForStart()
+  #expect(fixture.coordinator.phase == .starting)
+  #expect(fixture.coordinator.microphoneState == .starting)
+  #expect(fixture.coordinator.recordingSnapshot?.microphone == nil)
+  #expect(fixture.capture.snapshot?.microphone == nil)
+  fixture.os.microphone.failsAfterStart = failsAfterStart
+  fixture.os.microphone.finishStart()
+  await start.value
+  #expect(fixture.coordinator.phase == .recording)
+  #expect(fixture.coordinator.microphoneState == (failsAfterStart ? .unavailable : .recording))
+  #expect(fixture.os.application.running)
+  await fixture.coordinator.stop()
+}
+
 @Test @MainActor func microphoneControlAcknowledgesOnlyTheCompletedAudioQueueChangeAndRejectsRaces()
   async throws
 {

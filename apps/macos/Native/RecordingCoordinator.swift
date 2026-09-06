@@ -176,6 +176,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
 
   public var microphoneState: MicrophoneRecordingState {
     guard phase == .recording || phase == .starting else { return .inactive }
+    if phase == .starting { return .starting }
     guard let recordingSnapshot else { return .starting }
     guard recordingSnapshot.microphone != nil else { return .unavailable }
     return microphoneRecordingEnabled ? .recording : .muted

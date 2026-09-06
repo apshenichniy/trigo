@@ -39,6 +39,12 @@ the default input. Trigo mute is independent of the calling application's mute.
 The #15 capture engine suppresses microphone frames before persistence and
 preserves application audio and timeline alignment.
 
+Microphone availability is published only after that exact native stream
+acknowledges Start and still belongs to the active capture. The initial control
+state remains “Microphone: starting” while acknowledgement is pending. A failed
+microphone Start leaves application capture running with the microphone
+unavailable; pre-acknowledgement microphone samples are suppressed.
+
 The panel shows the pinned source/window, elapsed duration, capture phase,
 application capture state, microphone device/state and actionable errors.
 “Capturing” describes the stream state, not evidence of audible speech. Audio
