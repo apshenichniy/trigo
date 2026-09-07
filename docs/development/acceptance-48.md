@@ -15,7 +15,7 @@ Baseline: `36d381e2a6b0eb5d32f0f619625650ef88b4febc`.
 | #51   | Recoverable master format proof         | Implemented; bounded media proofs, local gates and integrated CI passed ([evidence](acceptance-51.md))                                                                      |
 | #52   | SQLite archive and durable operations   | Implemented; transaction/recovery checks passed; shared contention acceptance follows the current #53 evidence ([evidence](acceptance-52.md))                               |
 | #53   | Production stereo master recording      | Implemented; current durability and contention verification is recorded in the linked evidence ([evidence](acceptance-53.md)); current integration CI is reported in the PR |
-| #54   | Shared local/cloud product HttpApi      | Pending                                                                                                                                                                     |
+| #54   | Shared local/cloud product HttpApi      | Implemented; local server/native/offline checks passed; current integration CI is reported in the PR ([evidence](acceptance-54.md))                                         |
 | #55   | Permissions and Keychain readiness      | Pending                                                                                                                                                                     |
 | #56   | Commands and architecture documentation | Pending                                                                                                                                                                     |
 | #57   | Installed signed app acceptance         | Pending owner-assisted execution                                                                                                                                            |
@@ -67,9 +67,48 @@ Their maximum complete input-through-durability envelopes were 1,116.358 ms
 and 1,115.559 ms. Raw logs: `53-delivery-wall-clock-check-server.log` and
 `53-delivery-wall-clock-check-macos.log` under `/tmp/trigo-epic-48/`.
 
-Green integration CI is required before resuming #54. The current integrated
-commit and CI result are recorded in [PR #59](https://github.com/apshenichniy/trigo/pull/59);
-historical successful runs do not replace verification of the current source.
+Both jobs of [CI run 34108231975](https://github.com/apshenichniy/trigo/actions/runs/34108231975)
+passed on `7db0f90ff4ed86d90218fe8c249693d55c4c2f88`, completing #53 verification.
+The runner passed all 153 native tests in 196.382 s; both contention cases
+completed 120 commits, all background work and capture progress during every
+revision. Their maximum input-plus-durability envelopes were 1,085.466 ms dense
+and 1,266.190 ms production. The separate observer probe reached durability in
+774.660 ms while its caller received the result in 10,300.414 ms, after verified
+recovery and further capture progress. Both jobs checked out synthetic merge
+`50e590a44d9709b154873aeeef495b3d254cc77b`, whose tree exactly matched the PR tip.
+
+Current integration source and CI results remain in
+[PR #59](https://github.com/apshenichniy/trigo/pull/59). Historical successful runs
+do not replace verification of later source changes.
+
+## Shared product API and local execution
+
+The #54 composition uses the same authenticated Effect HttpApi handler for local
+and cloud status/error behavior. Its local D1/R2/workflow path exercises the
+shared deterministic fake-ASR seam and preserves state across a local restart.
+The private CLI-to-native configuration joins the Effect-authored generated
+contracts; a shared 16-case corpus checks structural acceptance/rejection in
+Effect, JSON Schema, generated Swift and both file readers. File ownership,
+worktree identity and exact loopback origin remain contextual checks.
+
+The final local server gate passed 304 unit tests, 36 Workers-runtime tests,
+formatting/lint/types, deterministic generation and both Worker bundles. The
+macOS gate passed nine contract tests, 161 native tests in 352.156 s, both Debug
+app builds and the actual native/local composition smoke under the external
+network-denial profile. The native suite completed 319 dense and 321 production
+capture commits, all three imports, 12,000 turns and 24 reads per case; maximum
+input-through-durability envelopes were 1,194.406 ms and 1,217.283 ms. This is
+the measured final run; earlier #54 timings describe earlier source snapshots.
+
+The local smoke uses current-source test compilation followed by execution under
+the outer offline profile. The final incremental build took 3.40 s; the complete
+smoke took 16.941 s. It verifies native URLSession pairing, failed credentials,
+retained binding and unavailable operations against the actual Alchemy runtime.
+It uses disposable credentials and does not establish installed-app Keychain,
+physical permission or bundle ATS behavior. Those observations remain in #57.
+Raw final logs are `54-check-server-final.log` and `54-check-macos-final.log`
+under `/tmp/trigo-epic-48/`; [the #54 evidence](acceptance-54.md) records scope,
+source identity and earlier failed checks.
 
 ## Completion boundary
 
