@@ -66,23 +66,15 @@ public enum ScreenCapturePhase: Equatable, Sendable {
   private var sleepObserver: NSObjectProtocol?
   private let retirement = CaptureStreamRetirement()
   private let system: CaptureSystem
-  // DEBUG-57-CAPTURE
-  private let diagnostics: CaptureDiagnostics?
 
   public init() {
-    // DEBUG-57-CAPTURE: initialize before any native producer starts.
-    diagnostics = .shared
     system = .init(
       permissions: SystemCaptureSource.permissions, filter: SystemCaptureSource.filter,
       microphone: Self.defaultMicrophone,
       stream: { SCStream(filter: $0, configuration: $1, delegate: $2) })
   }
 
-  // DEBUG-57-CAPTURE
-  init(system: CaptureSystem, diagnostics: CaptureDiagnostics? = .shared) {
-    self.system = system
-    self.diagnostics = diagnostics
-  }
+  init(system: CaptureSystem) { self.system = system }
 
   /// Permissions and source are resolved before this method acknowledges Recording.
   /// Call SystemCaptureSource.requestPermission only from an explicit user action.
@@ -90,8 +82,6 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     guard phase == .idle, pendingStart == nil, !retirement.hasPending else {
       throw CaptureStartFailure.alreadyRecording
     }
-    // DEBUG-57-CAPTURE
-    diagnostics?.record(.init(kind: .captureStart))
     let attempt = CaptureStartAttempt()
     pendingStart = attempt
     var allocated: CaptureArchiveSession?
@@ -144,8 +134,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
           guard self?.session?.callID == created.callID else { return }
           await self?.interrupt(reason)
         }
-        // DEBUG-57-CAPTURE
-      }, diagnostics: diagnostics)
+      })
     sink = output
     phase = .starting
     let delegate = CaptureStreamDelegate { [weak self] id in
@@ -165,23 +154,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       // Native Start can deliver application audio before either stream acknowledges.
       // Keep the bounded timeline durable while those acknowledgements remain pending.
       output.startClock()
-      // DEBUG-57-CAPTURE: panel starts begin the capture limit at the native request.
-      diagnostics?.trigger()
-      diagnostics?.record(
-        .init(kind: .nativeStart, role: .application),
-        // DEBUG-57-CAPTURE
-        stream: ObjectIdentifier(stream))
-      do { try await stream.startCapture() } catch {
-        diagnostics?.record(
-          .init(kind: .nativeFailed, role: .application, outcome: .failed),
-          // DEBUG-57-CAPTURE
-          stream: ObjectIdentifier(stream))
-        throw error
-      }
-      diagnostics?.record(
-        .init(kind: .nativeAcknowledged, role: .application),
-        // DEBUG-57-CAPTURE
-        stream: ObjectIdentifier(stream))
+      try await stream.startCapture()
       try checkStart(attempt)
       if let microphone { await replaceMicrophone(microphone) }
       try checkStart(attempt)
@@ -217,11 +190,6 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       return engine.snapshot
     }
     guard owns(sink) else { throw CaptureError.closed }
-    diagnostics?.record(
-      .init(
-        kind: .microphonePolicy, role: .microphone,
-        // DEBUG-57-CAPTURE
-        flags: (enabled ? 1 : 0) | (value.microphone != nil ? 2 : 0)))
     publish(value)
   }
 
@@ -229,11 +197,6 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     try requireCaptureInterruptionReason(reason)
     pendingStart?.cancelled = true
     guard !stopping, let output = sink, let session else { return nil }
-    diagnostics?.record(
-      // DEBUG-57-CAPTURE
-      .init(kind: .stop, outcome: reason.map(CaptureDiagnosticOutcome.init(failure:))))
-    // DEBUG-57-CAPTURE
-    defer { diagnostics?.finish() }
     phase = .stopping
     defer {
       if phase == .stopping { phase = .needsRecovery(callID: session.callID) }
@@ -252,40 +215,8 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     let microphone = microphoneStream
     applicationStream = nil
     microphoneStream = nil
-    if let microphone {
-      diagnostics?.record(
-        // DEBUG-57-CAPTURE
-        .init(kind: .nativeStop, role: .microphone), stream: ObjectIdentifier(microphone))
-      do {
-        try await retirement.retire(microphone)
-        diagnostics?.record(
-          .init(kind: .nativeStopped, role: .microphone, outcome: .complete),
-          // DEBUG-57-CAPTURE
-          stream: ObjectIdentifier(microphone))
-      } catch {
-        diagnostics?.record(
-          .init(kind: .nativeStopped, role: .microphone, outcome: .failed),
-          // DEBUG-57-CAPTURE
-          stream: ObjectIdentifier(microphone))
-      }
-    }
-    if let application {
-      diagnostics?.record(
-        // DEBUG-57-CAPTURE
-        .init(kind: .nativeStop, role: .application), stream: ObjectIdentifier(application))
-      do {
-        try await retirement.retire(application)
-        diagnostics?.record(
-          .init(kind: .nativeStopped, role: .application, outcome: .complete),
-          // DEBUG-57-CAPTURE
-          stream: ObjectIdentifier(application))
-      } catch {
-        diagnostics?.record(
-          .init(kind: .nativeStopped, role: .application, outcome: .failed),
-          // DEBUG-57-CAPTURE
-          stream: ObjectIdentifier(application))
-      }
-    }
+    if let microphone { try? await retirement.retire(microphone) }
+    if let application { try? await retirement.retire(application) }
     // Preserve a known stop cause before crossing the external media sealing boundary.
     try await session.requestStop(reason: reason)
     let result = try await output.finish(at: endedAt, reason: reason)
@@ -403,11 +334,6 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       }
       guard owns(output) else { return }
       publish(unavailable)
-      diagnostics?.record(
-        .init(
-          kind: .microphonePolicy, role: .microphone,
-          // DEBUG-57-CAPTURE
-          flags: unavailable.microphoneEnabled ? 1 : 0))
       guard let device, applicationStream != nil else { return }
       guard system.permissions().microphone else {
         onFailure?("microphone_permission")
@@ -422,19 +348,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       microphoneStream = stream
       try stream.addCaptureOutput(output, type: .microphone, queue: output.callbackQueue)
       output.acceptMicrophoneStream(stream)
-      diagnostics?.record(
-        // DEBUG-57-CAPTURE
-        .init(kind: .nativeStart, role: .microphone), stream: ObjectIdentifier(stream))
-      do { try await stream.startCapture() } catch {
-        diagnostics?.record(
-          .init(kind: .nativeFailed, role: .microphone, outcome: .failed),
-          // DEBUG-57-CAPTURE
-          stream: ObjectIdentifier(stream))
-        throw error
-      }
-      diagnostics?.record(
-        // DEBUG-57-CAPTURE
-        .init(kind: .nativeAcknowledged, role: .microphone), stream: ObjectIdentifier(stream))
+      try await stream.startCapture()
       guard owns(output), microphoneStream.map(ObjectIdentifier.init) == ObjectIdentifier(stream)
       else {
         try await retirement.retire(stream)
@@ -452,11 +366,6 @@ public enum ScreenCapturePhase: Equatable, Sendable {
         return
       }
       publish(available)
-      diagnostics?.record(
-        .init(
-          kind: .microphonePolicy, role: .microphone,
-          // DEBUG-57-CAPTURE
-          flags: 2 | (available.microphoneEnabled ? 1 : 0)))
     } catch {
       if let replacement { try? await retirement.retire(replacement) }
       guard owns(output) else { return }
@@ -512,17 +421,13 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   private let onSnapshot: @Sendable (CaptureRecordingSnapshot) -> Void
   private let onFailure: @Sendable (String) -> Void
   private let onMicrophoneFailure: @Sendable (ObjectIdentifier) -> Void
-  // DEBUG-57-CAPTURE
-  private let diagnostics: CaptureDiagnostics?
 
   init(
     session: CaptureArchiveSession, queue: DispatchQueue, origin: CMTime,
     microphone: CaptureMicrophone?,
     onSnapshot: @escaping @Sendable (CaptureRecordingSnapshot) -> Void,
     onMicrophoneFailure: @escaping @Sendable (ObjectIdentifier) -> Void,
-    onFailure: @escaping @Sendable (String) -> Void,
-    // DEBUG-57-CAPTURE
-    diagnostics: CaptureDiagnostics? = .shared
+    onFailure: @escaping @Sendable (String) -> Void
   ) throws {
     self.queue = queue
     engine = try CaptureRecordingEngine(
@@ -531,14 +436,10 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
     self.onSnapshot = onSnapshot
     self.onMicrophoneFailure = onMicrophoneFailure
     self.onFailure = onFailure
-    // DEBUG-57-CAPTURE
-    self.diagnostics = diagnostics
     super.init()
     ingress = CaptureAudioIngress(
       queue: queue, selection: selection, consume: { [weak self] in self?.receive($0) },
-      overflow: { [weak self] in self?.fail("capture_queue_overflow") },
-      // DEBUG-57-CAPTURE
-      diagnostics: diagnostics)
+      overflow: { [weak self] in self?.fail("capture_queue_overflow") })
   }
 
   func perform<T: Sendable>(_ body: @escaping @Sendable (CaptureRecordingEngine) throws -> T)
@@ -564,11 +465,7 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   }
 
   func startClock() {
-    // DEBUG-57-CAPTURE
-    diagnostics?.record(.init(kind: .clockArm))
     queue.async { [self] in
-      // DEBUG-57-CAPTURE
-      diagnostics?.record(.init(kind: .clockArmed))
       let clock = DispatchSource.makeTimerSource(queue: queue)
       clock.schedule(deadline: .now(), repeating: .milliseconds(500), leeway: .milliseconds(25))
       clock.setEventHandler { [weak self] in
@@ -587,18 +484,12 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   func advanceClock(at time: CMTime) throws {
     dispatchPrecondition(condition: .onQueue(queue))
     guard !failed else { return }
-    // DEBUG-57-CAPTURE
-    diagnostics?.record(.init(kind: .clockStart, ptsNs: diagnostics?.relative(time)))
     try engine.advance(at: time, pendingAudioAt: ingress.earliestPendingTime)
-    // DEBUG-57-CAPTURE
-    diagnostics?.record(.init(kind: .clockFinish, code: engine.snapshot.elapsedMs))
     onSnapshot(engine.snapshot)
   }
 
   func stopClock() {
     queue.async { [self] in
-      // DEBUG-57-CAPTURE
-      diagnostics?.record(.init(kind: .clockCancel))
       timer?.cancel()
       timer = nil
     }
@@ -661,13 +552,9 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
 
   private func fail(_ reason: String) {
     guard !failed else { return }
-    // DEBUG-57-CAPTURE
-    diagnostics?.record(.init(kind: .failure, outcome: .init(failure: reason)))
     failed = true
     timer?.cancel()
     timer = nil
-    // DEBUG-57-CAPTURE
-    diagnostics?.record(.init(kind: .clockCancel))
     onFailure(reason)
   }
 }

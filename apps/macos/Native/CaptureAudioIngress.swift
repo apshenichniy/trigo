@@ -9,8 +9,6 @@ struct CaptureQueuedAudio: @unchecked Sendable {
   let deliveredAt: CMTime
   let admittedAt: ContinuousClock.Instant
   let duration: Double
-  // DEBUG-57-CAPTURE
-  let diagnosticBuffer: Int?
 }
 
 struct CaptureIngressStatistics: Sendable {
@@ -30,8 +28,6 @@ final class CaptureAudioIngress: @unchecked Sendable {
   private let selection: CaptureStreamSelection
   private let consume: @Sendable (CaptureQueuedAudio) -> Void
   private let overflow: @Sendable () -> Void
-  // DEBUG-57-CAPTURE
-  private let diagnostics: CaptureDiagnostics?
   private var pending: [CaptureQueuedAudio] = []
   private var sourceSeconds: [Double] = [0, 0]
   private var outstanding = 0
@@ -45,16 +41,12 @@ final class CaptureAudioIngress: @unchecked Sendable {
   init(
     queue: DispatchQueue, selection: CaptureStreamSelection = CaptureStreamSelection(),
     consume: @escaping @Sendable (CaptureQueuedAudio) -> Void,
-    overflow: @escaping @Sendable () -> Void,
-    // DEBUG-57-CAPTURE
-    diagnostics: CaptureDiagnostics? = nil
+    overflow: @escaping @Sendable () -> Void
   ) {
     self.queue = queue
     self.selection = selection
     self.consume = consume
     self.overflow = overflow
-    // DEBUG-57-CAPTURE
-    self.diagnostics = diagnostics
   }
 
   @discardableResult
@@ -67,49 +59,17 @@ final class CaptureAudioIngress: @unchecked Sendable {
         CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee.mSampleRate
       } ?? 0
     let duration = rate.isFinite && rate > 0 ? Double(sample.numSamples) / rate : 0
-    // DEBUG-57-CAPTURE: optional dispatch avoids diagnostic extraction when disabled.
-    let diagnosticBuffer = diagnostics?.callback(
-      sample, role: role, stream: streamID,
-      deliveredAt: deliveredAt)
     let value = CaptureQueuedAudio(
       sample: sample, role: role, streamID: streamID,
-      deliveredAt: deliveredAt, admittedAt: .now, duration: max(0, duration),
-      // DEBUG-57-CAPTURE
-      diagnosticBuffer: diagnosticBuffer)
+      deliveredAt: deliveredAt, admittedAt: .now, duration: max(0, duration))
     let channel = role == .microphone ? 0 : 1
     let action = selection.withSelection { ids -> Int in
-      guard ids[channel] == streamID else {
-        diagnostics?.record(
-          .init(
-            kind: .admission, role: role, buffer: diagnosticBuffer,
-            // DEBUG-57-CAPTURE
-            outcome: .stale), stream: streamID)
-        return 0
-      }
+      guard ids[channel] == streamID else { return 0 }
       return lock.withLock { () -> Int in
-        guard !rejected, !closed else {
-          diagnostics?.record(
-            .init(
-              kind: .admission, role: role, buffer: diagnosticBuffer, durationSeconds: duration,
-              pendingBuffers: outstanding, sourceSeconds: sourceSeconds[channel],
-              otherSourceSeconds: sourceSeconds[1 - channel],
-              // DEBUG-57-CAPTURE
-              outcome: rejected ? .rejected : .closed), stream: streamID)
-          return 0
-        }
+        guard !rejected, !closed else { return 0 }
         guard outstanding < 256, duration.isFinite, duration >= 0,
           sourceSeconds[channel] + duration <= 1.000_001
         else {
-          diagnostics?.record(
-            .init(
-              kind: .admission, role: role, buffer: diagnosticBuffer, durationSeconds: duration,
-              pendingBuffers: outstanding, sourceSeconds: sourceSeconds[channel],
-              otherSourceSeconds: sourceSeconds[1 - channel],
-              outcome: outstanding >= 256
-                ? .bufferLimit
-                : (!duration.isFinite || duration < 0) ? .invalidDuration : .sourceLimit),
-            // DEBUG-57-CAPTURE
-            stream: streamID)
           rejected = true
           return -1
         }
@@ -118,12 +78,6 @@ final class CaptureAudioIngress: @unchecked Sendable {
         sourceSeconds[channel] += duration
         maxBuffers = max(maxBuffers, outstanding)
         maxSeconds = max(maxSeconds, sourceSeconds[channel])
-        diagnostics?.record(
-          .init(
-            kind: .admission, role: role, buffer: diagnosticBuffer, durationSeconds: duration,
-            pendingBuffers: outstanding, sourceSeconds: sourceSeconds[channel],
-            // DEBUG-57-CAPTURE
-            otherSourceSeconds: sourceSeconds[1 - channel], outcome: .accepted), stream: streamID)
         if scheduled { return 1 }
         scheduled = true
         return 2
@@ -153,14 +107,6 @@ final class CaptureAudioIngress: @unchecked Sendable {
           outstanding -= 1
           return true
         }
-        diagnostics?.record(
-          .init(
-            kind: .streamSelection, role: role,
-            pendingBuffers: outstanding, sourceSeconds: sourceSeconds[role == .microphone ? 0 : 1],
-            otherSourceSeconds: sourceSeconds[role == .microphone ? 1 : 0], flags: id == nil ? 0 : 1
-          ),
-          // DEBUG-57-CAPTURE
-          stream: id)
       }
     }
   }
@@ -209,24 +155,12 @@ final class CaptureAudioIngress: @unchecked Sendable {
 
   private func consumeBatch(_ batch: [CaptureQueuedAudio]) {
     for next in batch {
-      diagnostics?.record(
-        .init(kind: .consumeStart, role: next.role, buffer: next.diagnosticBuffer),
-        // DEBUG-57-CAPTURE
-        stream: next.streamID)
       if selection.accepts(next.streamID, for: next.role) { autoreleasepool { consume(next) } }
       let elapsed = next.admittedAt.duration(to: .now).components
       lock.withLock {
         sourceSeconds[next.role == .microphone ? 0 : 1] -= next.duration
         outstanding -= 1
         maxService = max(maxService, Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18)
-        diagnostics?.record(
-          .init(
-            kind: .consumeFinish, role: next.role, buffer: next.diagnosticBuffer,
-            pendingBuffers: outstanding,
-            sourceSeconds: sourceSeconds[next.role == .microphone ? 0 : 1],
-            otherSourceSeconds: sourceSeconds[next.role == .microphone ? 1 : 0]),
-          // DEBUG-57-CAPTURE
-          stream: next.streamID)
       }
     }
   }

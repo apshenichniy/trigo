@@ -278,8 +278,6 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   }
 
   public func shortcutPressed() async {
-    // DEBUG-57-CAPTURE
-    recordDiagnosticEligibility()
     if canStop {
       await stop()
       return
@@ -328,8 +326,6 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   }
 
   private func start(useFrontmost: Bool) async {
-    // DEBUG-57-CAPTURE
-    recordDiagnosticEligibility()
     guard mayStart() else { return }
     let current = RecordingControlAttempt()
     attempt = current
@@ -401,30 +397,6 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         title: "Setup required", message: "Connect to your archive before the first recording.")
     }
     return canStart
-  }
-
-  // DEBUG-57-CAPTURE: fixed flags explain eligibility without recording notices/bindings.
-  private func recordDiagnosticEligibility() {
-    guard let diagnostics = CaptureDiagnostics.shared else { return }
-    let code: Int
-    switch phase {
-    case .setupRequired: code = 0
-    case .idle: code = 1
-    case .starting: code = 2
-    case .recording: code = 3
-    case .stopping: code = 4
-    case .recoveryRequired: code = 5
-    case .interrupted: code = 6
-    case .error: code = 7
-    }
-    let flags: UInt64 =
-      (canStart ? 1 : 0) | (canStop ? 2 : 0)
-      | (attempt != nil ? 4 : 0) | (isStopping ? 8 : 0) | (isTerminating ? 16 : 0)
-      | (isMicrophoneChanging ? 32 : 0) | (isRequestingPermission ? 64 : 0)
-      | (capturePhase == .idle ? 128 : 0) | (isRecovering ? 256 : 0)
-      | (!recoveryReport.failures.isEmpty ? 512 : 0)
-      | (capturePermissions.screenAudio ? 1024 : 0) | (capturePermissions.microphone ? 2048 : 0)
-    diagnostics.record(.init(kind: .eligibility, flags: flags, code: code))
   }
 
   private func report(_ error: any Error) {

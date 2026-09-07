@@ -135,12 +135,6 @@ public enum CaptureSourceResolver {
   public static func frontmost() throws -> CaptureSource {
     let frontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier
     let permission = permissions()
-    CaptureDiagnostics.shared?.record(
-      .init(
-        kind: .sourceLookup,
-        flags: (permission.screenAudio ? 1 : 0) | (permission.microphone ? 2 : 0),
-        // DEBUG-57-CAPTURE
-        frontmostPID: frontmost))
     guard permission.screenAudio else { throw CaptureStartFailure.screenAudioPermission }
     guard permission.microphone else { throw CaptureStartFailure.microphonePermission }
     let windows =
@@ -158,24 +152,9 @@ public enum CaptureSourceResolver {
         applicationName: name, bundleID: bundleID, processID: pid, windowID: id,
         windowTitle: info[kCGWindowName as String] as? String, processLaunchDate: launch)
     }
-    do {
-      let selected = try CaptureSourceResolver.resolve(
-        permissions: permission, frontmostPID: frontmost,
-        ownPID: ProcessInfo.processInfo.processIdentifier, windows: candidates)
-      CaptureDiagnostics.shared?.record(
-        .init(
-          kind: .sourceResult,
-          // DEBUG-57-CAPTURE
-          frontmostPID: frontmost, candidateCount: candidates.count, outcome: .selected))
-      return selected
-    } catch {
-      CaptureDiagnostics.shared?.record(
-        .init(
-          kind: .sourceResult,
-          // DEBUG-57-CAPTURE
-          frontmostPID: frontmost, candidateCount: candidates.count, outcome: .unavailable))
-      throw error
-    }
+    return try CaptureSourceResolver.resolve(
+      permissions: permission, frontmostPID: frontmost,
+      ownPID: ProcessInfo.processInfo.processIdentifier, windows: candidates)
   }
 
   static func filter(for source: CaptureSource) async throws -> SCContentFilter {
