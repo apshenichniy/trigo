@@ -1,11 +1,44 @@
 import { commandOptions } from "./arguments.ts";
 import { snapshotLocks, assertLocksUnchanged } from "./locks.ts";
-import { lockedSwiftArguments, swiftTests } from "./native-check.ts";
-import { run } from "./process.ts";
-import { timedRun } from "./timing.ts";
+import {
+  lockedSwiftArguments,
+  nativeTests,
+  swiftContractTests,
+  swiftTests,
+} from "./native-check.ts";
+import { nativeSuites } from "./native-suites.ts";
+import { beginTiming, timedAsync, timedRun } from "./timing.ts";
 import { toolOutput as output, requireNativeTools } from "./toolchain.ts";
 const command = process.argv[2] ?? "doctor";
-commandOptions(command, process.argv.slice(3), {});
+const options = commandOptions(
+  command,
+  process.argv.slice(3),
+  command === "check:quick"
+    ? { "--scope": "value" }
+    : command === "test:native"
+      ? { "--suite": "value", "--filter": "value" }
+      : {},
+);
+const scope = options.get("--scope") ?? "all";
+if (typeof scope !== "string" || !["server", "native", "all"].includes(scope)) {
+  throw new Error("--scope must be server, native or all");
+}
+const suite = nativeSuites.find((value) => value === (options.get("--suite") ?? "all"));
+if (!suite) {
+  throw new Error("--suite must be fast, contention, resource or all");
+}
+const filter = options.get("--filter");
+if (typeof filter === "string") {
+  new RegExp(filter);
+}
+beginTiming(
+  command,
+  command === "check:quick"
+    ? { scope }
+    : command === "test:native"
+      ? { suite, ...(typeof filter === "string" ? { filter } : {}) }
+      : {},
+);
 function native() {
   if (process.platform !== "darwin") {
     throw new Error(
@@ -13,8 +46,8 @@ function native() {
     );
   }
 }
-function doctor() {
-  if (process.platform === "darwin") {
+function doctor(includeNative = process.platform === "darwin") {
+  if (includeNative) {
     requireNativeTools();
   }
   const checks: [[string, ...string[]], string][] = [
@@ -46,7 +79,12 @@ function swiftFiles(): string[] {
     .filter((path) => path.endsWith(".swift"));
 }
 const tsformat = (write = false) =>
-  run(["node", "node_modules/oxfmt/bin/oxfmt", write ? "--write" : "--check", "."]);
+  timedRun("Repository formatting", [
+    "node",
+    "node_modules/oxfmt/bin/oxfmt",
+    write ? "--write" : "--check",
+    ".",
+  ]);
 const swiftformat = (write = false) => {
   native();
   timedRun("Swift format", [
@@ -57,9 +95,10 @@ const swiftformat = (write = false) => {
     ...swiftFiles(),
   ]);
 };
-const types = () => run(["node", "node_modules/typescript/bin/tsc", "--noEmit"]);
+const types = () =>
+  timedRun("TypeScript types", ["node", "node_modules/typescript/bin/tsc", "--noEmit"]);
 const lint = () =>
-  run([
+  timedRun("TypeScript lint", [
     "node",
     "node_modules/oxlint/bin/oxlint",
     "scripts",
@@ -71,12 +110,13 @@ const lint = () =>
     "**/generated/**",
     "--deny-warnings",
   ]);
-const units = () => run(["bun", "run", "test:unit"]);
-const workers = () => run(["bun", "run", "test:workers"]);
-const generation = () => run(["bun", "run", "contracts:check"]);
+const units = () => timedRun("Unit tests", ["bun", "run", "test:unit"]);
+const workers = () => timedRun("Workers tests", ["bun", "run", "test:workers"]);
+const generation = () => timedRun("Contract generation check", ["bun", "run", "contracts:check"]);
+let nativeReceipt: string | undefined;
 const swiftTest = () => {
   native();
-  swiftTests();
+  nativeReceipt = swiftTests();
 };
 const swiftBuild = () => {
   native();
@@ -85,22 +125,37 @@ const swiftBuild = () => {
 const macosBuild = () => {
   native();
   for (const variant of ["dev", "personal"]) {
-    run(["bun", "run", "macos:build", "--variant", variant]);
+    timedRun(`${variant} app build`, ["bun", "scripts/macos.ts", "build", "--variant", variant]);
   }
 };
 async function serverBuild() {
-  const result = await Bun.build({
-    entrypoints: ["apps/server/src/local-worker.ts", "apps/server/src/cloud-worker.ts"],
-    outdir: "apps/server/dist",
-    target: "browser",
-    format: "esm",
-    external: ["cloudflare:workers"],
+  await timedAsync("Worker bundles", async () => {
+    const result = await Bun.build({
+      entrypoints: ["apps/server/src/local-worker.ts", "apps/server/src/cloud-worker.ts"],
+      outdir: "apps/server/dist",
+      target: "browser",
+      format: "esm",
+      external: ["cloudflare:workers"],
+    });
+    if (!result.success) {
+      throw new Error(result.logs.map((log) => log.message).join("\n"));
+    }
   });
-  if (!result.success) {
-    throw new Error(result.logs.map((log) => log.message).join("\n"));
-  }
   console.log("Local and cloud Worker bundles built.");
 }
+const nativeSmoke = () =>
+  // Execute the same entrypoint directly so nested `bun run` does not rewrite
+  // PATH or npm bookkeeping and invalidate the verified parent build environment.
+  timedRun(
+    "Local Worker and native client",
+    ["bun", "scripts/local.ts", "--test", "--native-client"],
+    {
+      env: {
+        ...process.env,
+        ...(nativeReceipt ? { TRIGO_NATIVE_BUILD_RECEIPT: nativeReceipt } : {}),
+      },
+    },
+  );
 const snapshot = snapshotLocks();
 try {
   switch (command) {
@@ -114,6 +169,9 @@ try {
     case "format:check":
       tsformat();
       swiftformat();
+      break;
+    case "check:files":
+      tsformat();
       break;
     case "lint":
       lint();
@@ -136,7 +194,7 @@ try {
       macosBuild();
       break;
     case "check:server":
-      doctor();
+      doctor(false);
       tsformat();
       lint();
       types();
@@ -145,13 +203,38 @@ try {
       workers();
       await serverBuild();
       break;
+    case "check:quick":
+      if (scope !== "server") {
+        native();
+      }
+      doctor(scope !== "server");
+      if (scope !== "native") {
+        timedRun("Quick server checks", ["bun", "run", "check:server"]);
+      }
+      if (scope !== "server") {
+        swiftformat();
+        swiftContractTests();
+        nativeTests({ suite: "fast" });
+      }
+      console.log(`Quick checks passed (scope: ${scope}); full acceptance remains separate.`);
+      break;
+    case "test:native":
+      native();
+      doctor();
+      nativeTests({ suite, ...(typeof filter === "string" ? { filter } : {}) });
+      break;
     case "check:macos":
       native();
       doctor();
       swiftformat();
       swiftTest();
       macosBuild();
-      timedRun("Local Worker smoke", ["bun", "run", "test:local", "--native-client"]);
+      nativeSmoke();
+      break;
+    case "check:macos:smoke":
+      native();
+      doctor();
+      nativeSmoke();
       break;
     case "check":
       native();
@@ -166,7 +249,7 @@ try {
       swiftTest();
       await serverBuild();
       macosBuild();
-      timedRun("Local Worker and native client", ["bun", "run", "test:local", "--native-client"]);
+      nativeSmoke();
       break;
     default:
       throw new Error(`Unknown command: ${command}`);

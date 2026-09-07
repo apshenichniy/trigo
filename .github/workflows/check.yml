@@ -8,11 +8,48 @@ permissions:
 concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
+env:
+  TRIGO_TIMINGS_FILE: .local/check-timings.jsonl
 jobs:
+  plan:
+    name: Check selection and formatting
+    runs-on: ubuntu-24.04
+    outputs:
+      server: ${{ steps.selection.outputs.server }}
+      macos: ${{ steps.selection.outputs.macos }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: 2026.9.1
+      - id: selection
+        env:
+          # Enable only after All checks has passed and is required by branch protection.
+          TRIGO_SELECTIVE_CHECKS: ${{ vars.TRIGO_SELECTIVE_CHECKS }}
+        run: bun scripts/ci-plan.ts
+      - run: bun install --frozen-lockfile
+      - run: bun run check:files
+      - run: bun run test:unit scripts/ci-plan.test.ts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: check-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: |
+            .local/ci-plan.json
+            .local/check-timings.jsonl
+          retention-days: 14
   server:
     name: Server checks
+    needs: plan
+    if: always() && (needs.plan.result != 'success' || (!cancelled() && needs.plan.outputs.server == 'true'))
     runs-on: ubuntu-24.04
     steps:
+      - name: Reject failed check selection
+        if: always() && needs.plan.result != 'success'
+        run: echo "Check selection and formatting must succeed" >&2; exit 1
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
@@ -20,46 +57,87 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check:server
       - run: git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: server-timings-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: .local/check-timings.jsonl
+          retention-days: 14
   macos:
     name: macOS checks
+    needs: plan
+    if: always() && (needs.plan.result != 'success' || (!cancelled() && needs.plan.outputs.macos != 'none'))
     runs-on: macos-26
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      TRIGO_TIMINGS_FILE: .local/check-timings.jsonl
     steps:
+      - name: Reject failed check selection
+        if: always() && needs.plan.result != 'success'
+        run: echo "Check selection and formatting must succeed" >&2; exit 1
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
         with:
           version: 2026.9.1
       - run: bun install --frozen-lockfile
-      - name: Validate native toolchain and compute cache identity
+      - name: Validate native toolchain and compute cache identities
         id: native-cache
-        run: |
-          identity=$(bun scripts/native-cache.ts)
-          echo "identity=$identity" >> "$GITHUB_OUTPUT"
-      - name: Restore SwiftPM dependencies and build intermediates
+        run: bun scripts/native-cache.ts >> "$GITHUB_OUTPUT"
+      - name: Restore downloaded SwiftPM dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .local/SwiftPMCache
+          key: native-v2-dependencies-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.dependencies }}
+      - name: Restore SwiftPM build intermediates
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
-            .local/SwiftPMCache
             packages/contracts/.build
             apps/macos/.build
-          key: native-v1-swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-contracts-debug-native-release-${{ github.sha }}
+          key: native-v2-swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.build }}-contracts-debug-native-release-${{ github.sha }}
           restore-keys: |
-            native-v1-swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-contracts-debug-native-release-
+            native-v2-swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.build }}-contracts-debug-native-release-
       - name: Restore Xcode DerivedData
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .local/DerivedData
-          key: native-v1-xcode-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-debug-${{ github.sha }}
+          key: native-v2-xcode-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.build }}-debug-${{ github.sha }}
           restore-keys: |
-            native-v1-xcode-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}-debug-
+            native-v2-xcode-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.build }}-debug-
       - name: Set up locked native dependencies (cache misses may fetch)
         run: bun run macos:setup
-      - run: bun run check:macos
+      - name: Run selected native acceptance
+        env:
+          NATIVE_SCOPE: ${{ needs.plan.outputs.macos }}
+        run: |
+          case "$NATIVE_SCOPE" in
+            full) bun run check:macos ;;
+            smoke) bun run check:macos:smoke ;;
+            *) echo "Invalid native check selection" >&2; exit 1 ;;
+          esac
       - name: Verify generator cache hit restores missing nested lock
         run: |
           rm apps/macos/Trigo.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           bun scripts/macos.ts prepare
           cmp apps/macos/Locks/Package.resolved apps/macos/Trigo.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
       - run: git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: macos-timings-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: .local/check-timings.jsonl
+          retention-days: 14
+  complete:
+    name: All checks
+    if: always()
+    needs: [plan, server, macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: 2026.9.1
+      - env:
+          TRIGO_CI_NEEDS: ${{ toJSON(needs) }}
+        run: bun scripts/ci-summary.ts

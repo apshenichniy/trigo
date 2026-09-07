@@ -51,6 +51,30 @@ merging; mandatory Git hooks are not part of the initial workflow. Report concre
 blockers rather than weakening the approved contract or presenting skipped work
 as verified.
 
+## Verification loop
+
+During implementation, run the affected quick checks and a focused reproducer.
+For a timing or concurrency failure, first establish the failing boundary with a
+small diagnostic test. Expand to contention/resource suites after the focused
+test passes. Each repeated expensive run must answer a remaining hypothesis;
+retain the first failure and its source identity in the evidence.
+
+Use one warm integration checkout and one coordinated heavy-check executor for
+an implementation candidate. Workers run focused checks in their own worktrees
+and hand off the tested source state. Build directories, DerivedData and mutable
+local state belong to their checkout. Recheck affected code after integration;
+reuse completed evidence only while its inputs and integration context match.
+
+Commit the implementation and tracked acceptance documentation before the final
+CI run. Put subsequent run URLs, timings and CI outcomes in the PR body, job
+summary and CI artifacts. This evidence update completes the handoff without a
+new source commit. A source change requires the affected checks again; an
+unchanged successful candidate needs no ceremonial rerun. Quick results identify
+their scope and never substitute for the full acceptance gate.
+
+See [verification commands and CI selection](../development/verification.md)
+when choosing a suite, interpreting timings or changing required checks.
+
 ## Development and deployment targets
 
 Ordinary local dev/check commands use local Workers/storage and fake ASR. Explicit

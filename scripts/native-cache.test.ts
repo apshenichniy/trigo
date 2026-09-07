@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 
 import { expect, it } from "vitest";
 
-import { nativeCacheIdentity } from "./native-cache.ts";
+import { nativeCacheIdentity, nativeDependencyCacheIdentity } from "./native-cache.ts";
 
 it("invalidates restored native products on any lock, toolchain, or build configuration change", () => {
   const root = mkdtempSync(join(tmpdir(), "trigo-native-cache-"));
@@ -22,6 +22,9 @@ it("invalidates restored native products on any lock, toolchain, or build config
     "scripts/arguments.ts",
     "scripts/macos.ts",
     "scripts/native-check.ts",
+    "scripts/native-suites.ts",
+    "scripts/check-inputs.ts",
+    "scripts/build-reuse.ts",
     "scripts/native-cache.ts",
     "scripts/offline.sb",
   ];
@@ -37,12 +40,18 @@ it("invalidates restored native products on any lock, toolchain, or build config
       toolchain: ["Xcode 26.6", "SDK 17F113"],
     };
     const original = nativeCacheIdentity(inputs);
+    const dependencies = nativeDependencyCacheIdentity(inputs);
     expect(nativeCacheIdentity(inputs)).toBe(original);
     for (const path of paths) {
       const full = join(root, path);
       const before = readFileSync(full, "utf8");
       writeFileSync(full, `${before}\nchanged input\n`);
       expect(nativeCacheIdentity(inputs), path).not.toBe(original);
+      if (path.endsWith("Package.resolved") || path.endsWith("Package.swift")) {
+        expect(nativeDependencyCacheIdentity(inputs), path).not.toBe(dependencies);
+      } else {
+        expect(nativeDependencyCacheIdentity(inputs), path).toBe(dependencies);
+      }
       writeFileSync(full, before);
     }
     for (const changed of [
