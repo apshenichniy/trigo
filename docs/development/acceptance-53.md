@@ -192,3 +192,35 @@ existing generic-password adapter test using a disposable synthetic item; this
 does not constitute installed-app Keychain acceptance. Local media remains until
 the future complete verified server receipt is durably committed; range success
 is never cleanup authority.
+
+## Integrated verification
+
+Integrated commit `985b05d815e946632d5b1867468d5bcb28e6c767` has tree
+`87747c5788a75e7a98dc10e30c0c4c492a0d0ff5`, exactly matching the tested
+worker commit `8c17210a00bda7120c8c2901049ce30e0f0a2e1b`. No merge conflict
+or source adjustment was required. All 66 scoped files were preserved; prior
+acceptance ledgers, dependencies, toolchain pins and vendored reference were unchanged.
+
+Both jobs passed in [integrated CI run 34073823026](https://github.com/apshenichniy/trigo/actions/runs/34073823026):
+[server checks](https://github.com/apshenichniy/trigo/actions/runs/34073823026/job/101596024047)
+and [macOS checks](https://github.com/apshenichniy/trigo/actions/runs/34073823026/job/101596024010).
+The jobs also confirmed checks left tracked files unchanged. Raw runner logs and
+job metadata are retained in `53-ci-server.log`, `53-ci-macos.log` and the
+corresponding `53-ci-*-job.json` files under `/tmp/trigo-epic-48/`.
+
+The server job took 91 s; macOS took 602 s with both native caches missing.
+The runner passed all 152 native tests in 237.812 s, both Debug app builds,
+the nine contract tests and the network-denied local smoke. Its completed
+production background workload performed all three imports and 24 large reads,
+with 635 capture commits and a maximum 1,345.831 ms input-through-durability
+envelope. The delayed-queue fixture reached durability in 1,343.379 ms. Its
+post-commit delivery to MainActor was delayed another 26,692.168 ms under the
+concurrent full suite; that separate caller-scheduling measurement is retained
+and is not a claim that UI response latency meets the durability bound.
+
+The cold runner spent 23.583 s building contract tests, 110.163 s building native
+Release tests, 45.541/8.164 s building the dev/personal Debug apps and 6.133 s on
+local smoke. These totals include the additional #50–#53 acceptance workload
+and must not be presented as the unchanged #49 timing benchmark.
+
+These integrated checks do not satisfy the separate installed signed-app gate #57.
