@@ -74,6 +74,7 @@ func repositoryBackgroundImportAndLargeTypedReadsStayInsideCaptureWindow(product
     let writer = try RecoverableMediaMaster(
       directory: session.mediaDirectory, identity: session.mediaMasterIdentity)
     var latency: [Double] = []
+    var worstCycle = (elapsed: 0.0, phases: "")
     while !workload.isComplete || latency.count < 120 {
       guard latency.count < 10800 else { throw RepositoryInjectedFailure() }
       let start = ContinuousClock.now
@@ -87,20 +88,32 @@ func repositoryBackgroundImportAndLargeTypedReadsStayInsideCaptureWindow(product
         CaptureInterval(
           startMs: ms + $0, endMs: ms + $0 + 1, state: $0 % 2 == 0 ? .recorded : .unavailable)
       }
+      let samples = Array(repeating: Int16(123), count: 32000)
+      let preparedAt = ContinuousClock.now
       let commit = try writer.append(
-        interleaved: Array(repeating: 123, count: 32000),
+        interleaved: samples,
         microphoneIntervals: microphone, applicationIntervals: application)
+      let mediaAt = ContinuousClock.now
       try repository.commitMediaProgress(commit)
+      let sqlAt = ContinuousClock.now
       workload.captured()
-      let elapsed = elapsedSeconds(start.duration(to: .now))
+      let completedAt = ContinuousClock.now
+      let elapsed = elapsedSeconds(start.duration(to: completedAt))
       latency.append(elapsed)
       // One second of input plus all media/index sync and SQL service must fit two seconds.
       #expect(1 + elapsed <= 2)
+      if elapsed > worstCycle.elapsed {
+        worstCycle = (
+          elapsed,
+          "DENSE_WORST_CYCLE total_ms=\(elapsed * 1000) prepare_ms=\(milliseconds(start, preparedAt)) media_ms=\(milliseconds(preparedAt, mediaAt)) sql_ms=\(milliseconds(mediaAt, sqlAt)) post_sql_ms=\(milliseconds(sqlAt, completedAt))"
+        )
+      }
       // Advance one second of generated input every 20 ms (50x real time), leaving
       // an idle input gap in which background work can make progress. A continuous
       // unpaced foreground loop would model an overloaded producer, not capture.
       try await Task.sleep(for: .milliseconds(20))
     }
+    print(worstCycle.phases)
     #expect(try repository.confirmedMediaCursor(callID: session.callID) == writer.cursor)
     return latency
   }
@@ -165,6 +178,11 @@ private func elapsedSeconds(_ duration: Duration) -> Double {
   Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
 }
 
+private func milliseconds(_ from: ContinuousClock.Instant, _ to: ContinuousClock.Instant) -> Double
+{
+  elapsedSeconds(from.duration(to: to)) * 1000
+}
+
 private func productionSinkCapture(session: CaptureArchiveSession, workload: RepositoryWorkload)
   async throws -> [Double]
 {
@@ -183,6 +201,7 @@ private func productionSinkCapture(session: CaptureArchiveSession, workload: Rep
   sink.acceptApplicationStream(application)
   let repository = try LocalRepository(root: session.root, archiveID: session.archiveID)
   var latency: [Double] = []
+  var worstCycle = (elapsed: 0.0, phases: "")
   while !workload.isComplete || latency.count < 120 {
     guard latency.count < 10800 else { throw RepositoryInjectedFailure() }
     let start = ContinuousClock.now
@@ -198,21 +217,34 @@ private func productionSinkCapture(session: CaptureArchiveSession, workload: Rep
         sink.enqueue(
           sample, role: .application, streamID: ObjectIdentifier(application), deliveredAt: time))
     }
+    let submittedAt = ContinuousClock.now
     while sink.ingressStatistics.pendingBuffers > 0 {
       try await sink.perform { _ in }
     }
-    try await sink.perform { engine in
+    let advanceQueuedAt = ContinuousClock.now
+    let (advanceStartedAt, durableAt) = try await sink.perform { engine in
+      let began = ContinuousClock.now
       try engine.advance(at: CMTime(value: Int64((second + 1) * 4 + 1), timescale: 4))
+      return (began, ContinuousClock.now)
     }
+    let resumedAt = ContinuousClock.now
     #expect(
       try repository.confirmedMediaCursor(callID: session.callID)?.frames == Int64(second + 1)
         * 16_000)
     workload.captured()
-    let elapsed = elapsedSeconds(start.duration(to: .now))
+    let completedAt = ContinuousClock.now
+    let elapsed = elapsedSeconds(start.duration(to: completedAt))
     latency.append(elapsed)
     #expect(1 + elapsed <= 2)
+    if elapsed > worstCycle.elapsed {
+      worstCycle = (
+        elapsed,
+        "PRODUCTION_WORST_CYCLE total_ms=\(elapsed * 1000) submission_ms=\(milliseconds(start, submittedAt)) drain_ms=\(milliseconds(submittedAt, advanceQueuedAt)) advance_queue_ms=\(milliseconds(advanceQueuedAt, advanceStartedAt)) advance_service_ms=\(milliseconds(advanceStartedAt, durableAt)) advance_delivery_ms=\(milliseconds(durableAt, resumedAt)) witness_ms=\(milliseconds(resumedAt, completedAt))"
+      )
+    }
     try await Task.sleep(for: .milliseconds(20))
   }
+  print(worstCycle.phases)
   let result = try await sink.finish(
     at: CMTime(value: Int64(latency.count), timescale: 1), reason: nil)
   let complete = try await session.complete(media: result.0, interruptionReason: nil)

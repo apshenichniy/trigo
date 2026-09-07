@@ -218,6 +218,75 @@ post-commit delivery to MainActor was delayed another 26,692.168 ms under the
 concurrent full suite; that separate caller-scheduling measurement is retained
 and is not a claim that UI response latency meets the durability bound.
 
+## Warm-run SQLite contention correction
+
+A second [integrated CI run 34074455910](https://github.com/apshenichniy/trigo/actions/runs/34074455910)
+failed the unchanged two-second envelope: 2,005.565 ms for the dense fixture and
+2,215.234 ms for the production sink. Its source/configuration matched the passing
+run; only acceptance documentation differed. All three imports and large-read
+phases completed. That failure reopened this slice's concurrency acceptance.
+
+Unchanged local source reproduced the deadline failure with three concurrent
+test processes. Narrowing the workload retained the complete contention fixture
+and the complete three-hour production proof; two processes still failed. A
+one-import diagnostic helped locate the delay but was not used for acceptance.
+The full three-import diagnostic measured a 1,805.178 ms dense cycle: 1,804.174 ms
+was in the repository path, including 1,782.598 ms waiting for a background SQL
+owner whose body took 1,810.294 ms. Preparation, external media synchronization
+and caller delivery did not account for that miss. Sampling caught background
+revision staging in SQLite rollback-journal writes while capture waited.
+
+The shared owner previously performed SQL at its caller's priority after
+releasing the condition mutex. Capture admission preference did not promote the
+background owner during disk I/O. Each synchronous SQL scope now directly
+performs a work item with a user-initiated QoS floor, including admission and
+owner release. It retains higher caller priority and restores the caller context
+afterward. Preparation, validation and serialization stay outside the SQL scope;
+transaction sizes, full synchronization, capture preference and public repository
+behavior remain unchanged.
+
+A controlled intervention changed only the bounded SQL body's QoS. All three
+processes completed 18 imports / 72,000 turns / 144 large reads and all three
+complete three-hour proofs. Dense maxima fell from 624-1,805 ms to 191-222 ms;
+production maxima fell from 697-856 ms to 154-181 ms. No measured SQL admission
+wait or body exceeded 200 ms. The baseline and intervention are retained in
+`53-contention-phases-three-imports-*.log` and
+`53-contention-qos-three-imports-*.log`; the diagnostic record is
+`53-contention-causal-measurements.md`. Sampling is supporting evidence; the
+unchanged-source failures also occurred without sampling.
+
+Temporary environment switches and SQL observers are removed. The original
+regression now prints its worst cycle's component durations, while the assertion
+still includes preparation, queue/drain, final durability, caller delivery and the
+SQL witness read.
+
+The cleaned final source passed the original larger stress scenario in three
+processes, each running the same five test functions. The reference starts at
+t=0; both siblings start at t=97 s, matching the original staggered failure.
+All processes complete their full imports and one/three-hour proofs, passing in
+224.787 / 273.963 / 272.238 s. Maximum input-plus-complete-cycle envelopes are
+1,295.218 ms dense and 1,269.543 ms production. This final run uses no diagnostic
+switches or sampling (`53-contention-final-original-stress-*.log`).
+
+Both required final gates pass: `53-contention-check-server-final.log` contains
+269 unit tests, 17 Worker tests, formatting/lint/types/generation and both Worker
+bundles; `53-contention-check-macos-final.log` contains nine shared-contract tests,
+all 152 native tests, both Debug app builds and the network-denied local smoke.
+The native suite takes 191.241 s. Its complete contention envelopes are
+1,319.982 ms dense and 1,279.934 ms production; delayed-queue durability is
+1,345.888 ms, with another 244.343 ms separately measured for caller delivery.
+The complete one-hour common-clock proof retains 0.0 ms worst source-relative drift.
+
+The exact Release helper is reused for isolated resource checks on this source.
+The one-hour proof passes in 36.018 s with a 54,198,272 B peak RSS through full
+extraction (`53-contention-final-isolated-one-hour-1.log`). The three-hour proof
+passes in 108.213 s with a 43,433,984 B peak RSS through full extraction
+(`53-contention-final-isolated-three-hour-1.log`). Both remain below 80 MiB and
+retain the exact frame counts, source intervals, master hashes and snapshot bytes
+listed above. `53-contention-final-tested-source.log` records the matching source
+and Release-helper hashes; `53-contention-source-identity.log` records the final
+commit/tree and its relationship to the tested source.
+
 The cold runner spent 23.583 s building contract tests, 110.163 s building native
 Release tests, 45.541/8.164 s building the dev/personal Debug apps and 6.133 s on
 local smoke. These totals include the additional #50–#53 acceptance workload

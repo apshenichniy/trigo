@@ -222,22 +222,42 @@ final class SQLiteDatabase: @unchecked Sendable {
   }
 
   func access<T>(capture: Bool = false, _ body: () throws -> T) throws -> T {
-    condition.lock()
-    if capture { waitingCapture += 1 }
-    while busy || (!capture && waitingCapture > 0) { condition.wait() }
-    if capture { waitingCapture -= 1 }
-    busy = true
-    condition.unlock()
-    defer {
+    try performSQLUnit {
       condition.lock()
-      busy = false
-      condition.broadcast()
+      if capture { waitingCapture += 1 }
+      while busy || (!capture && waitingCapture > 0) { condition.wait() }
+      if capture { waitingCapture -= 1 }
+      busy = true
       condition.unlock()
+      defer {
+        condition.lock()
+        busy = false
+        condition.broadcast()
+        condition.unlock()
+      }
+      guard !poisoned else {
+        throw LocalPersistenceError.io("SQLite rollback failed; reopen required")
+      }
+      return try body()
     }
-    guard !poisoned else {
-      throw LocalPersistenceError.io("SQLite rollback failed; reopen required")
+  }
+
+  /// Capture can depend on any bounded SQL unit, including one requested by a background
+  /// import. The condition's busy flag cannot donate priority to its unlocked body, so
+  /// background journal I/O could otherwise be throttled while capture waits. Directly
+  /// performing this work item raises the synchronous scope without lowering a higher
+  /// caller QoS. Keep admission and owner release in that scope too; preparation and
+  /// validation remain outside it. A queue QoS attribute alone does not apply to sync work.
+  private func performSQLUnit<T>(_ body: () throws -> T) throws -> T {
+    try withoutActuallyEscaping(body) { operation in
+      var result: Result<T, any Error>?
+      let item = DispatchWorkItem(qos: .userInitiated, flags: .enforceQoS) {
+        result = Result { try operation() }
+      }
+      item.perform()
+      guard let result else { preconditionFailure("Synchronous SQL unit did not execute") }
+      return try result.get()
     }
-    return try body()
   }
 
   func transaction<T>(
