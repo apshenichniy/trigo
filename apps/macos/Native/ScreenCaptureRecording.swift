@@ -151,11 +151,13 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       try stream.addCaptureOutput(output, type: .audio, queue: output.callbackQueue)
       // No .screen output and no SCRecordingOutput: pixels never reach persistence.
       try checkStart(attempt)
+      // Native Start can deliver application audio before either stream acknowledges.
+      // Keep the bounded timeline durable while those acknowledgements remain pending.
+      output.startClock()
       try await stream.startCapture()
       try checkStart(attempt)
       if let microphone { await replaceMicrophone(microphone) }
       try checkStart(attempt)
-      output.startClock()
       let value = try await output.perform { $0.snapshot }
       try checkStart(attempt)
       publish(value)

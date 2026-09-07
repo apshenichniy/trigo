@@ -5,14 +5,19 @@ import Testing
 
 @testable import TrigoNative
 
-func controlledAudioBuffer(sampleRate: Double, frames: Int, time: CMTime, value: Float) throws
+func controlledAudioBuffer(
+  sampleRate: Double, frames: Int, time: CMTime, value: Float, channels: AVAudioChannelCount = 1
+) throws
   -> CMSampleBuffer
 {
-  let format = try #require(AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1))
+  let format = try #require(
+    AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels))
   let pcm = try #require(
     AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)))
   pcm.frameLength = AVAudioFrameCount(frames)
-  for frame in 0..<frames { pcm.floatChannelData![0][frame] = value }
+  for channel in 0..<Int(channels) {
+    for frame in 0..<frames { pcm.floatChannelData![channel][frame] = value }
+  }
   var description: CMAudioFormatDescription?
   #expect(
     CMAudioFormatDescriptionCreate(
