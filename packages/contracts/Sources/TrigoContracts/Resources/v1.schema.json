@@ -4,6 +4,9 @@
   "title": "TrigoV1",
   "anyOf": [
     {
+      "$ref": "#/$defs/LocalDevelopmentBridge"
+    },
+    {
       "$ref": "#/$defs/CaptureMasterProfile"
     },
     {
@@ -26,6 +29,36 @@
     }
   ],
   "$defs": {
+    "CanonicalUUIDv4": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "LocalDevelopmentBridge": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "worktreeId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{12}$"
+        },
+        "namespaceId": {
+          "$ref": "#/$defs/CanonicalUUIDv4"
+        },
+        "serverURL": {
+          "type": "string",
+          "pattern": "^http:\\/\\/127\\.0\\.0\\.1:[0-9]+$"
+        },
+        "ownerToken": {
+          "type": "string",
+          "pattern": "^trigo_v1_[0-9a-f]{64}$"
+        }
+      },
+      "required": ["formatVersion", "worktreeId", "namespaceId", "serverURL", "ownerToken"],
+      "additionalProperties": false
+    },
     "CaptureMasterProfile": {
       "type": "object",
       "properties": {
@@ -839,10 +872,6 @@
       },
       "required": ["schemaVersion", "operationId"],
       "additionalProperties": false
-    },
-    "CanonicalUUIDv4": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
     "ErrorDetail": {
       "type": "object",

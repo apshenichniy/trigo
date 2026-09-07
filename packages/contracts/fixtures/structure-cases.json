@@ -718,5 +718,101 @@
     "kind": "CaptureMasterProfile",
     "json": "{\"schemaVersion\":1,\"id\":\"caf-lpcm-s16le-16000-stereo-v1\",\"contentType\":\"audio/x-caf\",\"codec\":\"pcm_s16le\",\"sampleRateHz\":16000,\"bitsPerSample\":16,\"interleaved\":true,\"microphoneChannel\":0,\"applicationChannel\":1,\"headerBytes\":68,\"headerPolicy\":\"immutable-indefinite-final-data-chunk\",\"maxCallDurationMs\":10800000,\"maxMasterBytes\":691200068,\"maxCommitDurationMs\":1000,\"maxUncommittedTailMs\":2000,\"indexHeaderBytes\":128,\"indexRecordBytes\":2120,\"maxRangeBytes\":8388608,\"minimumMultipartPartBytes\":5242880,\"timeline\":\"call-relative-integer-milliseconds\",\"nonRecordedSamples\":\"whole-millisecond-silence-before-persistence\",\"extractionTransform\":\"identity-stereo-pcm-frame-slice-v1\",\"cleanupAuthority\":\"durably-committed-complete-verified-server-receipt\"}",
     "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge baseline",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": true
+  },
+  {
+    "name": "LocalDevelopmentBridge minimum local port",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:1024\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": true
+  },
+  {
+    "name": "LocalDevelopmentBridge maximum local port",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:65535\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": true
+  },
+  {
+    "name": "LocalDevelopmentBridge non-v4 namespace",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-1000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge v7 namespace",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-7000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge wrong UUID variant",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-0000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge extra field",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\",\"cloudToken\":\"not-allowed\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge unsupported version",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":2,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge string version",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":\"1\",\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge uppercase worktree",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345ABCDEF\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge hostname origin",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://localhost:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge HTTPS origin",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"https://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge origin with path",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371/\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge invalid token",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"invalid\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge token trailing LF",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\",\"ownerToken\":\"trigo_v1_1111111111111111111111111111111111111111111111111111111111111111\\n\"}",
+    "valid": false
+  },
+  {
+    "name": "LocalDevelopmentBridge missing token",
+    "kind": "LocalDevelopmentBridge",
+    "json": "{\"formatVersion\":1,\"worktreeId\":\"012345abcdef\",\"namespaceId\":\"00000000-0000-4000-8000-000000000054\",\"serverURL\":\"http://127.0.0.1:19371\"}",
+    "valid": false
   }
 ]

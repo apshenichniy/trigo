@@ -6,6 +6,15 @@ struct ConnectionView: View {
   @ObservedObject var model: RecordingCoordinator
   @State private var serverURL = ""
   @State private var token = ""
+  init(
+    appName: String, model: RecordingCoordinator,
+    localConfiguration: LocalDevelopmentConfiguration? = nil
+  ) {
+    self.appName = appName
+    self.model = model
+    _serverURL = State(initialValue: localConfiguration?.serverURL.absoluteString ?? "")
+    _token = State(initialValue: localConfiguration?.ownerToken ?? "")
+  }
   private var snapshot: ConnectionSnapshot { model.connectionSnapshot }
 
   var body: some View {

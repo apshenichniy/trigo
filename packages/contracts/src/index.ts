@@ -38,6 +38,7 @@ function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   };
 }
 const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
+  LocalDevelopmentBridge: decoder(documentSchemas.LocalDevelopmentBridge),
   CaptureMasterProfile: decoder(documentSchemas.CaptureMasterProfile),
   CallDocument: decoder(documentSchemas.CallDocument),
   TranscriptRevision: decoder(documentSchemas.TranscriptRevision),

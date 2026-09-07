@@ -20,6 +20,7 @@ private func typedRoundTrip<Value: ContractDocument>(_ type: Value.Type, bytes: 
 
 func typedRoundTrip(_ kind: String, bytes: Data) throws -> Data {
   switch kind {
+  case "LocalDevelopmentBridge": try typedRoundTrip(LocalDevelopmentBridge.self, bytes: bytes)
   case "CaptureMasterProfile": try typedRoundTrip(CaptureMasterProfile.self, bytes: bytes)
   case "CallDocument": try typedRoundTrip(CallDocument.self, bytes: bytes)
   case "TranscriptRevision": try typedRoundTrip(TranscriptRevision.self, bytes: bytes)

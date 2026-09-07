@@ -214,6 +214,7 @@ protocol ServerStatusFetching: Sendable {
 }
 
 public actor ServerConnection {
+  private let transportPolicy: ServerTransportPolicy
   private let expectedStage: ServerStage
   private let metadataStore: any ConnectionMetadataStoring
   private let credentialStore: any CredentialStoring
@@ -226,8 +227,10 @@ public actor ServerConnection {
 
   init(
     expectedStage: ServerStage, metadataStore: any ConnectionMetadataStoring,
-    credentialStore: any CredentialStoring, statusClient: any ServerStatusFetching
+    credentialStore: any CredentialStoring, statusClient: any ServerStatusFetching,
+    transportPolicy: ServerTransportPolicy = .httpsOnly
   ) {
+    self.transportPolicy = transportPolicy
     self.expectedStage = expectedStage
     self.metadataStore = metadataStore
     self.credentialStore = credentialStore
@@ -235,11 +238,14 @@ public actor ServerConnection {
   }
 
   public static func live(namespace: AppNamespace, variant: AppVariant) -> ServerConnection {
-    ServerConnection(
+    let policy: ServerTransportPolicy =
+      namespace.localDevelopment.map { .localDevelopment($0) } ?? .httpsOnly
+    return ServerConnection(
       expectedStage: variant.serverStage,
-      metadataStore: FileConnectionMetadataStore(url: namespace.connection),
+      metadataStore: FileConnectionMetadataStore(
+        url: namespace.connection, transportPolicy: policy),
       credentialStore: KeychainCredentialStore(service: namespace.keychainService),
-      statusClient: HTTPSStatusClient())
+      statusClient: HTTPSStatusClient(transportPolicy: policy), transportPolicy: policy)
   }
 
   public func snapshot() -> ConnectionSnapshot { current }
@@ -314,7 +320,7 @@ public actor ServerConnection {
     guard beginOperation() else { return current }
     defer { operationInProgress = false }
 
-    guard let serverURL = Self.canonicalServerURL(rawServerURL) else {
+    guard let serverURL = transportPolicy.canonicalURL(rawServerURL) else {
       return reject(.invalidServerURL)
     }
     let token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -480,15 +486,6 @@ public actor ServerConnection {
   }
 
   static func canonicalServerURL(_ rawValue: String) -> URL? {
-    let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard var components = URLComponents(string: value),
-      components.scheme?.lowercased() == "https", let host = components.host, !host.isEmpty,
-      components.user == nil, components.password == nil, components.query == nil,
-      components.fragment == nil, components.path.isEmpty || components.path == "/"
-    else { return nil }
-    if let port = components.port, !(1...65_535).contains(port) { return nil }
-    components.scheme = "https"
-    components.path = ""
-    return components.url
+    ServerTransportPolicy.httpsOnly.canonicalURL(rawValue)
   }
 }

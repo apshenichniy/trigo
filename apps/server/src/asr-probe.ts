@@ -9,7 +9,7 @@ import {
   type AudioManifest,
 } from "@trigo/contracts";
 import { Clock, DateTime, Effect, Schema } from "effect";
-import { normalizeNova3 } from "./nova-3.ts";
+import { nova3Asr } from "./asr.ts";
 
 type ProbeLanguage = AsrProbeLanguageCode;
 
@@ -332,39 +332,41 @@ const transcribe = Effect.fn("AsrProbe.transcribe")(function* (
   const manifestBytes = new TextEncoder().encode(manifestText);
   const manifestSha256 = yield* Effect.promise(() => storedByteHash(manifestBytes));
   const createdAt = DateTime.formatIso(yield* DateTime.now);
-  const normalized = yield* normalizeNova3({
-    callId,
-    revisionId: makeId(),
-    createdAt,
-    audioManifest: { manifestId, sha256: manifestSha256 },
-    requestedLanguage: language,
-    detectedLanguages: [],
-    tracks: [
-      { trackId: microphoneTrackId, role: "microphone" },
-      { trackId: applicationTrackId, role: "application" },
-    ],
-    objects: [
-      {
-        objectId,
-        index: 0,
-        startMs: 0,
-        endMs: inspection.durationMs,
-        channelMap,
-        providerRequestId: null,
-        response: providerResult,
-      },
-    ],
-    makeId,
-  }).pipe(
-    Effect.mapError(() =>
-      probeError(
-        502,
-        "asr_probe_normalization_failed",
-        "after_correction",
-        "The raw result was retained, but it cannot prove the required normalized contract.",
+  const normalized = yield* nova3Asr
+    .normalize({
+      callId,
+      revisionId: makeId(),
+      createdAt,
+      audioManifest: { manifestId, sha256: manifestSha256 },
+      requestedLanguage: language,
+      detectedLanguages: [],
+      tracks: [
+        { trackId: microphoneTrackId, role: "microphone" },
+        { trackId: applicationTrackId, role: "application" },
+      ],
+      objects: [
+        {
+          objectId,
+          index: 0,
+          startMs: 0,
+          endMs: inspection.durationMs,
+          channelMap,
+          providerRequestId: null,
+          response: providerResult,
+        },
+      ],
+      makeId,
+    })
+    .pipe(
+      Effect.mapError(() =>
+        probeError(
+          502,
+          "asr_probe_normalization_failed",
+          "after_correction",
+          "The raw result was retained, but it cannot prove the required normalized contract.",
+        ),
       ),
-    ),
-  );
+    );
   const normalizedBytes = new TextEncoder().encode(
     yield* encodePrettyJson(normalized).pipe(Effect.orDie),
   );

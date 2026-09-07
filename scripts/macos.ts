@@ -8,6 +8,7 @@ import { run } from "./process.ts";
 import { restoreLock } from "./macos-lock.ts";
 import { lockedSwiftArguments, swiftPackages } from "./native-check.ts";
 import { timedRun } from "./timing.ts";
+import { readLocalConfiguration } from "./local-configuration.ts";
 requireNativeTools();
 const root = realpathSync(new URL("..", import.meta.url).pathname);
 process.chdir(root);
@@ -25,6 +26,15 @@ const nested = `${project}/project.xcworkspace/xcshareddata/swiftpm/Package.reso
 const before = action === "dependencies" ? new Map<string, string>() : snapshotLocks();
 const derived = resolve(root, ".local/DerivedData");
 const worktree = createHash("sha256").update(root).digest("hex").slice(0, 12);
+const localConfigIndex = process.argv.indexOf("--local-config");
+const localConfigPath = localConfigIndex < 0 ? undefined : process.argv[localConfigIndex + 1];
+if (localConfigIndex >= 0) {
+  if (action !== "run" || variant !== "dev" || !localConfigPath || localConfigPath.startsWith("--"))
+    throw new Error(
+      "--local-config requires macos:run --variant dev and a private local configuration path",
+    );
+  readLocalConfiguration(resolve(localConfigPath), worktree);
+}
 mkdirSync(".local", { recursive: true });
 timedRun(
   "Xcode project generation",
@@ -131,12 +141,32 @@ if (action === "dependencies") {
         if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
           throw new Error(`Built app identity mismatch: ${key}`);
       }
+      const plist: unknown = JSON.parse(
+        toolOutput(["plutil", "-convert", "json", "-o", "-", info]),
+      );
+      if (typeof plist !== "object" || plist === null)
+        throw new Error("Built app Info.plist is invalid");
+      const transport =
+        "NSAppTransportSecurity" in plist ? plist.NSAppTransportSecurity : undefined;
+      if (variant === "dev") {
+        if (
+          typeof transport !== "object" ||
+          transport === null ||
+          !("NSAllowsLocalNetworking" in transport) ||
+          transport.NSAllowsLocalNetworking !== true
+        )
+          throw new Error("Dev app must contain the Boolean local-network ATS allowance");
+      } else if (transport !== undefined) throw new Error("Personal app must retain default ATS");
       if (action === "run") {
         const applications = resolve(homedir(), "Applications");
         mkdirSync(applications, { recursive: true });
         const destination = resolve(applications, `${scheme}.app`);
         run(["ditto", resolve(derived, `Build/Products/Debug/${scheme}.app`), destination]);
-        run(["open", destination]);
+        run(
+          localConfigPath
+            ? ["open", "-n", destination, "--args", "--local-config", resolve(localConfigPath)]
+            : ["open", destination],
+        );
         console.log(`Installed ${destination}`);
       }
     }

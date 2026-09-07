@@ -236,7 +236,18 @@ export const ErrorEnvelope = Schema.Struct({
 export interface ErrorEnvelope extends Schema.Schema.Type<typeof ErrorEnvelope> {}
 export const ErrorEnvelopeSchema = ErrorEnvelope;
 
+/** Private CLI-to-native exchange; filesystem ownership and current-worktree policy stay contextual. */
+export const LocalDevelopmentBridge = Schema.Struct({
+  formatVersion: Schema.Literal(1),
+  worktreeId: Schema.String.check(Schema.isPattern(/^[0-9a-f]{12}$/)),
+  namespaceId: CanonicalUUIDv4,
+  serverURL: Schema.String.check(Schema.isPattern(/^http:\/\/127\.0\.0\.1:[0-9]+$/)),
+  ownerToken: Schema.String.check(Schema.isPattern(/^trigo_v1_[0-9a-f]{64}$/)),
+}).annotate({ identifier: "LocalDevelopmentBridge" });
+export interface LocalDevelopmentBridge extends Schema.Schema.Type<typeof LocalDevelopmentBridge> {}
+
 export const documentSchemas = {
+  LocalDevelopmentBridge,
   CaptureMasterProfile,
   CallDocument,
   TranscriptRevision,

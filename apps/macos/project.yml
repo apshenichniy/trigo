@@ -39,6 +39,11 @@ targets:
         PRODUCT_NAME: Trigo
   Trigo Dev:
     templates: [App]
+    info:
+      path: Generated/Dev-Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.dev

@@ -24,7 +24,9 @@ after a clean clone or a dependency/toolchain cache miss. It never updates the
 locks. Subsequent native builds/tests need no network access; automatic version
 updates remain disabled. A clean clone or missing dependency needs network access
 for setup before checking. The local Worker smoke retains its OS-enforced external
-network denial. SwiftPM and Xcode retain their own sandbox behavior.
+network denial. Native local smoke execution uses that same outer denial profile;
+its SwiftPM invocation disables only nested manifest sandboxing. Other SwiftPM
+and Xcode commands retain their own sandbox behavior.
 Use `mise exec --` in a shell without mise activation.
 
 | Tool/package                                       | Exact version           |
@@ -115,8 +117,8 @@ All commands use `bun run <command>` and propagate errors.
 | `check:server`                                                                       | Portable Linux/macOS TS/contracts/Workers checks and bundle                          |
 | `check:macos`                                                                        | Native style/conformance/tests, both apps and Alchemy local smoke                    |
 | `contracts:generate` / `contracts:check`                                             | Explicit regeneration / temporary regeneration and comparison                        |
-| `dev`                                                                                | Loopback Alchemy Worker, worktree-local R2 and fake ASR                              |
-| `test:local`                                                                         | Disposable Alchemy composition and R2 readback                                       |
+| `dev`                                                                                | Shared product API, local D1/R2/workflow and fake ASR                                |
+| `test:local`                                                                         | Disposable composition, authenticated API and persistent restart                     |
 | `macos:build --variant dev`                                                          | Locked build (`personal` also supported)                                             |
 | `macos:run --variant dev`                                                            | Build, install and open stable development app                                       |
 | `macos:archive --variant dev`                                                        | Reproducible unsigned archive unless a signing team is selected                      |
@@ -151,38 +153,88 @@ retries automatically, and the deployed fixture marker rejects a sequential repe
 
 ## Local runtime
 
-`dev` uses the closed composition in `infra/local.ts`, restricted to a Worker and
-R2. It accepts no arbitrary resources or cloud stage. The launcher passes an
-environment allowlist and deliberately invalid account/token values because the
-Alchemy local providers still require auth-shaped configuration. These values
-provide no account access. The launcher selects a reserved `trigo-local-<worktree>`
-profile and `CI=1` so a fresh machine needs no interactive login. Alchemy may create
-local profile metadata (`method: env`) in `~/.alchemy/profiles.json`; no token is
-stored there. Reserve the `trigo-local-` prefix for this harness, never operator
-credentials. Default/operator profiles are not selected. No AI binding or remote
-state store is created.
+`dev` uses the closed composition in `infra/local.ts`: a loopback Worker, D1,
+R2 and a local workflow. Local and cloud Workers delegate `/v1/` to the same
+Effect HttpApi handler. The supported product endpoint is authenticated
+`GET /v1/status`; upload, transcription and synchronization remain unavailable.
+The local status keeps transcription `not_verified` and call operations
+`unavailable`. Deterministic fake ASR is an adapter result, not provider readiness.
 
-State lives under `.local/<hash-of-real-worktree-path>/.alchemy`; tests use a
-fresh temporary directory. `TRIGO_LOCAL_PORT` selects a port (default 19371; smoke
-uses a fresh available port). Both bind only to 127.0.0.1 and fail on collisions. A per-launch nonce verifies that
-smoke requests reach the runtime created by that test. On macOS the launcher
-also denies external network access for the entire child process tree using the
-OS sandbox. Workers pool tests independently deny outbound service requests.
-The Linux composition retains the resource/credential restrictions; the macOS
-smoke is the evidence for Alchemy execution under an OS-enforced network denial.
+The launcher passes an environment allowlist and deliberately invalid
+Cloudflare-shaped credentials required by Alchemy's local providers. It selects
+a reserved `trigo-local-<worktree>` profile with `CI=1`; no interactive login,
+operator profile, remote state, Workers AI binding or provider call is used.
+Alchemy may create local profile metadata (`method: env`) in
+`~/.alchemy/profiles.json`; it does not store a token there. Reserve the
+`trigo-local-` prefix for this harness. Unsupported resources must fail instead
+of opting into remote fallback.
+
+State lives under `.local/<hash-of-real-worktree-path>/.alchemy`. A separate
+mode-0600 `connection.json` in that directory holds a generated **local test**
+owner token, the loopback origin, worktree ID and disposable namespace ID. Only
+the token verifier reaches the Worker; the launcher does not print the token.
+The configuration and local archive identity survive server restart. The same
+file must keep the same port; choose a new disposable local namespace instead of
+silently changing an existing binding. Tests create and remove their own
+fresh temporary directory.
 
 ```sh
 bun run dev
-curl http://127.0.0.1:19371/__local/health
-curl -X POST http://127.0.0.1:19371/__local/transcriptions/no-speech
-curl http://127.0.0.1:19371/__local/transcriptions/no-speech
+# In another terminal, run the exact command printed by dev:
+bun run macos:run --variant dev --local-config /absolute/path/printed/by/dev/connection.json
 ```
 
-These fixture routes are local harness operations, not an authenticated product
-API. `/v1` endpoint behavior belongs to its owning implementation issue. Do not
-publish the local Worker as a production API. Supported local composition changes
-must include a smoke test under external-network denial; unsupported resources
-must fail, never opt into Alchemy's remote fallback.
+The installed development app opens with the local URL/token prefilled. Click
+**Connect** to authenticate and establish the first binding. It uses a namespace
+ending in `.local.<UUID>`, separate from both the ordinary worktree Dev cloud
+binding and personal data, preferences and Keychain service. Normal installed
+credential storage still uses Keychain. Keep the local server running while
+pairing; later unavailable/unauthorized status keeps the durable binding and
+local recording eligibility.
+
+The private bridge uses the shared Effect-authored `LocalDevelopmentBridge`
+contract and its generated Swift model. Both readers reject unknown fields and
+invalid namespace/token values before applying contextual file/worktree policy.
+It is dev-only and accepts exactly its configured
+`http://127.0.0.1:<port>` origin, with ports 1024–65535. It rejects other ports,
+`localhost`, IPv6, other IP addresses, paths, credentials, queries and fragments.
+The same rule applies before URLSession transport and when restoring metadata.
+Ordinary Dev and personal connections remain HTTPS-only. The Dev app has the
+Boolean [`NSAllowsLocalNetworking`](https://developer.apple.com/documentation/bundleresources/information-property-list/nsapptransportsecurity/nsallowslocalnetworking)
+ATS setting; application policy limits the HTTP exception to that explicit
+loopback bridge. Personal builds retain default ATS. Redirects are rejected.
+
+`TRIGO_LOCAL_PORT` selects the server port (default 19371; tests select a fresh
+available port). The runtime binds only to `127.0.0.1` and fails on collisions.
+A per-launch run ID verifies the selected process. On macOS the launcher denies
+external networking for both the entire Alchemy/workerd child process tree and
+the optional native-client test execution. The launcher first builds the current
+locked native tests using the same command as `check:macos`, then runs them with
+`--skip-build` inside the outer sandbox. That execution disables only SwiftPM's
+nested manifest sandbox; the outer network-denial profile stays active. Workers
+pool tests independently deny outbound requests. Linux keeps the explicit local
+resource and credential restrictions; macOS supplies the OS-enforced network
+denial evidence.
+
+```sh
+bun run test:local
+bun run test:local --native-client  # macOS; included in check:macos and check
+```
+
+The smoke checks authenticated status, unauthorized and unavailable operations,
+D1 identity, a real local workflow producing a canonical fake no-speech revision,
+R2 exact-byte readback, and persistence of all three bindings after restart.
+`--native-client` also checks actual URLSession pairing and file-metadata restore
+against that Worker in a disposable namespace with an in-memory test credential
+adapter. It never reads installed/personal credentials, opens an installed app,
+or requests capture permissions. Installed signing, ATS and physical system
+consent remain the separate owner-assisted acceptance gate.
+
+`/__local/health` initializes/replays the isolated local owner identity and
+reports the active run ID. `__local/probe` routes are gated infrastructure
+acceptance helpers, not product transcription endpoints. The old
+`/__local/transcriptions/*` fixture API is removed. Do not deploy the local Worker
+as a production API.
 
 ## Native variants and signing
 
@@ -210,7 +262,8 @@ suite name; Keychain uses `<namespace>.connection-token`. Personal uses its bund
 ID; development appends the build's worktree identifier. Test namespaces are
 UUID-based disposable locations. The shell requests no capture permissions.
 
-The app's Archive connection screen accepts an HTTPS origin and owner token. A
+The app's ordinary Archive connection screen accepts an HTTPS origin and owner token.
+The explicit local bridge above has its own bounded origin policy. A
 successful authenticated status check establishes the archive binding before local
 recording becomes eligible. `connection.json` stores only the canonical server
 origin, archive ID, stage and an opaque Keychain account reference; the token is a

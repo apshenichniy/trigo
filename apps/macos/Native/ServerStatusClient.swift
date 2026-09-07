@@ -35,9 +35,11 @@ private final class RedirectRejectingDelegate: NSObject, URLSessionTaskDelegate,
 }
 
 actor HTTPSStatusClient: ServerStatusFetching {
+  private let transportPolicy: ServerTransportPolicy
   private let session: URLSession
 
-  init(timeout: TimeInterval = 15) {
+  init(timeout: TimeInterval = 15, transportPolicy: ServerTransportPolicy = .httpsOnly) {
+    self.transportPolicy = transportPolicy
     let configuration = URLSessionConfiguration.ephemeral
     configuration.timeoutIntervalForRequest = timeout
     configuration.timeoutIntervalForResource = timeout
@@ -47,6 +49,9 @@ actor HTTPSStatusClient: ServerStatusFetching {
   }
 
   func fetch(serverURL: URL, token: String) async throws -> ServerStatus {
+    guard transportPolicy.canonicalURL(serverURL.absoluteString) == serverURL else {
+      throw ConnectionIssue.invalidServerURL
+    }
     let endpoint = serverURL.appending(path: "v1/status")
     var request = URLRequest(url: endpoint)
     request.httpMethod = "GET"

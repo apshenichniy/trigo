@@ -5,6 +5,7 @@ import Foundation
 
 enum GeneratedContract {
   static let documentKinds = [
+    "LocalDevelopmentBridge",
     "CaptureMasterProfile",
     "CallDocument",
     "TranscriptRevision",
@@ -13,6 +14,58 @@ enum GeneratedContract {
     "CommandIdentity",
     "ErrorEnvelope",
   ]
+}
+
+public typealias CanonicalUUIDv4 = String
+
+public struct LocalDevelopmentBridge: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "LocalDevelopmentBridge"
+  public var formatVersion: Int
+  public var worktreeId: String
+  public var namespaceId: CanonicalUUIDv4
+  public var serverURL: String
+  public var ownerToken: String
+  public init(
+    formatVersion: Int,
+    worktreeId: String,
+    namespaceId: CanonicalUUIDv4,
+    serverURL: String,
+    ownerToken: String
+  ) {
+    self.formatVersion = formatVersion
+    self.worktreeId = worktreeId
+    self.namespaceId = namespaceId
+    self.serverURL = serverURL
+    self.ownerToken = ownerToken
+  }
+  enum CodingKeys: String, CodingKey {
+    case formatVersion
+    case worktreeId
+    case namespaceId
+    case serverURL
+    case ownerToken
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.formatVersion = try container.decode(
+      Int.self, forKey: .formatVersion)
+    self.worktreeId = try container.decode(
+      String.self, forKey: .worktreeId)
+    self.namespaceId = try container.decode(
+      CanonicalUUIDv4.self, forKey: .namespaceId)
+    self.serverURL = try container.decode(
+      String.self, forKey: .serverURL)
+    self.ownerToken = try container.decode(
+      String.self, forKey: .ownerToken)
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.formatVersion, forKey: .formatVersion)
+    try container.encode(self.worktreeId, forKey: .worktreeId)
+    try container.encode(self.namespaceId, forKey: .namespaceId)
+    try container.encode(self.serverURL, forKey: .serverURL)
+    try container.encode(self.ownerToken, forKey: .ownerToken)
+  }
 }
 
 public struct CaptureMasterProfile: ContractDocument, Codable, Equatable, Sendable {
@@ -1173,8 +1226,6 @@ public struct CommandIdentity: ContractDocument, Codable, Equatable, Sendable {
     try container.encode(self.operationId, forKey: .operationId)
   }
 }
-
-public typealias CanonicalUUIDv4 = String
 
 public struct ErrorDetail: Codable, Equatable, Sendable {
   public var code: String

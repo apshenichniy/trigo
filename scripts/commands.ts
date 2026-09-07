@@ -141,7 +141,7 @@ try {
       swiftformat();
       swiftTest();
       macosBuild();
-      timedRun("Local Worker smoke", ["bun", "run", "test:local"]);
+      timedRun("Local Worker smoke", ["bun", "run", "test:local", "--native-client"]);
       break;
     case "check":
       native();
@@ -156,7 +156,7 @@ try {
       swiftTest();
       await serverBuild();
       macosBuild();
-      timedRun("Local Worker smoke", ["bun", "run", "test:local"]);
+      timedRun("Local Worker and native client", ["bun", "run", "test:local", "--native-client"]);
       break;
     default:
       throw new Error(`Unknown command: ${command}`);

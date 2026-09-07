@@ -4,12 +4,21 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
+import { validateDocument } from "../packages/contracts/src/index.ts";
+import { localConfiguration, localWorkerEnvironment } from "./local-configuration.ts";
+import { lockedSwiftArguments } from "./native-check.ts";
 const root = realpathSync(new URL("..", import.meta.url).pathname);
 const testing = process.argv.includes("--test");
-if (process.argv.slice(2).some((arg: string) => arg !== "--test"))
+const nativeClient = process.argv.includes("--native-client");
+if (
+  process.argv.slice(2).some((arg: string) => !["--test", "--native-client"].includes(arg)) ||
+  (nativeClient && !testing)
+)
   throw new Error(
-    "Local dev accepts only --test; cloud stages and resource configuration are unavailable (#12).",
+    "Local dev accepts only --test [--native-client]; cloud stages and resource configuration are unavailable.",
   );
+if (nativeClient && process.platform !== "darwin")
+  throw new Error("Native local acceptance requires macOS");
 const id = createHash("sha256").update(root).digest("hex").slice(0, 12);
 const requestedPort = Number(process.env.TRIGO_LOCAL_PORT ?? (testing ? 0 : 19371));
 if (
@@ -33,26 +42,15 @@ const port = await new Promise<number>((resolvePort, reject) => {
     server.close(() => resolvePort(address.port));
   });
 });
-const runId = randomUUID();
 const directory = testing
   ? mkdtempSync(resolve(tmpdir(), "trigo-local-test-"))
   : resolve(root, ".local", id);
-mkdirSync(directory, { recursive: true });
-// Pass an allowlist; operator credentials, profiles, proxy variables and dotenv
-// files cannot enter the local composition. The token is deliberately invalid.
-const env: NodeJS.ProcessEnv = {
-  PATH: process.env.PATH,
-  TMPDIR: process.env.TMPDIR,
-  LANG: "en_US.UTF-8",
-  CI: "1",
-  TRIGO_LOCAL: "1",
-  TRIGO_LOCAL_PORT: String(port),
-  TRIGO_LOCAL_RUN_ID: runId,
-  ALCHEMY_TELEMETRY_DISABLED: "1",
-  DO_NOT_TRACK: "1",
-  CLOUDFLARE_ACCOUNT_ID: "00000000000000000000000000000000",
-  CLOUDFLARE_API_TOKEN: "trigo-local-invalid-token",
-};
+mkdirSync(directory, { recursive: true, mode: 0o700 });
+const configurationPath = resolve(directory, "connection.json");
+const base = `http://127.0.0.1:${port}`;
+const configuration = localConfiguration(configurationPath, id, base);
+const runId = randomUUID();
+const env = localWorkerEnvironment(configuration, runId, port);
 const command = [
   process.execPath,
   "--bun",
@@ -64,72 +62,200 @@ const command = [
   `trigo-local-${id}`,
   resolve(root, "infra/local.ts"),
 ];
-// macOS also enforces the local-only boundary for every child including workerd.
 if (process.platform === "darwin")
   command.unshift("/usr/bin/sandbox-exec", "-f", resolve(root, "scripts/offline.sb"));
-const child = spawn(command[0]!, command.slice(1), {
-  cwd: directory,
-  env,
-  stdio: testing ? ["ignore", "pipe", "pipe"] : "inherit",
-  detached: true,
-});
-let output = "";
-child.stdout?.on("data", (data) => {
-  output += data;
-});
-child.stderr?.on("data", (data) => {
-  output += data;
-});
-let stopped = false;
-function stop() {
-  if (stopped) return;
-  stopped = true;
+
+function start() {
+  const child = spawn(command[0]!, command.slice(1), {
+    cwd: directory,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+  });
+  let output = "";
+  child.stdout.on("data", (data) => {
+    output += data;
+    if (!testing) process.stdout.write(data);
+  });
+  child.stderr.on("data", (data) => {
+    output += data;
+    if (!testing) process.stderr.write(data);
+  });
+  return { child, output: () => output };
+}
+let server = start();
+async function stop() {
+  const child = server.child;
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = new Promise<void>((done) => child.once("exit", () => done()));
   try {
     process.kill(-child.pid!, "SIGTERM");
   } catch {}
+  await exited;
 }
-process.on("SIGINT", stop);
-process.on("SIGTERM", stop);
-if (testing) {
-  try {
-    const base = `http://127.0.0.1:${port}`;
-    let ready = false;
-    for (let i = 0; i < 120; i++) {
-      if (
-        child.exitCode !== null ||
-        child.signalCode !== null ||
-        /alchemy dev: (apply|run) failed/.test(output)
-      )
-        throw new Error(`Alchemy failed: ${output}`);
-      try {
-        const response = await fetch(`${base}/__local/health`, {
-          signal: AbortSignal.timeout(1000),
-        });
-        const health: unknown = await response.json();
-        ready =
-          response.ok &&
-          typeof health === "object" &&
-          health !== null &&
-          "runId" in health &&
-          health.runId === runId;
-      } catch {}
-      if (ready) break;
-      await new Promise((done) => setTimeout(done, 500));
-    }
-    if (!ready) throw new Error(`Alchemy did not become ready: ${output}`);
-    const post = await fetch(`${base}/__local/transcriptions/no-speech`, {
-      method: "POST",
-      signal: AbortSignal.timeout(5000),
-    });
-    if (post.status !== 201) throw new Error(`Fake ASR failed: ${post.status}`);
-    const result = await (
-      await fetch(`${base}/__local/transcriptions/no-speech`, { signal: AbortSignal.timeout(5000) })
-    ).json();
+process.on("SIGINT", () => {
+  void stop();
+});
+process.on("SIGTERM", () => {
+  void stop();
+});
+const request = (path: string, init: RequestInit = {}) =>
+  fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(5000) });
+const ownerHeaders = { authorization: `Bearer ${configuration.ownerToken}` };
+const probeHeaders = { "x-trigo-local-run": runId };
+async function ready() {
+  for (let i = 0; i < 120; i++) {
     if (
-      JSON.stringify(result) !==
-      JSON.stringify({ fixture: "no-speech", turns: [], provider: "fake" })
+      server.child.exitCode !== null ||
+      server.child.signalCode !== null ||
+      /alchemy dev: (apply|run) failed/.test(server.output())
     )
-      throw new Error("Local R2 readback differs");
+      throw new Error(`Alchemy failed: ${server.output()}`);
+    try {
+      const response = await request("/__local/health");
+      const health: unknown = await response.json();
+      if (
+        response.ok &&
+        typeof health === "object" &&
+        health !== null &&
+        "runId" in health &&
+        health.runId === runId
+      )
+        return;
+    } catch {}
+    await new Promise((done) => setTimeout(done, 500));
+  }
+  throw new Error(`Alchemy did not become ready: ${server.output()}`);
+}
+async function status() {
+  const response = await request("/v1/status", { headers: ownerHeaders });
+  const value = validateDocument("StatusResponse", await response.json());
+  if (
+    response.status !== 200 ||
+    value.archiveId !== configuration.namespaceId ||
+    value.stage !== "dev" ||
+    value.readiness.callOperations !== "unavailable"
+  )
+    throw new Error("Local product status differs");
+  return value;
+}
+async function nativeAcceptance() {
+  const env = { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR };
+  // Use the same current-source test build command as the full native gate.
+  const build = spawn(
+    "swift",
+    [
+      "build",
+      ...lockedSwiftArguments("apps/macos"),
+      "--configuration",
+      "release",
+      "--build-tests",
+      "-Xswiftc",
+      "-enable-testing",
+    ],
+    { cwd: root, env, stdio: "inherit" },
+  );
+  const buildCode = await new Promise<number | null>((done) => build.once("exit", done));
+  if (buildCode !== 0) throw new Error(`Native local acceptance build failed: ${buildCode}`);
+  const args = [
+    "test",
+    "--skip-build",
+    // macOS cannot nest SwiftPM's manifest sandbox inside our offline process sandbox.
+    // The outer offline.sb profile remains active for SwiftPM and the native client.
+    "--disable-sandbox",
+    ...lockedSwiftArguments("apps/macos"),
+    "--configuration",
+    "release",
+    "--filter",
+    "LocalServerAcceptanceTests",
+  ];
+  const child = spawn(
+    "/usr/bin/sandbox-exec",
+    ["-f", resolve(root, "scripts/offline.sb"), "swift", ...args],
+    {
+      cwd: root,
+      env: {
+        ...env,
+        TRIGO_LOCAL_ACCEPTANCE_CONFIG: configurationPath,
+        TRIGO_LOCAL_ACCEPTANCE_WORKTREE: id,
+      },
+      stdio: "inherit",
+    },
+  );
+  const code = await new Promise<number | null>((done) => child.once("exit", done));
+  if (code !== 0) throw new Error(`Native local transport acceptance failed: ${code}`);
+}
+try {
+  await ready();
+  if (!testing) {
+    console.log(
+      `Local product API: ${base}\nPair in an isolated Dev namespace:\nbun run macos:run --variant dev --local-config '${configurationPath.replaceAll("'", "'\\''")}'\nClick Connect in the app. The local token is prefilled and is never printed.`,
+    );
+    await new Promise((done) => server.child.once("exit", done));
+    process.exitCode = server.child.exitCode ?? 0;
+  } else {
+    const initial = await status();
+    for (const [path, headers, expected, code] of [
+      ["/v1/status", {}, 401, "owner_unauthorized"],
+      ["/v1/status", { authorization: "Bearer invalid" }, 401, "owner_unauthorized"],
+      ["/v1/calls", ownerHeaders, 501, "operation_unavailable"],
+    ] as const) {
+      const response = await request(path, { headers });
+      const error = validateDocument("ErrorEnvelope", await response.json());
+      if (
+        response.status !== expected ||
+        error.error.code !== code ||
+        error.error.retry !== "after_correction"
+      )
+        throw new Error(`Local contract mismatch: ${path}`);
+    }
+    const created = await request("/__local/probe", { method: "POST", headers: probeHeaders });
+    if (created.status !== 201)
+      throw new Error(`Local workflow creation failed: ${created.status} ${await created.text()}`);
+    let completed = false;
+    for (let i = 0; i < 100; i++) {
+      const response = await request("/__local/probe", { headers: probeHeaders });
+      const state: unknown = await response.json();
+      if (typeof state === "object" && state !== null && "status" in state) {
+        if (state.status === "complete") {
+          completed = true;
+          break;
+        }
+        if (state.status === "errored")
+          throw new Error(`Offline workflow failed: ${JSON.stringify(state)}`);
+      }
+      await new Promise((done) => setTimeout(done, 100));
+    }
+    if (!completed) throw new Error("Local workflow did not complete");
+    const revisionBytes = await (
+      await request("/__local/probe/revision", { headers: probeHeaders })
+    ).text();
+    const revision = validateDocument("TranscriptRevision", JSON.parse(revisionBytes));
+    if (
+      revision.asr.adapter !== "fake" ||
+      revision.asr.model !== "no-speech" ||
+      revision.turns.length !== 0 ||
+      revision.speakers.length !== 0
+    )
+      throw new Error("Unexpected canonical fake ASR result");
+    if (nativeClient) await nativeAcceptance();
+    await stop();
+    server = start();
+    await ready();
+    if (JSON.stringify(await status()) !== JSON.stringify(initial))
+      throw new Error("D1 identity changed after local restart");
+    const reopened = await (
+      await request("/__local/probe/revision", { headers: probeHeaders })
+    ).text();
+    const workflow = await (await request("/__local/probe", { headers: probeHeaders })).json();
+    if (
+      reopened !== revisionBytes ||
+      typeof workflow !== "object" ||
+      workflow === null ||
+      !("status" in workflow) ||
+      workflow.status !== "complete"
+    )
+      throw new Error("R2/workflow state did not survive restart");
     if (process.platform === "darwin") {
       const probe = spawnSync(
         "/usr/bin/sandbox-exec",
@@ -147,15 +273,11 @@ if (testing) {
       );
       if (probe.status === 0) throw new Error("External network unexpectedly available");
     }
-    console.log("Alchemy local Worker + R2 + fake ASR passed; external network denied on macOS.");
-  } finally {
-    stop();
-    if (child.exitCode === null && child.signalCode === null)
-      await new Promise((done) => child.once("exit", done));
-    rmSync(directory, { recursive: true, force: true });
+    console.log(
+      "Shared product status/auth + Alchemy local D1/R2/workflow + canonical fake ASR + persistent restart passed; external network denied on macOS.",
+    );
   }
-} else {
-  child.on("exit", (code) => {
-    process.exitCode = code ?? 1;
-  });
+} finally {
+  await stop();
+  if (testing) rmSync(directory, { recursive: true, force: true });
 }

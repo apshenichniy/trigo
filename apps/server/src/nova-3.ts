@@ -79,7 +79,7 @@ const Nova3ObjectResult = Schema.Struct({
   response: Schema.Unknown,
 });
 
-const Nova3NormalizationInput = Schema.Struct({
+export const Nova3NormalizationInput = Schema.Struct({
   callId: CallId,
   revisionId: RevisionId,
   createdAt: Schema.DateTimeUtcFromString,
