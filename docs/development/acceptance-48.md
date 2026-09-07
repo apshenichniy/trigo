@@ -31,49 +31,67 @@ those runs, not proof of a fix or universal startup reliability.
 
 ## Final checked source and measurements
 
-The complete local gates and [CI run 34142151962](https://github.com/apshenichniy/trigo/actions/runs/34142151962)
-passed for `9b852477fd19273014febf026b34b1630cc1b041`, tree
-`9f05d894d4d60fdcc34e04438fa25f13669a7ee3`. Both CI jobs checked out synthetic merge
-`10f613f3db0cc37911d27da63cb33b1147fdcf15`; its complete tree matched the PR source.
-The final cleanup/rebuild source `64086c8952150082172fb65ac1de507d404aab87` restores
-that exact full tree. Subsequent acceptance-document changes do not alter the
-checked implementation. Current PR-tip CI is reported in the PR.
+The final implementation repair is `6b91203483927df909e560f106cda3e1fc1cd33d`,
+tree `dddae2c46de41c9c31f2d5af6eed9753ddeb65c5`, Native subtree
+`ac08242f05e9788f3af8b43e5b7fc43fd3f8b30e`. It is integrated as
+`6505c7c3ecbfa5ae13ae978184a1f704ac2ebdaa` with the exact same complete tree.
+Final acceptance-document edits do not alter this checked implementation. Current PR-tip CI is reported in the PR.
 
-| Check                                                                      | Local result                               | CI result                                 |
-| -------------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------- |
-| Server gate                                                                | 338 unit tests, 36 Workers tests; 30.260 s | Same counts; job 79 s                     |
-| Native contracts                                                           | 9 tests                                    | 9 tests                                   |
-| Native suite                                                               | 171 tests; test runner 179.821 s           | 171 tests; test runner 279.671 s          |
-| Complete macOS gate                                                        | 316.630 s                                  | Job 616 s                                 |
-| Both Debug app variants                                                    | Passed                                     | Passed                                    |
-| Actual native/local smoke under external-network denial                    | Passed; 18.210 s                           | Passed; 24.612 s                          |
-| Contracts, formatting, lint, types, bundles, frozen locks and clean output | Passed                                     | Passed, including nested-lock restoration |
+| Check                                                                      | Final local result                       |
+| -------------------------------------------------------------------------- | ---------------------------------------- |
+| Server gate                                                                | 338 unit tests, 36 Workers tests; passed |
+| Native contracts                                                           | 9 tests; passed                          |
+| Native Release suite                                                       | 176 tests; Swift Testing suite 162.792 s |
+| Both Debug app variants                                                    | Passed                                   |
+| Actual native/local smoke under external-network denial                    | Passed                                   |
+| Contracts, formatting, lint, types, bundles, frozen locks and clean output | Passed                                   |
 
-These measurements are not a promised speedup. Baseline and cache comparisons
-remain in #49; later source-specific timings and intermediate failures remain in
-their owning acceptance documents. Both native caches in the final CI run restored
-from prior compatible keys and saved under the current checkout. Cache reuse did
-not skip compilation or checks.
+The Server gate ran on `82c158ac98589c584641dd60355198e858102570`; the only
+subsequent candidate change was exception-safe queue release in a native test.
+Server, contracts, tooling and native production sources are unchanged between
+those candidates. The complete macOS gate ran on the final repair commit above.
+`final-review/gates-candidate-6b9120348.json` under `/tmp/trigo-epic-48/` binds each
+result and log hash to its actual source. These measurements are not a promised
+speedup; baseline/cache comparisons remain in #49.
 
-The final isolated Release binary passed the complete one- and three-hour
-production fixtures through extraction. Peak RSS was 54,460,416 B and 50,266,112 B,
-below 80 MiB. They verified 57,600,000 and 172,800,000 frames in one permanent
-master per fixture; test times were 34.952 and 111.767 s. Source-relative one-hour
-drift was 0 ms. These are controlled synthetic proofs, separate from the installed
-recordings. The exact binary, helper and log hashes are recorded in
-`57-final-resource-proof.json` under `/tmp/trigo-epic-48/`.
+The final isolated Release binary, SHA-256
+`e578bcdacc6f167336611f79211ef5cc271bdb1fe22b897b015c5c60e3903f08`, passed the
+complete one- and three-hour production fixtures through extraction. Peak RSS was
+54,411,264 B and 54,362,112 B, below the unchanged 83,886,080 B (80 MiB)
+budget. They verified 57,600,000 and 172,800,000 frames in one permanent master per
+fixture; test times were 33.422 and 107.186 s. Source-relative one-hour
+drift was 0 ms. These are complete controlled synthetic proofs, separate from
+installed recordings. `final-review/resource-proof.json` records source/binary/
+helper identities, full fixture results and original logs.
 
-The final CI contention cases completed 135 dense and 146 production commits,
-all three imports, 12,000 turns and 24 large typed reads per case. Maximum complete
-input-through-durability times were 1,174.165 and 1,183.666 ms, below two seconds.
-A separate delayed-observer case verified recovery and another commit before its
-caller returned; the retained evidence distinguishes durability from caller delay.
+The final local production contention case completed 146 real one-second commits,
+all three imports, 12,000 turns and 24 large typed reads. Its maximum complete
+input-through-independent-SQL-witness time was 1,049.755 ms, below two seconds.
+The separate delayed-observer case preserved recovery and a second commit before
+the caller returned. A caller-delay control isolates observation delay; a real
+queue-delay control still detects a production durability violation.
+
+The earlier [CI run 34154023151](https://github.com/apshenichniy/trigo/actions/runs/34154023151)
+failed the delayed-observer case at 2,379.364 ms. Controlled RED probes established
+that its test continuation could delay the next production stimulus after ingress
+had drained. The test-only autonomous queue driver removes that dependency while
+retaining every input buffer, real queue/service/SQLite delay and the unchanged
+two-second assertion. The historical CI failure's precise cause remains
+unconfirmed because its old drain phase combined production work and test
+continuation delay. This failure and all controlled probe results are retained in
+`final-review/ci-durability-diagnosis.md`; passing gates do not erase it.
 
 ## Performed installed checks
 
 Controlled media inspection selected exactly three owner-created Chrome calls.
 Other call media was excluded. The installed Native subtree was
-`916ba1f510e62c91c85f31490d1df245a15f385c`, identical to the final clean source.
+`916ba1f510e62c91c85f31490d1df245a15f385c`. The performed signed rebuild at
+`64086c8952150082172fb65ac1de507d404aab87` retained that Native subtree. The later
+review repair above has a different Native subtree. It changes repository
+projection/chunk handling and an equivalent private ingress enum; it does not
+change SCK, microphone policy, readiness, credential/signing behavior, capture
+clock or media format. Full final-source automated proofs cover that repair;
+these physical observations retain their actual historical source identities.
 
 - The 35.118-second core recording retained application audio across owner focus
   changes and microphone on/off/on actions. The microphone's 8.855-second muted
@@ -129,8 +147,22 @@ acknowledgements, microphone suppression and cancellation without conflating a
 lifecycle test with unlimited producer throughput. This fix is not an established
 cause or cure of #60.
 
-The final audit covers all 50 checkbox requirements and the additional prose
-contracts. SQLite owns canonical and operational state without conflating capture,
+Whole-epic review covered all 50 checkbox requirements and 44 additional prose
+contracts. Standards review found two maintainability judgments and no documented
+standard violations; Spec review found one typed interval-reason projection bug.
+One implementer repaired all three. Both original reviewers rechecked the complete
+repair and reported zero remaining or new findings. The typed reason regression
+covers long UTF-8 values and literal reserved prefixes through read, reopen and
+unrelated speaker publication while retaining original immutable bytes/hashes.
+The shared bounded document writer also rejects conflicting incomplete chunks
+before operation publication, resumes matching preparation and rejects corrupt
+completed evidence without repairing it by replay. Raw review and RED/GREEN
+artifacts are retained under `/tmp/trigo-epic-48/final-review/`.
+
+The final audit retains the explicit #60 deferral and the performed observation
+limits; it does not turn them into verified repairs or unavailable physical tests.
+
+SQLite owns canonical and operational state without conflating capture,
 upload, transcription, import, replica and deletion. Immutable bytes/hashes and
 uncertain operation identity remain authoritative. Media stays outside SQLite;
 only durable ranges are published. Effect schemas are the structural source;

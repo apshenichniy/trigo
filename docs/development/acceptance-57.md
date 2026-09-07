@@ -5,10 +5,12 @@
 **Installed acceptance delivered with disclosed limitations.** Controlled
 Chrome/microphone on/off/on, Finder focus changes, normal Stop, process interruption
 and recovery, source exit, ordinary Quit/relaunch and unchanged connection
-validation were performed. The final supported clean signed rebuild retained its
+validation were performed. The supported clean signed rebuild observed below retained its
 identity and account; the owner reported the requested post-rebuild check succeeded
 and permissions were granted. Selected-call inspection verified each admitted
-master and its SQLite evidence. All current automated gates passed.
+master and its SQLite evidence. [The epic ledger](acceptance-48.md) records the
+subsequent review repairs and final automated evidence separately from these
+performed installed observations.
 
 The owner directed the work to proceed with the intermittent startup
 `capture_queue_overflow` unresolved and deferred in
@@ -36,20 +38,27 @@ operation is part of this acceptance.
 ## Exact candidate and environment
 
 The core, process-recovery, source-exit and normal-relaunch observations used the
-clean installed source below. The final integrated source restores the entire
-previously gated tree after removing temporary diagnostics. Its native production
-subtree is identical to that installed source. The older complete installed tree
-differs from the gated/final integrated tree and is recorded separately.
+clean installed source below. The observed supported rebuild restored the entire
+previously gated tree after removing temporary diagnostics; its native production
+subtree matched the core installed source. The later review repair at
+`6b91203483927df909e560f106cda3e1fc1cd33d` has Native subtree
+`ac08242f05e9788f3af8b43e5b7fc43fd3f8b30e`, which differs from these installed
+builds. It repairs typed interval reasons, shares bounded document-chunk handling,
+and names the existing ingress outcomes; its accompanying durability-test driver
+is test-only. SCK, microphone policy, readiness, credentials, signing, clock and
+media format are unchanged. The final automated evidence in
+[acceptance-48](acceptance-48.md) covers that source; no new physical execution is
+claimed for it.
 
 | Identity                                      | Recorded value                                                      |
 | --------------------------------------------- | ------------------------------------------------------------------- |
 | Core/recovery installed source commit         | `e2b01d846d6bdb4e804280da2238b8a47ce3dc7a`                          |
 | Core/recovery installed source tree           | `e4d383f78bc80bc9139ee2ed64dcc2030b96e696`                          |
-| Published/gated commit                        | `9b852477fd19273014febf026b34b1630cc1b041`                          |
-| Published/gated tree                          | `9f05d894d4d60fdcc34e04438fa25f13669a7ee3`                          |
-| Final integrated clean commit                 | `64086c8952150082172fb65ac1de507d404aab87`                          |
-| Final integrated clean tree                   | `9f05d894d4d60fdcc34e04438fa25f13669a7ee3`                          |
-| Equal installed/gated native subtree          | `916ba1f510e62c91c85f31490d1df245a15f385c`                          |
+| Pre-review published/gated commit             | `9b852477fd19273014febf026b34b1630cc1b041`                          |
+| Pre-review published/gated tree               | `9f05d894d4d60fdcc34e04438fa25f13669a7ee3`                          |
+| Performed clean rebuild commit                | `64086c8952150082172fb65ac1de507d404aab87`                          |
+| Performed clean rebuild tree                  | `9f05d894d4d60fdcc34e04438fa25f13669a7ee3`                          |
+| Installed/pre-review gated native subtree     | `916ba1f510e62c91c85f31490d1df245a15f385c`                          |
 | Checkout                                      | `/Users/apshenichniy/.codex/worktrees/trigo-epic-48/integration`    |
 | Worktree ID                                   | `6aa93832ccaf`                                                      |
 | Installed app                                 | `/Users/apshenichniy/Applications/Trigo Local Dev 6aa93832ccaf.app` |
@@ -68,7 +77,7 @@ differs from the gated/final integrated tree and is recorded separately.
 
 `57-clean-installed-build.json` records the clean installed candidate;
 `57-final-published-source.json` records its production-source relationship to
-the passing gates. `57-host-source.json`, `57-environment.json` and
+those pre-review passing gates. `57-host-source.json`, `57-environment.json` and
 `57-installed-build.json` retain the earlier preparation identities and exact
 bridge/namespace paths. The full namespace is
 `io.github.apshenichniy.trigo.dev.6aa93832ccaf.local.f887d4da-1d1e-4a96-86dd-0fa7a874fc0c`.
@@ -346,7 +355,7 @@ requirement remain equal to the earlier clean installation; the exact requiremen
 is retained in both manifests. Bridge metadata and committed account
 `ad0c2157-7c69-47ef-a4d2-16c78b52a2ce` are unchanged, pending is null and retired
 accounts are empty. The local runtime retains the same run ID and fake ASR.
-Diagnostics are absent from the final source and no diagnostic environment was
+Diagnostics are absent from this rebuilt source and no diagnostic environment was
 passed. The coordinator terminated only the idle diagnostic PID `37098` for
 replacement; this is separate from the owner's earlier ordinary Quit observation.
 
@@ -413,9 +422,9 @@ and SQLite publication 10.726 ms. The lossy, capped trace does not support absen
 or exact accounting conclusions and did not reproduce or explain either failure.
 `57-overflow-v2-actual-trace-analysis.json` retains the bounded measurements.
 
-Temporary diagnostics were removed; the final integrated whole tree is exactly
-the previously gated tree. The separately repaired pending-native-Start clock
-defect is not an established cause of either installed overflow. No speculative
+Temporary diagnostics were removed at the performed rebuild source, restoring
+the previously gated whole tree before the separate final review repair. The
+separately repaired pending-native-Start clock defect is not an established cause of either installed overflow. No speculative
 capacity increase or automatic capture retry was introduced.
 
 ## Acceptance results and limitations
@@ -479,9 +488,11 @@ The previously published source `9b852477fd19273014febf026b34b1630cc1b041` passe
 [CI run 34142151962](https://github.com/apshenichniy/trigo/actions/runs/34142151962).
 Both CI jobs checked out `10f613f3db0cc37911d27da63cb33b1147fdcf15`; its whole tree
 matched the published `9f05d894d4d60fdcc34e04438fa25f13669a7ee3` tree.
-The final integrated clean commit `64086c8952150082172fb65ac1de507d404aab87`
-restores that exact full tree after diagnostic cleanup. These are the performed
-gates on equal source content, not a claim that CI ran again on the cleanup SHA.
+The performed clean rebuild commit `64086c8952150082172fb65ac1de507d404aab87`
+restored that exact full tree after diagnostic cleanup. These are historical
+pre-review gates on equal source content, not a claim that CI ran on the cleanup
+SHA or the later review repair. The final source, repairs and automated evidence
+are recorded in [the epic ledger](acceptance-48.md#final-checked-source-and-measurements).
 `57-final-ci-evidence.json`, `57-final-local-gates-evidence.json` and
 `57-final-published-source.json` retain source, job, phase and artifact hashes.
 
@@ -493,7 +504,7 @@ gates on equal source content, not a claim that CI ran again on the cleanup SHA.
 | CI macOS             | Passed, 616 s; 9 contract and 171 native tests; Swift Testing suite 276.678 s, native runner phase 279.671 s; both Debug app builds, 24.612 s native/local smoke, lock restoration and clean checkout |
 | Native caches        | SwiftPM and Xcode restore-key hits, followed by current-key saves; not exact-key hits or cold-cache runs                                                                                              |
 
-The final isolated resource proof used sequential processes with the same gated
+The pre-review isolated resource proof used sequential processes with the same gated
 test binary, SHA-256 `3f4eef6b197584b85b91a7e82a5ae3604a7326a9c9a553f9c10d7bdf86830669`.
 No other task-owned builds/tests ran during those measurements. The binary and
 source stayed unchanged through both full-extraction proofs.

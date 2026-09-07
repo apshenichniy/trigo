@@ -172,6 +172,9 @@ unplug/reconnect unavailable; physical permission revocation and credential-erro
 conditions were not exercised. The intermittent installed startup overflow remains
 unresolved and owner-deferred in [#60](https://github.com/apshenichniy/trigo/issues/60).
 These are later #57 results, not installed observations by the #56 worker.
+[The epic ledger](acceptance-48.md) records the subsequent review-repair source and
+final automated gates/resources; the historical measurements above retain their
+original source identities.
 
 The handoff preserves #13's hosted master/Nova-3 compatibility gate, #32's
 infrastructure recovery gate before first personal deployment, and #10's upload
