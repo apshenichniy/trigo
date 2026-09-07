@@ -40,16 +40,36 @@ enum RecordingShortcutError: Error { case registrationFailed(OSStatus) }
 
   public func register() {
     guard lease == nil else { return }
+    // DEBUG-57-CAPTURE
+    CaptureDiagnostics.shared?.record(.init(kind: .shortcutRegistration, outcome: .unavailable))
     generation = UUID()
     let expected = generation
     do {
       lease = try system.register { [weak self] in
-        guard let self, isRegistered, generation == expected else { return }
+        guard let self else { return }
+        // DEBUG-57-CAPTURE: this closure receives only Trigo's registered hotkey.
+        CaptureDiagnostics.shared?.trigger()
+        CaptureDiagnostics.shared?.record(
+          .init(
+            kind: .hotkeyCallback,
+            flags: (isRegistered ? 1 : 0) | (generation == expected ? 2 : 0)))
+        guard isRegistered, generation == expected else { return }
         action()
       }
       isRegistered = true
       issue = nil
+      CaptureDiagnostics.shared?.record(
+        // DEBUG-57-CAPTURE
+        .init(kind: .shortcutRegistration, code: 0, outcome: .complete))
     } catch {
+      // DEBUG-57-CAPTURE: numeric registration status only, never arbitrary errors.
+      if let diagnostics = CaptureDiagnostics.shared {
+        var status: OSStatus = 0
+        if case .registrationFailed(let value)? = error as? RecordingShortcutError {
+          status = value
+        }
+        diagnostics.record(.init(kind: .shortcutRegistration, code: Int(status), outcome: .failed))
+      }
       isRegistered = false
       issue =
         "The recording shortcut could not be registered. Close another Trigo instance or release Control–Option–Command–R in the conflicting app or System Settings → Keyboard → Keyboard Shortcuts, then retry. Panel controls remain available for a pinned source."
@@ -57,6 +77,8 @@ enum RecordingShortcutError: Error { case registrationFailed(OSStatus) }
   }
 
   public func unregister() {
+    // DEBUG-57-CAPTURE
+    CaptureDiagnostics.shared?.record(.init(kind: .shortcutRegistration, outcome: .closed))
     isRegistered = false
     generation = UUID()
     lease?.cancel()
