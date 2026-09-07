@@ -189,7 +189,7 @@ try {
   await ready();
   if (!testing) {
     console.log(
-      `Local product API: ${base}\nPair in an isolated Dev namespace:\nbun run macos:run --variant dev --local-config '${configurationPath.replaceAll("'", "'\\''")}'\nClick Connect in the app. The local token is prefilled and is never printed.`,
+      `Local product API: ${base}\nPair in an isolated Dev namespace (set TRIGO_SIGNING_TEAM first; ad-hoc installs require explicit --ad-hoc):\nbun run macos:run --variant dev --local-config '${configurationPath.replaceAll("'", "'\\''")}'\nClick Connect in the app. The local token is prefilled and is never printed.`,
     );
     await new Promise((done) => server.child.once("exit", done));
     process.exitCode = server.child.exitCode ?? 0;

@@ -71,6 +71,35 @@ public struct ArchiveBinding: Equatable, Sendable {
   public let stage: ServerStage
 }
 
+public enum CredentialAccessFailure: Equatable, Sendable {
+  case interactionRequired, accessDenied, cancelled, invalid
+  case unavailable(status: Int32?)
+
+  public var title: String {
+    switch self {
+    case .interactionRequired: "Keychain needs attention"
+    case .accessDenied: "Keychain access denied"
+    case .cancelled: "Keychain access cancelled"
+    case .invalid: "Saved token is unreadable"
+    case .unavailable: "Keychain unavailable"
+    }
+  }
+
+  public var recoverySuggestion: String {
+    switch self {
+    case .interactionRequired:
+      "Unlock your login keychain if locked, then retry the saved connection and review any access request. The saved credential has not been replaced."
+    case .accessDenied, .cancelled:
+      "Retry the saved connection and review the Keychain access request for this installed Trigo app. The saved credential has not been replaced."
+    case .invalid:
+      "Enter the current token and reconnect to the same archive."
+    case .unavailable(let status):
+      "Check Keychain access, then retry the saved connection."
+        + (status.map { " Security status: \($0)." } ?? "")
+    }
+  }
+}
+
 public enum ConnectionIssue: Error, Equatable, Sendable {
   case invalidServerURL
   case tokenRequired
@@ -80,6 +109,7 @@ public enum ConnectionIssue: Error, Equatable, Sendable {
   case wrongStage(expected: ServerStage, actual: ServerStage)
   case differentArchive(expected: String, actual: String)
   case credentialMissing
+  case credentialAccess(CredentialAccessFailure)
   case persistence
   case operationInProgress
 
@@ -92,7 +122,8 @@ public enum ConnectionIssue: Error, Equatable, Sendable {
     case .incompatible: "Incompatible Trigo server"
     case .wrongStage: "Wrong server stage"
     case .differentArchive: "Different archive rejected"
-    case .credentialMissing: "Saved token unavailable"
+    case .credentialMissing: "Saved token missing"
+    case .credentialAccess(let failure): failure.title
     case .persistence: "Connection could not be saved"
     case .operationInProgress: "Connection check already running"
     }
@@ -116,6 +147,8 @@ public enum ConnectionIssue: Error, Equatable, Sendable {
       "This Mac is already bound to another archive. Archive switching is not supported yet."
     case .credentialMissing:
       "Enter the current token and reconnect to the same archive. Local recording remains available."
+    case .credentialAccess(let failure):
+      failure.recoverySuggestion + " A retained archive remains available for local recording."
     case .persistence:
       "Check access to Application Support and Keychain, then retry. The previous connection remains active."
     case .operationInProgress:
@@ -221,6 +254,7 @@ public actor ServerConnection {
   private let statusClient: any ServerStatusFetching
   private var metadata = ConnectionMetadata()
   private var didLoad = false
+  private var recoveryIssue: ConnectionIssue?
   private var operationInProgress = false
   private var current = ConnectionSnapshot(
     binding: nil, health: .setupRequired, lastAttemptIssue: nil)
@@ -271,13 +305,13 @@ public actor ServerConnection {
       current = ConnectionSnapshot(
         binding: nil,
         health: recovered ? .setupRequired : .recoveryRequired(.persistence),
-        lastAttemptIssue: recovered ? nil : .persistence)
+        lastAttemptIssue: recovered ? nil : (recoveryIssue ?? .persistence))
       return current
     }
 
     current = ConnectionSnapshot(
       binding: committed.binding, health: .checking,
-      lastAttemptIssue: recovered ? nil : .persistence)
+      lastAttemptIssue: recovered ? nil : (recoveryIssue ?? .persistence))
     // Local capture can recover and become eligible before the remote health request completes.
     await onBindingRestored(current)
     let token: String
@@ -292,7 +326,8 @@ public actor ServerConnection {
       token = savedToken
     } catch {
       current = ConnectionSnapshot(
-        binding: committed.binding, health: .blocked(.credentialMissing),
+        binding: committed.binding,
+        health: .blocked(.credentialAccess(credentialAccessFailure(error))),
         lastAttemptIssue: current.lastAttemptIssue)
       return current
     }
@@ -326,7 +361,7 @@ public actor ServerConnection {
     let token = rawToken.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !token.isEmpty else { return reject(.tokenRequired) }
     guard await loadMetadataIfNeeded() else { return reject(.persistence) }
-    guard await recoverInterruptedWrites() else { return reject(.persistence) }
+    guard await recoverInterruptedWrites() else { return reject(recoveryIssue ?? .persistence) }
 
     let status: ServerStatus
     do {
@@ -338,10 +373,27 @@ public actor ServerConnection {
       return reject(.unreachable)
     }
 
+    if let committed = metadata.committed, committed.serverURL == serverURL {
+      do {
+        // Compare only the exact committed item, after same-archive validation and recovery.
+        // A read failure is not permission to replace a retained credential.
+        if try await credentialStore.load(account: committed.credentialAccount) == token {
+          current = ConnectionSnapshot(
+            binding: committed.binding, health: .connected(status), lastAttemptIssue: nil)
+          return current
+        }
+      } catch {
+        let failure = credentialAccessFailure(error)
+        // Known unreadable bytes can be repaired with the explicitly entered,
+        // remote-validated token. Access failures do not establish corruption.
+        if failure != .invalid { return reject(.credentialAccess(failure)) }
+      }
+    }
+
     let candidate = StoredConnection(
       serverURL: serverURL, archiveId: status.archiveId, stage: status.stage,
       credentialAccount: UUID().uuidString.lowercased())
-    guard await commit(candidate: candidate, token: token) else { return reject(.persistence) }
+    if let issue = await commit(candidate: candidate, token: token) { return reject(issue) }
 
     current = ConnectionSnapshot(
       binding: candidate.binding, health: .connected(status), lastAttemptIssue: nil)
@@ -380,6 +432,7 @@ public actor ServerConnection {
 
   private func recoverInterruptedWrites() async -> Bool {
     var recoverySucceeded = true
+    recoveryIssue = nil
     if let pending = metadata.pending {
       do {
         try await credentialStore.delete(account: pending.credentialAccount)
@@ -389,13 +442,14 @@ public actor ServerConnection {
         metadata = recovered
       } catch {
         recoverySucceeded = false
+        recoveryIssue = connectionPersistenceIssue(error)
       }
     }
     await cleanRetiredCredentials()
     return recoverySucceeded
   }
 
-  private func commit(candidate: StoredConnection, token: String) async -> Bool {
+  private func commit(candidate: StoredConnection, token: String) async -> ConnectionIssue? {
     let previous = metadata
     var pending = previous
     pending.pending = candidate
@@ -405,7 +459,7 @@ public actor ServerConnection {
       try await credentialStore.save(token: token, account: candidate.credentialAccount)
     } catch {
       await rollBack(candidate: candidate, to: previous)
-      return false
+      return connectionPersistenceIssue(error)
     }
 
     var committed = previous
@@ -419,10 +473,10 @@ public actor ServerConnection {
     do {
       try await metadataStore.save(committed)
       metadata = committed
-      return true
+      return nil
     } catch {
       await rollBack(candidate: candidate, to: previous)
-      return false
+      return connectionPersistenceIssue(error)
     }
   }
 

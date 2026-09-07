@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 
@@ -17,12 +18,14 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
 @MainActor struct RecordingSourceAccess {
   var permissions: () -> CapturePermissions
   var frontmost: () throws -> CaptureSource
-  var requestPermissions: () async -> CapturePermissions
+  var requestPermission: (CapturePermission) async -> CapturePermissions
+  var openSettings: (CapturePermission) -> Bool = { _ in false }
   static var live: Self {
     .init(
       permissions: SystemCaptureSource.permissions,
       frontmost: SystemCaptureSource.frontmost,
-      requestPermissions: SystemCaptureSource.requestPermissions)
+      requestPermission: SystemCaptureSource.requestPermission,
+      openSettings: { NSWorkspace.shared.open($0.settingsURL) })
   }
 }
 
@@ -35,6 +38,10 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   @Published public private(set) var connectionSnapshot = ConnectionSnapshot(
     binding: nil, health: .setupRequired, lastAttemptIssue: nil)
   @Published public private(set) var isConnecting = false
+  @Published public private(set) var capturePermissions: CapturePermissions
+  @Published public private(set) var isRequestingPermission = false
+  private var requestedScreenAccess = false
+
   @Published public private(set) var notice: RecordingNotice?
   @Published public private(set) var pinnedSource: CaptureSource?
   @Published public private(set) var callID: String?
@@ -71,6 +78,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     self.namespace = namespace
     self.capture = capture
     self.sources = sources
+    self.capturePermissions = sources.permissions()
     capture.onPhaseChange = { [weak self] phase in self?.capturePhase = phase }
     capture.onChange = { [weak self] snapshot in
       guard let self else { return }
@@ -85,7 +93,9 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     }
     capture.onFailure = { [weak self] reason in
       guard let self else { return }
-      noticeTracksMicrophoneAvailability = reason == "microphone_unavailable"
+      refreshCaptureReadiness()
+      noticeTracksMicrophoneAvailability =
+        reason == "microphone_unavailable" || reason == "microphone_permission"
       notice = .init(
         title: "Capture needs attention",
         message: Self.captureRecoverySuggestion(reason)
@@ -136,7 +146,58 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   public var canStart: Bool {
     guard case .eligible = connectionSnapshot.recordingEligibility else { return false }
     return attempt == nil && !isStopping && !isTerminating && !isMicrophoneChanging
+      && !isRequestingPermission
       && capturePhase == .idle && !isRecovering && recoveryReport.failures.isEmpty
+  }
+
+  /// Read-only refresh after activation, wake, Settings return and device changes.
+  public func refreshCaptureReadiness() {
+    capturePermissions = sources.permissions()
+  }
+
+  public var canConfigureCapture: Bool {
+    !isRequestingPermission && !isTerminating && attempt == nil
+      && capturePhase == .idle && !isStopping
+  }
+
+  public func enableCaptureAccess(_ permission: CapturePermission) async {
+    guard canConfigureCapture else { return }
+    refreshCaptureReadiness()
+    switch permission {
+    case .screenAudio:
+      guard !capturePermissions.screenAudio else { return }
+      // Request history only controls this session's setup action; it is not a TCC status.
+      if requestedScreenAccess {
+        openCaptureSettings(permission)
+        return
+      }
+      requestedScreenAccess = true
+    case .microphone:
+      guard !capturePermissions.microphone else { return }
+      guard capturePermissions.microphoneAuthorization == .notDetermined else {
+        openCaptureSettings(permission)
+        return
+      }
+    }
+    isRequestingPermission = true
+    defer { isRequestingPermission = false }
+    capturePermissions = await sources.requestPermission(permission)
+    notice = .init(
+      title: capturePermissions.ready ? "Permissions ready" : "Capture access required",
+      message: capturePermissions.ready
+        ? "Focus the target application and press the shortcut. No source was selected during setup."
+        : "Review capture access in System Settings, return to Trigo and refresh readiness. No recording has started."
+    )
+  }
+
+  public func openCaptureSettings(_ permission: CapturePermission) {
+    if !sources.openSettings(permission) {
+      notice = .init(
+        title: "Open System Settings",
+        message: permission == .screenAudio
+          ? CaptureStartFailure.screenAudioPermission.recoverySuggestion
+          : CaptureStartFailure.microphonePermission.recoverySuggestion)
+    }
   }
 
   public func retryRecovery() async {
@@ -199,6 +260,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   }
 
   public func restore() async {
+    refreshCaptureReadiness()
     guard !isConnecting else { return }
     isConnecting = true
     defer { isConnecting = false }
@@ -286,21 +348,12 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
             message: "Focus the target application and use the global recording shortcut.")
           return
         }
-        let preflight = sources.permissions()
-        if !preflight.screenAudio || !preflight.microphone {
-          let granted = await sources.requestPermissions()
-          guard !current.cancelled else { return }
-          if granted.screenAudio && granted.microphone {
-            notice = .init(
-              title: "Permissions ready",
-              message:
-                "Focus the target application and press the shortcut again. No source was selected during the permission request."
-            )
-          } else {
-            report(
-              granted.screenAudio
-                ? CaptureStartFailure.microphonePermission : .screenAudioPermission)
-          }
+        refreshCaptureReadiness()
+        let preflight = capturePermissions
+        if !preflight.ready {
+          report(
+            preflight.screenAudio
+              ? CaptureStartFailure.microphonePermission : .screenAudioPermission)
           return
         }
         let selected: CaptureSource
@@ -360,12 +413,18 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   }
 
   private static func captureRecoverySuggestion(_ reason: String) -> String {
+    if reason == "microphone_permission" {
+      return
+        "Application audio continues recording. Microphone access is required; review Microphone settings and refresh readiness."
+    }
     if reason == "microphone_unavailable" {
       return
         "Application audio continues recording. Please check or connect the input device; Trigo will show the microphone when it becomes available."
     }
     let action: String
     switch reason {
+    case "screen_audio_permission":
+      action = CaptureStartFailure.screenAudioPermission.recoverySuggestion
     case "source_exited":
       action =
         "The selected application exited. Focus the target application and press the shortcut to start a new recording."

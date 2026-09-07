@@ -52,6 +52,7 @@ struct ConnectionView: View {
 
         connectionStatus
         recordingStatus
+        CaptureReadinessView(coordinator: model)
       }
       .padding(32)
       .frame(maxWidth: 680, alignment: .leading)

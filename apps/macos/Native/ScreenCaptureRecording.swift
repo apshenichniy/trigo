@@ -77,7 +77,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
   init(system: CaptureSystem) { self.system = system }
 
   /// Permissions and source are resolved before this method acknowledges Recording.
-  /// Call SystemCaptureSource.requestPermissions only from an explicit user action.
+  /// Call SystemCaptureSource.requestPermission only from an explicit user action.
   public func start(root: URL, archiveID: String, source: CaptureSource) async throws {
     guard phase == .idle, pendingStart == nil, !retirement.hasPending else {
       throw CaptureStartFailure.alreadyRecording
@@ -288,7 +288,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       && pendingStart?.cancelled != true
   }
 
-  private func checkSourceAndMicrophone() async {
+  func checkSourceAndMicrophone() async {
     guard !stopping, let source = session?.source, applicationStream != nil else { return }
     guard system.sourceIsAvailable(source) else {
       await interrupt("source_exited")
@@ -298,9 +298,15 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       await interrupt("duration_limit")
       return
     }
-    let current = system.microphone()
+    let permissions = system.permissions()
+    guard permissions.screenAudio else {
+      await interrupt("screen_audio_permission")
+      return
+    }
+    let current = permissions.microphone ? system.microphone() : nil
     if current != snapshot?.microphone || (current != nil && microphoneStream == nil) {
       await replaceMicrophone(current)
+      if !permissions.microphone, phase == .recording { onFailure?("microphone_permission") }
     }
   }
 
@@ -327,6 +333,10 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       guard owns(output) else { return }
       publish(unavailable)
       guard let device, applicationStream != nil else { return }
+      guard system.permissions().microphone else {
+        onFailure?("microphone_permission")
+        return
+      }
       let delegate = CaptureStreamDelegate { [weak self] id in
         Task { @MainActor in await self?.microphoneFailed(expectedID: id) }
       }
@@ -379,7 +389,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       guard owns(sink) else { return }
       publish(value)
     }
-    onFailure?("microphone_unavailable")
+    onFailure?(system.permissions().microphone ? "microphone_unavailable" : "microphone_permission")
   }
 
   private static func defaultMicrophone() -> CaptureMicrophone? {

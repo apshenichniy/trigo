@@ -42,7 +42,7 @@ import Testing
     capture: fixture.capture,
     sources: .init(
       permissions: { fixture.os.permissions },
-      frontmost: fixture.os.frontmost, requestPermissions: { fixture.os.permissions }))
+      frontmost: fixture.os.frontmost, requestPermission: { _ in fixture.os.permissions }))
   await fresh.restore()
   #expect(fresh.recoveryReport.recoveredCallIDs.isEmpty)
   #expect(fresh.recoveryReport.warnings.isEmpty)

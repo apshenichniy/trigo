@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -16,6 +15,7 @@ import {
   type AsrProbeLanguageCode,
 } from "../packages/contracts/src/index.ts";
 import { cloudTargetFor, parseCloudStage, readCloudConfiguration } from "./cloud.ts";
+import { readProbeCredential } from "./asr-credential.ts";
 
 type ProbeLanguage = AsrProbeLanguageCode;
 
@@ -124,17 +124,6 @@ export function generateProbeFixture(language: ProbeLanguage, output: string): v
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-}
-
-function readOwnerToken(root: string): Redacted.Redacted<string> {
-  const worktree = createHash("sha256").update(root).digest("hex").slice(0, 12);
-  const service = `io.github.apshenichniy.trigo.dev.${worktree}.connection-token`;
-  const result = spawnSync("security", ["find-generic-password", "-s", service, "-w"], {
-    encoding: "utf8",
-  });
-  if (result.status !== 0 || result.stdout.trim() === "")
-    throw new Error("The paired Trigo Dev owner token is unavailable in Keychain");
-  return Redacted.make(result.stdout.trim());
 }
 
 const request = Effect.fn("AsrProbeCli.request")(function* <Success>(
@@ -289,10 +278,19 @@ const main = Effect.gen(function* () {
   });
   if (configuration.apiUrl === undefined)
     return yield* probeCliError("The dev Cloud API URL is missing");
-  const token = yield* Effect.try({
-    try: () => readOwnerToken(root),
-    catch: (cause) => probeCliError("Cannot read the paired Trigo Dev owner token", cause),
-  });
+  const handoffIndexes = args.flatMap((value: string, index: number) =>
+    value === "--handoff" ? [index] : [],
+  );
+  const handoffIndex = handoffIndexes[0];
+  const handoff =
+    handoffIndexes.length === 1 && handoffIndex !== undefined ? args[handoffIndex + 1] : undefined;
+  if (!handoff || handoff.startsWith("--"))
+    return yield* probeCliError(
+      "Pass --handoff <private dev owner handoff>; probes do not read app Keychain items",
+    );
+  const token = yield* readProbeCredential(resolve(handoff), configuration).pipe(
+    Effect.mapError(() => probeCliError("Cannot read a matching dev owner token handoff")),
+  );
   return yield* probe(configuration.apiUrl, token, languages);
 }).pipe(
   Effect.provide(FetchHttpClient.layer),

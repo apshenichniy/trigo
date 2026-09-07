@@ -13,6 +13,8 @@ import ScreenCaptureKit
     windowID: 456, windowTitle: "Fixture window", processLaunchDate: Date())
   var permissions = CapturePermissions(screenAudio: true, microphone: true)
   var permissionRequests = 0
+  var requestedPermissions: [CapturePermission] = []
+  var settingsOpened: [CapturePermission] = []
   var onPermissionRequest: (() -> Void)?
   var onFilter: (() -> Void)?
   var filterFailure: CaptureStartFailure?
@@ -61,10 +63,15 @@ import ScreenCaptureKit
       connection: connection, namespace: namespace, capture: capture,
       sources: .init(
         permissions: { os.permissions }, frontmost: os.frontmost,
-        requestPermissions: {
+        requestPermission: { permission in
+          os.requestedPermissions.append(permission)
           os.permissionRequests += 1
           os.onPermissionRequest?()
           return os.permissions
+        },
+        openSettings: { permission in
+          os.settingsOpened.append(permission)
+          return true
         }))
   }
 

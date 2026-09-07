@@ -20,6 +20,7 @@
     "check:macos": "bun scripts/commands.ts check:macos",
     "dev": "bun scripts/local.ts",
     "macos:run": "bun scripts/macos.ts run",
+    "macos:install": "bun scripts/macos.ts install",
     "macos:archive": "bun scripts/macos.ts archive",
     "macos:build": "bun scripts/macos.ts build",
     "macos:setup": "bun scripts/macos.ts setup",

@@ -63,6 +63,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
   var failsStart = false
   var failsAfterStart = false
   var suspendStart = false
+  private(set) var startCalls = 0
   private var entered = false
   private var observers: [CheckedContinuation<Void, Never>] = []
   private var pending: CheckedContinuation<Void, Never>?
@@ -70,6 +71,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
     _ output: any SCStreamOutput, type: SCStreamOutputType, queue: DispatchQueue
   ) throws {}
   func startCapture() async throws {
+    startCalls += 1
     if failsStart { throw Unavailable() }
     if suspendStart {
       await withCheckedContinuation {
@@ -116,7 +118,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
         sourceReads += 1
         throw CaptureStartFailure.unsupportedSource
       },
-      requestPermissions: {
+      requestPermission: { _ in
         permissionRequests += 1
         return .init(screenAudio: false, microphone: false)
       }))
@@ -160,7 +162,7 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
         sourceReads += 1
         return frontmost
       },
-      requestPermissions: { .init(screenAudio: true, microphone: true) }))
+      requestPermission: { _ in .init(screenAudio: true, microphone: true) }))
   await coordinator.connect(serverURL: "https://dev.example.test", token: "fixture")
   await status.setFailure(healthFailure)
   await coordinator.restore()

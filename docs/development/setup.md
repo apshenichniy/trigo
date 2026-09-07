@@ -120,6 +120,7 @@ All commands use `bun run <command>` and propagate errors.
 | `dev`                                                                                | Shared product API, local D1/R2/workflow and fake ASR                                |
 | `test:local`                                                                         | Disposable composition, authenticated API and persistent restart                     |
 | `macos:build --variant dev`                                                          | Locked build (`personal` also supported)                                             |
+| `macos:install --variant dev`                                                        | Build/install without launching; requires stable signing or explicit `--ad-hoc`      |
 | `macos:run --variant dev`                                                            | Build, install and open stable development app                                       |
 | `macos:archive --variant dev`                                                        | Reproducible unsigned archive unless a signing team is selected                      |
 | `macos:dependencies`                                                                 | Explicit Swift dependency update and app lock refresh                                |
@@ -180,11 +181,16 @@ fresh temporary directory.
 
 ```sh
 bun run dev
-# In another terminal, run the exact command printed by dev:
+# In another terminal, select your existing Apple Development team:
+export TRIGO_SIGNING_TEAM=YOURTEAMID
+# Run the exact command printed by dev:
 bun run macos:run --variant dev --local-config /absolute/path/printed/by/dev/connection.json
 ```
 
-The installed development app opens with the local URL/token prefilled. Click
+A local installation uses `~/Applications/Trigo Local Dev <worktree>.app`, leaving
+ordinary `Trigo Dev.app` and `Trigo.app` in place. Its Dev bundle ID/signing requirement
+still shares macOS permission identity with ordinary Dev; data isolation is not
+OS permission isolation. The installed development app opens with the local URL/token prefilled. Click
 **Connect** to authenticate and establish the first binding. It uses a namespace
 ending in `.local.<UUID>`, separate from both the ordinary worktree Dev cloud
 binding and personal data, preferences and Keychain service. Normal installed
@@ -274,18 +280,46 @@ eligibility while blocking server operations. Use **Retry saved connection** to
 validate the persisted Keychain credential without re-entering it.
 
 Interrupted metadata/Keychain transactions are recovered on launch and before a
-new candidate is attempted. Do not edit `connection.json`, copy a token between
-namespaces or use a personal handoff with the development app. The opt-in production
-adapter demonstration and its required explicit selectors are documented in
-[Issue #31 acceptance](acceptance-31.md).
+new candidate is attempted. An unchanged URL/token, validated against the same
+archive, reuses its exact committed item. Genuine changes and known unreadable-token
+repair use the existing pending/committed/retired transaction. Access-denied,
+interaction-required and unknown read errors preserve the item and provide a retry
+action. Missing credentials remain distinct from inaccessible credentials.
+Do not edit `connection.json`, copy a token between namespaces or use a personal
+handoff with the development app. The live cloud protocol test now uses disposable
+file metadata and an in-memory credential adapter; it cannot create regular app-owned
+Keychain items. Historical [Issue #31 evidence](acceptance-31.md) describes its earlier
+helper. Current ownership and installed acceptance are in [Issue #55](acceptance-55.md).
+
+Operator ASR probes require an explicit private dev handoff:
+`bun run test:asr --stage dev --handoff /absolute/path/to/dev-owner-handoff.json`.
+The handoff must match the configured dev account/database/deployment. No service-only
+or other app Keychain lookup is used. The existing explicit paid-probe authorization,
+budget and generation controls still apply.
 
 Set `TRIGO_SIGNING_TEAM` to an existing Apple Development team for regular installed
 capture development; the corresponding certificate must exist in Keychain.
-Without it, `macos:run` uses ad-hoc signing and stable installation paths. macOS
-may request permissions again after a rebuild: stable path and bundle ID alone do
-not establish TCC continuity. Ordinary builds, tests and CI need no owner signing
+Without it, `macos:run` and `macos:install` fail with an actionable message.
+For a disposable ad-hoc installation, unset `TRIGO_SIGNING_TEAM` and pass `--ad-hoc`
+explicitly. macOS may request permissions again after a rebuild: stable path and
+bundle ID alone do not establish TCC or Keychain continuity. The installer verifies
+the signature, requires the destination app to be quit, and refuses another bundle
+identity or changed designated requirement on a normal signed update. Switching a
+shared ordinary Dev installation between worktrees requires `--replace-worktree`;
+it changes the selected development namespace and does not migrate any data.
+A failed or interrupted installation retains staging/backup paths for review. Ordinary builds, tests and CI need no owner signing
 credentials. Public Developer ID signing, notarization, Amore/Sparkle and release
 publication remain #4. Archives live under `.local/archives/`.
+
+Use **Capture readiness** in the connection window or recording panel before a call.
+Enable screen/system-audio and microphone access separately. Start and lifecycle
+refreshes only check readiness; they do not request permission. Return from Settings
+or click **Refresh readiness** after changing access. Microphone denial/restriction,
+input-device absence and effective recording mute are separate states. Screen
+preflight false means access is required; it does not identify denial versus revocation.
+The supported capture adapter remains ScreenCaptureKit. See the controlled
+[installed acceptance procedure](acceptance-55.md#installed-acceptance-procedure) for
+observations that require the owner's Mac.
 
 ## Generation and dependency updates
 

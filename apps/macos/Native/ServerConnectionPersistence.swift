@@ -9,6 +9,33 @@ enum ConnectionPersistenceError: Error {
   case invalidCredential
 }
 
+func credentialAccessFailure(_ error: any Error) -> CredentialAccessFailure {
+  guard let persistence = error as? ConnectionPersistenceError else {
+    return .unavailable(status: nil)
+  }
+  switch persistence {
+  case .invalidCredential: return .invalid
+  case .keychain(let status):
+    switch status {
+    case errSecInteractionNotAllowed: return .interactionRequired
+    case errSecAuthFailed: return .accessDenied
+    case errSecUserCanceled: return .cancelled
+    default: return .unavailable(status: status)
+    }
+  default: return .unavailable(status: nil)
+  }
+}
+
+func connectionPersistenceIssue(_ error: any Error) -> ConnectionIssue {
+  if let persistence = error as? ConnectionPersistenceError {
+    switch persistence {
+    case .keychain, .invalidCredential: return .credentialAccess(credentialAccessFailure(error))
+    default: break
+    }
+  }
+  return .persistence
+}
+
 actor FileConnectionMetadataStore: ConnectionMetadataStoring {
   private let transportPolicy: ServerTransportPolicy
   private let url: URL
@@ -97,6 +124,9 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
   }
 }
 
+/// The installed app creates its own file-based generic-password items. Tests use
+/// disposable services or injected adapters; operator CLIs use explicit handoffs.
+/// Retain the OS default access policy and service+account identity on every operation.
 actor KeychainCredentialStore: CredentialStoring {
   private let service: String
 

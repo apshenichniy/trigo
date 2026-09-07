@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trigo controlled capture fixture</title>
+  <style>
+    body { font: 18px system-ui; max-width: 42rem; margin: 3rem auto; padding: 1rem; color: #172025; background: #f5f7f6; }
+    button { font: inherit; padding: .7rem 1rem; margin-right: .5rem; }
+    output { display: block; font: 48px ui-monospace, monospace; margin: 2rem 0; }
+  </style>
+  <h1>Trigo controlled capture fixture</h1>
+  <p>This page generates a quiet 440 Hz application tone, one second on and one second off, for 90 seconds. It uses no microphone, network or stored data.</p>
+  <p>Use headphones to keep the application signal out of the microphone. Focus this window and use Trigo's recording shortcut. Speak only a planned non-private marker when the procedure asks.</p>
+  <button id="start">Start 90-second test audio</button>
+  <button id="stop" disabled>Stop test audio</button>
+  <output id="elapsed" aria-live="off">Ready</output>
+  <p id="status" role="status">Audio starts only after you click Start.</p>
+  <script>
+    let context, oscillator, timer;
+    const start = document.querySelector("#start");
+    const stop = document.querySelector("#stop");
+    const elapsed = document.querySelector("#elapsed");
+    const status = document.querySelector("#status");
+    function finish() {
+      clearInterval(timer);
+      if (oscillator) { oscillator.stop(); oscillator = undefined; }
+      if (context) { void context.close(); context = undefined; }
+      start.disabled = false;
+      stop.disabled = true;
+      status.textContent = "Test audio stopped. Stop the Trigo recording separately.";
+    }
+    start.onclick = async () => {
+      start.disabled = true;
+      try {
+        context = new AudioContext();
+        await context.resume();
+        oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.frequency.value = 440;
+        oscillator.connect(gain).connect(context.destination);
+        const began = context.currentTime;
+        for (let second = 0; second < 90; second++) {
+          gain.gain.setValueAtTime(second % 2 === 0 ? 0.04 : 0, began + second);
+        }
+        gain.gain.setValueAtTime(0, began + 90);
+        oscillator.start();
+        stop.disabled = false;
+        status.textContent = "Test audio is active. This page never captures the microphone.";
+        timer = setInterval(() => {
+          const seconds = Math.min(90, Math.floor(context.currentTime - began));
+          elapsed.textContent = `${seconds} / 90 s`;
+          if (seconds >= 90) finish();
+        }, 100);
+      } catch {
+        finish();
+        status.textContent = "Audio could not start. Check the browser's audio output and retry.";
+      }
+    };
+    stop.onclick = finish;
+    window.addEventListener("pagehide", finish);
+  </script>
+</html>
