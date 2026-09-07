@@ -2,84 +2,6 @@ import Foundation
 import TrigoContracts
 
 extension LocalRepository {
-  /// Preparation is content-addressed and replay-safe. Each write has at most 128 rows
-  /// or 256 KiB of bound values, then yields to waiting capture work.
-  @discardableResult
-  func stageDocument(_ bytes: Data) async throws -> String {
-    let hash = Contract.hash(bytes)
-    let existing = try database.access {
-      try database.rows("SELECT byte_count,complete FROM documents WHERE hash=?", [.text(hash)])
-        .first
-    }
-    if let existing {
-      guard try existing.int(0) == bytes.count else {
-        throw LocalPersistenceError.immutableConflict(hash)
-      }
-      if try existing.int(1) == 1 {
-        guard try documentBytes(hash) == bytes else {
-          throw LocalPersistenceError.immutableConflict(hash)
-        }
-        return hash
-      }
-    } else {
-      try database.access {
-        try database.transaction {
-          try database.execute(
-            "INSERT OR IGNORE INTO documents VALUES (?,?,0)", [.text(hash), .int(bytes.count)])
-        }
-      }
-    }
-    for offset in stride(from: 0, to: bytes.count, by: 256 * 1024) {
-      let chunk = bytes.subdata(in: offset..<min(bytes.count, offset + 256 * 1024))
-      try database.access {
-        try database.transaction {
-          try database.execute(
-            "INSERT OR IGNORE INTO document_chunks VALUES (?,?,?)",
-            [.text(hash), .int(offset / (256 * 1024)), .blob(chunk)])
-        }
-      }
-      await Task.yield()
-    }
-    try database.access {
-      try database.transaction {
-        try database.execute("UPDATE documents SET complete=1 WHERE hash=?", [.text(hash)])
-      }
-    }
-    return hash
-  }
-
-  func documentBytes(_ hash: String) throws -> Data {
-    let size = try database.access {
-      guard
-        let row = try database.rows(
-          "SELECT byte_count,complete FROM documents WHERE hash=?", [.text(hash)]
-        ).first,
-        try row.int(1) == 1
-      else { throw invalidRow() }
-      return try row.int(0)
-    }
-    var result = Data()
-    result.reserveCapacity(size)
-    var part = 0
-    while result.count < size {
-      let chunk = try database.access {
-        guard
-          let row = try database.rows(
-            "SELECT bytes FROM document_chunks WHERE hash=? AND part=?", [.text(hash), .int(part)]
-          ).first
-        else { throw invalidRow() }
-        return try row.data(0)
-      }
-      guard !chunk.isEmpty, chunk.count <= 256 * 1024, result.count + chunk.count <= size else {
-        throw invalidRow()
-      }
-      result.append(chunk)
-      part += 1
-    }
-    guard Contract.hash(result) == hash else { throw ContractError.checksum }
-    return result
-  }
-
   func stageCall(_ document: StoredDocument<CallDocument>) async throws {
     let hash = try await stageDocument(document.storedBytes)
     try await stageCallRows(document.value, hash: hash)
@@ -229,7 +151,8 @@ extension LocalRepository {
             "SELECT ordinal,start_ms,end_ms,state,reason FROM track_intervals WHERE hash=? AND track_ordinal=? AND ordinal>? ORDER BY ordinal LIMIT 128",
             [.text(hash), .int(ordinal), .int(cursor)])
         }
-        for span in page {
+        for storedSpan in page {
+          let span = try resolveTextValues(storedSpan)
           intervals.append(
             try .init(
               startMs: span.int(1), endMs: span.int(2), state: span.string(3),

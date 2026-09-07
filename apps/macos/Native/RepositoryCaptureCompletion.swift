@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import TrigoContracts
 
@@ -161,50 +160,10 @@ extension LocalRepository {
   }
 
   private func stageSnapshot(_ file: CaptureSnapshotStream, hash: String) async throws {
-    try database.access {
-      try database.transaction {
-        try database.execute(
-          "INSERT OR IGNORE INTO documents VALUES (?,?,0)", [.text(hash), .int(file.byteCount)])
-        guard
-          let row = try database.rows(
-            "SELECT byte_count FROM documents WHERE hash=?", [.text(hash)]
-          ).first,
-          try row.int(0) == file.byteCount
-        else { throw LocalPersistenceError.immutableConflict(hash) }
-      }
-    }
     let reader = try FileHandle(forReadingFrom: file.url)
     defer { try? reader.close() }
-    var part = 0
-    var count = 0
-    var digest = SHA256()
-    while let bytes = try reader.readMasterBytes(upToCount: 256 * 1024), !bytes.isEmpty {
-      try database.access {
-        try database.transaction {
-          try database.execute(
-            "INSERT OR IGNORE INTO document_chunks VALUES (?,?,?)",
-            [.text(hash), .int(part), .blob(bytes)])
-          guard
-            let row = try database.rows(
-              "SELECT bytes FROM document_chunks WHERE hash=? AND part=?",
-              [.text(hash), .int(part)]
-            ).first,
-            try row.data(0) == bytes
-          else { throw LocalPersistenceError.immutableConflict(hash) }
-        }
-      }
-      count += bytes.count
-      part += 1
-      digest.update(data: bytes)
-      await Task.yield()
-    }
-    guard count == file.byteCount, Data(digest.finalize()).masterHex == hash else {
-      throw ContractError.checksum
-    }
-    try database.access {
-      try database.transaction {
-        try database.execute("UPDATE documents SET complete=1 WHERE hash=?", [.text(hash)])
-      }
+    try await stageDocumentChunks(hash: hash, byteCount: file.byteCount) {
+      try reader.readMasterBytes(upToCount: repositoryDocumentChunkBytes)
     }
   }
 
@@ -215,33 +174,11 @@ extension LocalRepository {
     guard
       let row = try database.access({
         try database.rows(
-          "SELECT h.hash,d.byte_count FROM snapshot_history h JOIN documents d ON d.hash=h.hash WHERE h.call_id=? AND h.version=? AND d.complete=1",
+          "SELECT h.hash FROM snapshot_history h JOIN documents d ON d.hash=h.hash WHERE h.call_id=? AND h.version=? AND d.complete=1",
           [.text(callID), .int(version)]
         ).first
       })
     else { throw LocalPersistenceError.callNotFound(callID) }
-    let hash = try row.string(0)
-    let size = try row.int(1)
-    var count = 0
-    var part = 0
-    var digest = SHA256()
-    while count < size {
-      let bytes = try database.access {
-        guard
-          let row = try database.rows(
-            "SELECT bytes FROM document_chunks WHERE hash=? AND part=?", [.text(hash), .int(part)]
-          ).first
-        else { throw invalidRow() }
-        return try row.data(0)
-      }
-      guard !bytes.isEmpty, bytes.count <= 256 * 1024, count + bytes.count <= size else {
-        throw invalidRow()
-      }
-      try consume(bytes)
-      digest.update(data: bytes)
-      count += bytes.count
-      part += 1
-    }
-    guard Data(digest.finalize()).masterHex == hash else { throw ContractError.checksum }
+    try forEachDocumentChunk(hash: row.string(0), consume: consume)
   }
 }

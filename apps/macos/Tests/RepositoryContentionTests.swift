@@ -272,6 +272,7 @@ private struct ProductionCaptureCommit: Sendable {
   let witnessedAt: ContinuousClock.Instant
   let resumedAt: ContinuousClock.Instant
   let witness: MediaMasterCursor
+  let maximumIngressServiceSeconds: Double
 
   // A delayed observer cannot lose bytes already witnessed in committed SQL. Never
   // subtract earlier waits: the bound starts before construction of the first buffer.
@@ -280,7 +281,7 @@ private struct ProductionCaptureCommit: Sendable {
   }
 
   func phases(boundary: String, observedAt: ContinuousClock.Instant) -> String {
-    "PRODUCTION_WORST_CYCLE boundary=\(boundary) durability_ms=\(milliseconds(startedAt, witnessedAt)) caller_ms=\(milliseconds(startedAt, observedAt)) submission_ms=\(milliseconds(startedAt, submittedAt)) drain_ms=\(milliseconds(submittedAt, advanceQueuedAt)) advance_queue_ms=\(milliseconds(advanceQueuedAt, advanceStartedAt)) advance_service_and_sql_witness_ms=\(milliseconds(advanceStartedAt, witnessedAt)) advance_delivery_ms=\(milliseconds(witnessedAt, resumedAt)) post_delivery_ms=\(milliseconds(resumedAt, observedAt))"
+    "PRODUCTION_WORST_CYCLE boundary=\(boundary) durability_ms=\(milliseconds(startedAt, witnessedAt)) caller_ms=\(milliseconds(startedAt, observedAt)) submission_ms=\(milliseconds(startedAt, submittedAt)) drain_ms=\(milliseconds(submittedAt, advanceQueuedAt)) advance_queue_ms=\(milliseconds(advanceQueuedAt, advanceStartedAt)) advance_service_and_sql_witness_ms=\(milliseconds(advanceStartedAt, witnessedAt)) advance_delivery_ms=\(milliseconds(witnessedAt, resumedAt)) post_delivery_ms=\(milliseconds(resumedAt, observedAt)) max_ingress_service_ms=\(maximumIngressServiceSeconds * 1000)"
   }
 }
 
@@ -328,11 +329,62 @@ private struct ProductionAudioBufferFactory: @unchecked Sendable {
   }
 }
 
+private struct ProductionQueueWitness: Sendable {
+  let queuedAt: ContinuousClock.Instant
+  let advanceStartedAt: ContinuousClock.Instant
+  let witnessedAt: ContinuousClock.Instant
+  let cursor: MediaMasterCursor
+  let maximumIngressServiceSeconds: Double
+}
+
+/// Drive the production clock and SQL witness on its own queue. Yield behind each bounded
+/// ingress batch; a test-task continuation must never be required to advance capture itself.
+private struct ProductionWitnessDriver: Sendable {
+  let sink: CaptureStreamSink
+  let repository: LocalRepository
+  let callID: String
+  let second: Int
+  let complete: @Sendable (Result<ProductionQueueWitness, any Error>) -> Void
+
+  func schedule() {
+    let queuedAt = ContinuousClock.now
+    sink.queue.async {
+      if sink.ingressStatistics.pendingBuffers > 0 {
+        schedule()
+        return
+      }
+      do {
+        let began = ContinuousClock.now
+        try sink.advanceClock(at: CMTime(value: Int64((second + 1) * 4 + 1), timescale: 4))
+        // Query and validate independently after synchronous media/index sync + SQL COMMIT.
+        let confirmed = try repository.confirmedMediaCursor(callID: callID)
+        let witness = try #require(confirmed)
+        try #require(witness.frames == Int64(second + 1) * 16_000)
+        let witnessedAt = ContinuousClock.now
+        complete(
+          .success(
+            .init(
+              queuedAt: queuedAt, advanceStartedAt: began, witnessedAt: witnessedAt,
+              cursor: witness,
+              maximumIngressServiceSeconds: sink.ingressStatistics.maximumServiceSeconds)))
+      } catch { complete(.failure(error)) }
+    }
+  }
+}
+
 private func productionCaptureCommit(
   sink: CaptureStreamSink, repository: LocalRepository, session: CaptureArchiveSession,
   microphoneID: ObjectIdentifier, applicationID: ObjectIdentifier, second: Int,
-  input: ProductionAudioBufferFactory
+  input: ProductionAudioBufferFactory,
+  observerDelay: DispatchTimeInterval? = nil, queueHold: DispatchTimeInterval? = nil
 ) async throws -> ProductionCaptureCommit {
+  // These controls distinguish delayed test observation from genuinely delayed production work.
+  // The negative control holds admitted input, with release independent of the observing test task.
+  if queueHold != nil { sink.queue.suspend() }
+  var releaseScheduled = false
+  defer {
+    if queueHold != nil, !releaseScheduled { sink.queue.resume() }
+  }
   let start = ContinuousClock.now
   for part in 0..<50 {
     let time = CMTime(value: Int64(second * 50 + part), timescale: 50)
@@ -341,24 +393,32 @@ private func productionCaptureCommit(
     #expect(sink.enqueue(sample, role: .application, streamID: applicationID, deliveredAt: time))
   }
   let submittedAt = ContinuousClock.now
-  while sink.ingressStatistics.pendingBuffers > 0 {
-    try await sink.perform { _ in }
+  if let queueHold {
+    DispatchQueue.global(qos: .userInteractive).asyncAfter(deadline: .now() + queueHold) {
+      sink.queue.resume()
+    }
+    releaseScheduled = true
   }
-  let advanceQueuedAt = ContinuousClock.now
-  let (advanceStartedAt, witness, witnessedAt) = try await sink.perform { engine in
-    let began = ContinuousClock.now
-    try engine.advance(at: CMTime(value: Int64((second + 1) * 4 + 1), timescale: 4))
-    // Independent SQL publication witness, after synchronous media/index sync + COMMIT.
-    // The timestamp follows the query and its validation, on the engine queue.
-    let confirmed = try repository.confirmedMediaCursor(callID: session.callID)
-    let witness = try #require(confirmed)
-    try #require(witness.frames == Int64(second + 1) * 16_000)
-    return (began, witness, ContinuousClock.now)
+  let committed: ProductionQueueWitness = try await withCheckedThrowingContinuation {
+    continuation in
+    ProductionWitnessDriver(
+      sink: sink, repository: repository, callID: session.callID, second: second,
+      complete: { result in
+        if let observerDelay {
+          DispatchQueue.global(qos: .userInteractive).asyncAfter(deadline: .now() + observerDelay) {
+            continuation.resume(with: result)
+          }
+        } else {
+          continuation.resume(with: result)
+        }
+      }
+    ).schedule()
   }
   return .init(
-    startedAt: start, submittedAt: submittedAt, advanceQueuedAt: advanceQueuedAt,
-    advanceStartedAt: advanceStartedAt, witnessedAt: witnessedAt, resumedAt: .now,
-    witness: witness)
+    startedAt: start, submittedAt: submittedAt, advanceQueuedAt: committed.queuedAt,
+    advanceStartedAt: committed.advanceStartedAt, witnessedAt: committed.witnessedAt,
+    resumedAt: .now,
+    witness: committed.cursor, maximumIngressServiceSeconds: committed.maximumIngressServiceSeconds)
 }
 
 @Test func productionDurabilityIsRecoverableWhileItsObserverIsDelayed() async throws {
@@ -426,4 +486,52 @@ private func productionCaptureCommit(
   #expect(complete.call.durationMs == 2000)
   let spans = try repository.captureIntervals(callID: session.callID, through: result.0.cursor)
   #expect(spans.allSatisfy { $0 == [.init(startMs: 0, endMs: 2000, state: .recorded)] })
+}
+
+@Test(arguments: ["caller", "queue"])
+func productionDurabilityDriverDistinguishesCallerDelayFromActualQueueDelay(_ delayed: String)
+  async throws
+{
+  let root = repositoryRoot("durability-driver-\(delayed)")
+  defer { try? FileManager.default.removeItem(at: root) }
+  let session = try repositorySession(root)
+  try await session.prepare()
+  let repository = try LocalRepository(root: root, archiveID: session.archiveID)
+  let queue = DispatchQueue(label: "trigo.test.durability-driver.\(delayed)", qos: .userInteractive)
+  let sink = try CaptureStreamSink(
+    session: session, queue: queue, origin: .zero,
+    microphone: session.microphone, onSnapshot: { _ in },
+    onMicrophoneFailure: { _ in Issue.record("Unexpected microphone failure") },
+    onFailure: { reason in Issue.record("Unexpected production sink failure: \(reason)") })
+  let (microphone, application) = await MainActor.run {
+    (RecordingTransportFixture(), RecordingTransportFixture())
+  }
+  sink.acceptMicrophoneStream(microphone)
+  sink.acceptApplicationStream(application)
+  let input = try ProductionAudioBufferFactory()
+  let commit = try await productionCaptureCommit(
+    sink: sink, repository: repository, session: session,
+    microphoneID: ObjectIdentifier(microphone), applicationID: ObjectIdentifier(application),
+    second: 0, input: input,
+    observerDelay: delayed == "caller" ? .milliseconds(1200) : nil,
+    queueHold: delayed == "queue" ? .milliseconds(1200) : nil)
+  let observedAt = ContinuousClock.now
+  print(commit.phases(boundary: "controlled-\(delayed)", observedAt: observedAt))
+  #expect(1 + elapsedSeconds(commit.startedAt.duration(to: observedAt)) > 2)
+  if delayed == "caller" {
+    #expect(1 + commit.durabilitySeconds <= 2)
+    #expect(1 + commit.maximumIngressServiceSeconds <= 2)
+    #expect(elapsedSeconds(commit.witnessedAt.duration(to: observedAt)) >= 1.2)
+  } else {
+    // Positive detection of a real violation: never subtract the controlled production delay.
+    #expect(1 + commit.durabilitySeconds > 2)
+    #expect(1 + commit.maximumIngressServiceSeconds > 2)
+  }
+  #expect(try repository.confirmedMediaCursor(callID: session.callID) == commit.witness)
+  #expect(commit.witness.frames == 16_000)
+  let result = try await sink.finish(at: CMTime(value: 1, timescale: 1), reason: nil)
+  let completed = try await session.complete(media: result.0, interruptionReason: nil)
+  #expect(completed.call.durationMs == 1000)
+  let spans = try repository.captureIntervals(callID: session.callID, through: result.0.cursor)
+  #expect(spans.allSatisfy { $0 == [.init(startMs: 0, endMs: 1000, state: .recorded)] })
 }

@@ -23,6 +23,10 @@ struct CaptureIngressStatistics: Sendable {
 /// the engine queue; queued plus in-flight audio is capped at one second per source and
 /// 256 buffers. An overloaded producer fails explicitly instead of growing retained audio.
 final class CaptureAudioIngress: @unchecked Sendable {
+  private enum Admission {
+    case ignored, overflow, accepted, scheduleDrain
+  }
+
   private let lock = NSLock()
   private let queue: DispatchQueue
   private let selection: CaptureStreamSelection
@@ -63,29 +67,38 @@ final class CaptureAudioIngress: @unchecked Sendable {
       sample: sample, role: role, streamID: streamID,
       deliveredAt: deliveredAt, admittedAt: .now, duration: max(0, duration))
     let channel = role == .microphone ? 0 : 1
-    let action = selection.withSelection { ids -> Int in
-      guard ids[channel] == streamID else { return 0 }
-      return lock.withLock { () -> Int in
-        guard !rejected, !closed else { return 0 }
+    let action = selection.withSelection { ids -> Admission in
+      guard ids[channel] == streamID else { return .ignored }
+      return lock.withLock { () -> Admission in
+        guard !rejected, !closed else { return .ignored }
         guard outstanding < 256, duration.isFinite, duration >= 0,
           sourceSeconds[channel] + duration <= 1.000_001
         else {
           rejected = true
-          return -1
+          return .overflow
         }
         pending.append(value)
         outstanding += 1
         sourceSeconds[channel] += duration
         maxBuffers = max(maxBuffers, outstanding)
         maxSeconds = max(maxSeconds, sourceSeconds[channel])
-        if scheduled { return 1 }
+        if scheduled { return .accepted }
         scheduled = true
-        return 2
+        return .scheduleDrain
       }
     }
-    if action == -1 { queue.async { [self] in overflow() } }
-    if action == 2 { queue.async { [self] in drain() } }
-    return action > 0
+    switch action {
+    case .ignored:
+      return false
+    case .overflow:
+      queue.async { [self] in overflow() }
+      return false
+    case .accepted:
+      return true
+    case .scheduleDrain:
+      queue.async { [self] in drain() }
+      return true
+    }
   }
 
   var statistics: CaptureIngressStatistics {
