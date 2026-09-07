@@ -255,10 +255,10 @@ wait or body exceeded 200 ms. The baseline and intervention are retained in
 `53-contention-causal-measurements.md`. Sampling is supporting evidence; the
 unchanged-source failures also occurred without sampling.
 
-Temporary environment switches and SQL observers are removed. The original
-regression now prints its worst cycle's component durations, while the assertion
-still includes preparation, queue/drain, final durability, caller delivery and the
-SQL witness read.
+Temporary environment switches and SQL observers were removed. At that repair,
+the original regression printed its worst cycle's component durations, and its
+assertion still included preparation, queue/drain, final durability, caller delivery
+and the SQL witness read.
 
 The cleaned final source passed the original larger stress scenario in three
 processes, each running the same five test functions. The reference starts at
@@ -293,3 +293,187 @@ local smoke. These totals include the additional #50–#53 acceptance workload
 and must not be presented as the unchanged #49 timing benchmark.
 
 These integrated checks do not satisfy the separate installed signed-app gate #57.
+
+## SQL durability witness and delayed observer
+
+[Integrated CI run 34098630005](https://github.com/apshenichniy/trigo/actions/runs/34098630005)
+at `6deea70cf1e39ee8e8372a9db621e79d87f9374b` retained one failure after
+the SQL QoS correction. The production caller envelope was 2,168.677 ms,
+including 1,114.989 ms between the synchronous advance returning on the engine
+queue and its awaiting caller resuming. Construction/enqueue took 3.172 ms,
+drain 34.192 ms, final queue admission 0.022 ms, advance 14.598 ms and the
+post-delivery SQL witness/observer work 1.704 ms. The dense envelope was
+1,532.428 ms. Both cases completed all three imports / 12,000 turns / 24 large
+reads; the 152-test suite finished with this one issue in 282.169 s.
+This is a different measured boundary from the earlier background SQL owner
+stall; it does not establish which executor delayed the caller.
+
+The approved [#48 contract](https://github.com/apshenichniy/trigo/issues/48)
+and [#51 proof](https://github.com/apshenichniy/trigo/issues/51) limit lost
+uncommitted audio to two seconds. [#52](https://github.com/apshenichniy/trigo/issues/52)
+requires background work to preserve that commit window. The synchronous
+production path completes timeline flush, media/index synchronization and
+SQLite COMMIT before returning from `advance`. The contention fixture now also
+queries and validates an independent confirmed SQL cursor on that engine queue
+before taking its completion timestamp. The start precedes every PCM/sample
+buffer construction and enqueue. All ingress/drain work, pre-witness
+continuation waits, final queue admission, media/index synchronization, SQL
+publication and the validating SQL read remain in the two-second bound.
+
+The original post-delivery SQL read and observer work are retained. Separate
+maximum durability and caller cycles print their complete phases, and the
+maximum input-plus-caller and post-witness observer delays remain visible.
+Only time after the validated durable witness is excluded from the loss bound;
+these measurements do not claim a two-second UI acknowledgement guarantee.
+The production application and repository code are unchanged by this correction.
+
+A deterministic probe uses the same production input/sink/witness helper. Before
+releasing its first result to the observer, it reopens a copy of the real master
+and integrity index using the SQL witness, verifies 16,000 recovered frames with
+no lost tail, drives the live queue through a second commit to 32,000 frames,
+and verifies that the original stable byte prefix has not changed. It then
+holds result delivery for another 1,100 ms. The old caller-based metric fails
+with an input-plus-caller envelope of 2,215.715 ms even though the same execution
+reached the validated SQL witness in 33.658 ms. All recovery/progress checks pass
+(`53-delivery-observer-red-phases.log`). This proves the measurement distinction
+without dropping capture work or requiring an application timing change.
+
+The first probe run is separately retained in `53-delivery-observer-red.log`:
+it also had an unlocalized 1,507.992 ms pre-witness delay, as well as 1,184.737 ms
+after the witness. That run is not evidence of a caller-only failure. No warmup
+or first-cycle exemption was added; the permanent first-cycle bound still fails
+if such a pre-witness delay recurs. The subsequent phase-instrumented red run
+above preserved the same first input and start boundary.
+
+The focused green passes in 1.470 s with 40.011 ms through the validated SQL
+witness and 1,219.692 ms through caller observation. Recovery, second-commit
+progress and stable-prefix checks pass; input-plus-caller time still exceeds two
+seconds and remains visible (`53-delivery-observer-green.log`).
+
+The additional three-process amplified diagnostic remains **failed coverage**.
+It runs the original five test functions per process, with the reference at t=0
+and both siblings at t=97 s. All 18 imports / 72,000 turns / 144 large reads and
+all long-call proofs eventually complete. However, all three production cases
+reach the three-hour format limit before their last import phase; the reference
+dense case reaches its unchanged 10,800-cycle guard. The runs finish in
+518.804 / 484.686 / 481.328 s (`53-delivery-final-original-stress-*.log`).
+No two-second durability assertion failure was recorded in those candidate runs,
+but stopped capture during later import phases is not accepted as concurrency
+coverage.
+
+One controlled comparison restored the exact baseline test source from
+`6deea70`, leaving all application, contract and script source unchanged. The
+same amplified workload also fails there in 576.598 / 556.083 / 555.686 s:
+all production cases reach the duration limit, and two dense cases reach the
+cycle guard (`53-delivery-baseline-control-stress-*.log`). In the reference,
+production phase three has no capture progress; both sibling production cases
+have no progress in phases two and three. All imports and long-call proofs are
+allowed to finish. That baseline additionally records a 6,128.661 ms old
+input-plus-caller miss whose phase breakdown is unavailable after the later
+capture abort; its cause is not inferred.
+
+This diagnostic drives one second of input per 20 ms idle gap, plus processing
+time, while imports run at wall-clock speed. Its unchanged three-hour media cap
+can therefore be exhausted in minutes before the imports finish. Matching
+baseline exhaustion does not prove an application regression from the added SQL
+witness, a particular host cause, or successful amplified concurrency coverage.
+No guard, input, pacing, threshold or import count was changed in that comparison.
+The exact green candidate was restored; speculative query/priority changes were
+not applied.
+
+The required complete server gate passes on that restored source. The macOS
+gate fails: 153 native tests finish in 484.227 s with three issues. Both
+contention cases exhaust the same capture duration/cycle guard; production has
+no capture progress during the final import phase. All background work finishes,
+and no two-second deadline assertion fails in this run
+(`53-delivery-check-macos-final.log`). This is failed required coverage.
+
+A focused coarse phase probe preserves the entire workload and completes both
+cases in 190.001 s. Each revision spends approximately 30–35 s in validated
+encoding and 30–31 s in import; lifecycle operations and large reads finish in
+milliseconds. These phases do not identify a particular codec or scheduling
+cause. The dense case stays within its loss bound and both cases make capture
+progress during every import phase. Production nevertheless records a real
+2,481.216 ms input-plus-durability miss: 1,472.147 ms of its 1,481.216 ms
+pre-witness time is buffer construction/submission
+(`53-delivery-focused-background-phases.log`).
+
+A two-cycle fresh-input probe localizes another real pre-witness miss to the
+first synthetic buffer's format-description creation/assertion boundary:
+1,507.298 ms there, versus 1,511.666 ms for submission and 1,522.342 ms through
+the SQL witness. The second submission takes 1.277 ms. Recovery, live second
+commit, stable-prefix and finalization checks still complete
+(`53-delivery-focused-buffer-phases.log`). This C format-description creation
+call occurs in the test producer; production `SCStreamOutput` receives a ready
+`CMSampleBuffer`. The evidence does not yet distinguish the C call itself from
+its surrounding test assertion.
+
+After adding separate clocks for those two operations, one fresh process and
+one sampled execution do not reproduce the stall: durability is 21.270 and
+36.600 ms. These passes are diagnostic observations, not a demonstrated repair
+(`53-delivery-focused-description-call.log`, `53-delivery-buffer-call-sampled.log`).
+No pre-warming, first-cycle exemption, clock relocation, limit change or
+application change was made during these localization probes.
+
+## Fixture transport setup and wall-clock cadence
+
+The final fixture builds its immutable 16 kHz mono format and Core Media format
+description once as transport setup. ScreenCaptureKit supplies this metadata
+with a ready callback buffer; creating it is synthetic producer setup. Each
+measured cycle still allocates and fills all 50 PCM/sample buffers and performs
+all 100 source enqueues after its start timestamp. The production sink and both
+decoders receive their first input inside that boundary. Setup does not call
+the sink or decoder and does not exempt any first-cycle service work.
+
+The short recovery/progression probe repeats the startup delay in the new
+explicit setup measurement: 1,565.892 ms. The first measured input reaches the
+validated SQL witness in 14.263 ms: allocation/submission 2.903 ms, drain 4.942 ms,
+advance/witness 6.407 ms. The probe passes in 2.928 s with 16,000 recovered frames,
+32,000 live frames, an unchanged stable prefix and completed finalization
+(`53-delivery-input-setup-green.log`). Its 1,178.208 ms caller observation still
+exceeds the old two-second envelope when one second of input is added. This is
+a fixture boundary correction; it does not identify an internal C API or
+assertion cause, or claim an application startup improvement.
+
+Each contention cycle now supplies one source second per wall-clock second.
+After measured work and observer accounting, it waits until one second after
+that cycle's own start. An overrun remains measured and delays subsequent input;
+there is no catch-up burst. Thus background imports and the finite three-hour
+capture progress against the same clock. Both cases still require at least
+120 commits, all three imports / 12,000 turns / 24 large reads, capture progress
+during every import phase, the unchanged three-hour cap and the complete
+two-second loss bound. The separate one-hour/three-hour, resource, recovery and
+fault proofs are unchanged. The former 50x diagnostic failures remain failed
+coverage under that artificial source clock.
+
+The final focused contention run passes in 142.684 s. Both cases complete
+136 commits and all three imports / 12,000 turns / 24 large reads; each phase
+has capture progress (`0 -> 50 -> 95 -> 136`). Maximum input-plus-durability is
+1,053.603 ms dense and 1,029.179 ms production. Production retains complete
+source coverage with at most 100 pending buffers / one source second and
+9.590 ms maximum ingress service. Its separately measured input-plus-caller
+maximum is 1,029.252 ms (`53-delivery-wall-clock-contention-green.log`).
+
+Both required complete gates pass on the final source:
+
+- `53-delivery-wall-clock-check-server.log`: formatting, lint, types,
+  deterministic generation, 269 unit tests, 17 Worker tests and both Worker bundles.
+- `53-delivery-wall-clock-check-macos.log`: nine contract tests, 153 native tests
+  in 197.133 s, both Debug app builds and the local Worker/R2/fake-ASR smoke with
+  external network denied.
+
+Inside the complete concurrent native suite, production completes 180 commits
+and dense completes 181. Each finishes all three imports and has capture progress
+in every phase. Their maximum input-plus-durability envelopes are 1,115.559 ms
+and 1,116.358 ms respectively. Production retains complete source coverage and
+its one-second ingress capacity; maximum ingress service is 12.045 ms. The
+delayed-observer probe also passes in that suite, with 208.913 ms to durability
+and 2,948.771 ms to its deliberately delayed observer. The full one-hour and
+three-hour production proofs finish in 53.633 s and 125.290 s; these concurrent
+timings are not replacements for the historical isolated resource measurements.
+
+The tested `RepositoryContentionTests.swift` SHA-256 is
+`08e2af3a631eb866edf8fb3aa782eb78519799adf3eb78221c3b6d0522b3d2dc`.
+Application, contract, dependency and script source are identical to the
+`6deea70` integration base. This local test-only correction does not complete
+the separate hosted CI or installed signed-app gates.

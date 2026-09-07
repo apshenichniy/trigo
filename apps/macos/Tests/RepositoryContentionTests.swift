@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreMedia
 import Foundation
 import Testing
@@ -75,6 +76,7 @@ func repositoryBackgroundImportAndLargeTypedReadsStayInsideCaptureWindow(product
       directory: session.mediaDirectory, identity: session.mediaMasterIdentity)
     var latency: [Double] = []
     var worstCycle = (elapsed: 0.0, phases: "")
+    defer { print(worstCycle.phases) }
     while !workload.isComplete || latency.count < 120 {
       guard latency.count < 10800 else { throw RepositoryInjectedFailure() }
       let start = ContinuousClock.now
@@ -108,12 +110,8 @@ func repositoryBackgroundImportAndLargeTypedReadsStayInsideCaptureWindow(product
           "DENSE_WORST_CYCLE total_ms=\(elapsed * 1000) prepare_ms=\(milliseconds(start, preparedAt)) media_ms=\(milliseconds(preparedAt, mediaAt)) sql_ms=\(milliseconds(mediaAt, sqlAt)) post_sql_ms=\(milliseconds(sqlAt, completedAt))"
         )
       }
-      // Advance one second of generated input every 20 ms (50x real time), leaving
-      // an idle input gap in which background work can make progress. A continuous
-      // unpaced foreground loop would model an overloaded producer, not capture.
-      try await Task.sleep(for: .milliseconds(20))
+      try await waitForNextSourceSecond(after: start)
     }
-    print(worstCycle.phases)
     #expect(try repository.confirmedMediaCursor(callID: session.callID) == writer.cursor)
     return latency
   }
@@ -126,7 +124,7 @@ func repositoryBackgroundImportAndLargeTypedReadsStayInsideCaptureWindow(product
   #expect(try await repository.lifecycle(callID: repositoryCallID)?.importState.state == .imported)
   let sorted = latency.sorted()
   print(
-    "SQLITE_CONTENTION production_sink=\(production) commits=\(latency.count) intervals_per_commit=\(production ? 2 : 2000) imported_revisions=3 imported_turns=12000 imported_bytes=\(bytes) oversized_turn_utf8=2880000 typed_large_reads=24 max_commit_ms=\(sorted.last! * 1000) p95_commit_ms=\(sorted[Int(Double(sorted.count - 1) * 0.95)] * 1000) max_input_plus_commit_ms=\(1000 + sorted.last! * 1000) journal=delete synchronous=extra fullfsync=on"
+    "SQLITE_CONTENTION production_sink=\(production) commits=\(latency.count) intervals_per_commit=\(production ? 2 : 2000) source_cadence=wall_clock_1s minimum_commits=120 imported_revisions=3 imported_turns=12000 imported_bytes=\(bytes) oversized_turn_utf8=2880000 typed_large_reads=24 max_commit_ms=\(sorted.last! * 1000) p95_commit_ms=\(sorted[Int(Double(sorted.count - 1) * 0.95)] * 1000) max_input_plus_commit_ms=\(1000 + sorted.last! * 1000) journal=delete synchronous=extra fullfsync=on"
   )
 }
 
@@ -183,6 +181,13 @@ private func milliseconds(_ from: ContinuousClock.Instant, _ to: ContinuousClock
   elapsedSeconds(from.duration(to: to)) * 1000
 }
 
+private func waitForNextSourceSecond(after start: ContinuousClock.Instant) async throws {
+  // Imports and the finite three-hour capture now advance against the same clock.
+  // Every cycle starts its own one-second period: slow service delays subsequent
+  // input instead of triggering synthetic catch-up bursts. Service remains measured.
+  try await ContinuousClock().sleep(until: start.advanced(by: .seconds(1)))
+}
+
 private func productionSinkCapture(session: CaptureArchiveSession, workload: RepositoryWorkload)
   async throws -> [Double]
 {
@@ -200,51 +205,45 @@ private func productionSinkCapture(session: CaptureArchiveSession, workload: Rep
   sink.acceptMicrophoneStream(microphone)
   sink.acceptApplicationStream(application)
   let repository = try LocalRepository(root: session.root, archiveID: session.archiveID)
+  let input = try ProductionAudioBufferFactory()
   var latency: [Double] = []
   var worstCycle = (elapsed: 0.0, phases: "")
+  var worstCaller = (elapsed: 0.0, phases: "")
+  var maximumPostWitnessSeconds = 0.0
+  defer {
+    print(worstCycle.phases)
+    print(worstCaller.phases)
+    print(
+      "PRODUCTION_OBSERVER max_input_plus_caller_ms=\(1000 + worstCaller.elapsed * 1000) max_post_witness_to_observer_ms=\(maximumPostWitnessSeconds * 1000)"
+    )
+  }
   while !workload.isComplete || latency.count < 120 {
     guard latency.count < 10800 else { throw RepositoryInjectedFailure() }
-    let start = ContinuousClock.now
-    let second = latency.count
-    for part in 0..<50 {
-      let time = CMTime(value: Int64(second * 50 + part), timescale: 50)
-      let sample = try controlledAudioBuffer(
-        sampleRate: 16_000, frames: 320, time: time, value: 0.25)
-      #expect(
-        sink.enqueue(
-          sample, role: .microphone, streamID: ObjectIdentifier(microphone), deliveredAt: time))
-      #expect(
-        sink.enqueue(
-          sample, role: .application, streamID: ObjectIdentifier(application), deliveredAt: time))
-    }
-    let submittedAt = ContinuousClock.now
-    while sink.ingressStatistics.pendingBuffers > 0 {
-      try await sink.perform { _ in }
-    }
-    let advanceQueuedAt = ContinuousClock.now
-    let (advanceStartedAt, durableAt) = try await sink.perform { engine in
-      let began = ContinuousClock.now
-      try engine.advance(at: CMTime(value: Int64((second + 1) * 4 + 1), timescale: 4))
-      return (began, ContinuousClock.now)
-    }
-    let resumedAt = ContinuousClock.now
-    #expect(
-      try repository.confirmedMediaCursor(callID: session.callID)?.frames == Int64(second + 1)
-        * 16_000)
+    let commit = try await productionCaptureCommit(
+      sink: sink, repository: repository, session: session,
+      microphoneID: ObjectIdentifier(microphone), applicationID: ObjectIdentifier(application),
+      second: latency.count, input: input)
+    // Keep the original post-delivery witness and observer work visible separately.
+    #expect(try repository.confirmedMediaCursor(callID: session.callID) == commit.witness)
     workload.captured()
     let completedAt = ContinuousClock.now
-    let elapsed = elapsedSeconds(start.duration(to: completedAt))
+    let elapsed = commit.durabilitySeconds
     latency.append(elapsed)
+    // Includes construction, ingress, every pre-witness wait, media/index sync and SQL.
     #expect(1 + elapsed <= 2)
     if elapsed > worstCycle.elapsed {
-      worstCycle = (
-        elapsed,
-        "PRODUCTION_WORST_CYCLE total_ms=\(elapsed * 1000) submission_ms=\(milliseconds(start, submittedAt)) drain_ms=\(milliseconds(submittedAt, advanceQueuedAt)) advance_queue_ms=\(milliseconds(advanceQueuedAt, advanceStartedAt)) advance_service_ms=\(milliseconds(advanceStartedAt, durableAt)) advance_delivery_ms=\(milliseconds(durableAt, resumedAt)) witness_ms=\(milliseconds(resumedAt, completedAt))"
+      worstCycle = (elapsed, commit.phases(boundary: "durability", observedAt: completedAt))
+    }
+    let callerSeconds = elapsedSeconds(commit.startedAt.duration(to: completedAt))
+    if callerSeconds > worstCaller.elapsed {
+      worstCaller = (
+        callerSeconds, commit.phases(boundary: "caller", observedAt: completedAt)
       )
     }
-    try await Task.sleep(for: .milliseconds(20))
+    maximumPostWitnessSeconds = max(
+      maximumPostWitnessSeconds, elapsedSeconds(commit.witnessedAt.duration(to: completedAt)))
+    try await waitForNextSourceSecond(after: commit.startedAt)
   }
-  print(worstCycle.phases)
   let result = try await sink.finish(
     at: CMTime(value: Int64(latency.count), timescale: 1), reason: nil)
   let complete = try await session.complete(media: result.0, interruptionReason: nil)
@@ -261,4 +260,170 @@ private func productionSinkCapture(session: CaptureArchiveSession, workload: Rep
     "PRODUCTION_QUEUE commits=\(latency.count) max_pending_buffers=\(statistics.maximumPendingBuffers) max_pending_source_s=\(statistics.maximumPendingSourceSeconds) max_service_ms=\(statistics.maximumServiceSeconds * 1000) max_input_plus_service_ms=\(1000 + statistics.maximumServiceSeconds * 1000) source_coverage=complete background_imports=\(workload.importCount)"
   )
   return latency
+}
+
+/// The same production input/queue/witness boundary is used by the full background
+/// workload and the delayed-observer regression below.
+private struct ProductionCaptureCommit: Sendable {
+  let startedAt: ContinuousClock.Instant
+  let submittedAt: ContinuousClock.Instant
+  let advanceQueuedAt: ContinuousClock.Instant
+  let advanceStartedAt: ContinuousClock.Instant
+  let witnessedAt: ContinuousClock.Instant
+  let resumedAt: ContinuousClock.Instant
+  let witness: MediaMasterCursor
+
+  // A delayed observer cannot lose bytes already witnessed in committed SQL. Never
+  // subtract earlier waits: the bound starts before construction of the first buffer.
+  var durabilitySeconds: Double {
+    elapsedSeconds(startedAt.duration(to: witnessedAt))
+  }
+
+  func phases(boundary: String, observedAt: ContinuousClock.Instant) -> String {
+    "PRODUCTION_WORST_CYCLE boundary=\(boundary) durability_ms=\(milliseconds(startedAt, witnessedAt)) caller_ms=\(milliseconds(startedAt, observedAt)) submission_ms=\(milliseconds(startedAt, submittedAt)) drain_ms=\(milliseconds(submittedAt, advanceQueuedAt)) advance_queue_ms=\(milliseconds(advanceQueuedAt, advanceStartedAt)) advance_service_and_sql_witness_ms=\(milliseconds(advanceStartedAt, witnessedAt)) advance_delivery_ms=\(milliseconds(witnessedAt, resumedAt)) post_delivery_ms=\(milliseconds(resumedAt, observedAt))"
+  }
+}
+
+/// SCStream supplies a ready format description with every callback. Build that
+/// immutable producer metadata once; PCM/sample allocation and all first decoder
+/// work still happen inside each measured capture cycle.
+private struct ProductionAudioBufferFactory: @unchecked Sendable {
+  let format: AVAudioFormat
+  let description: CMAudioFormatDescription
+
+  init() throws {
+    let start = ContinuousClock.now
+    format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
+    var description: CMAudioFormatDescription?
+    let status = CMAudioFormatDescriptionCreate(
+      allocator: kCFAllocatorDefault, asbd: format.streamDescription,
+      layoutSize: 0, layout: nil, magicCookieSize: 0,
+      magicCookie: nil, extensions: nil, formatDescriptionOut: &description)
+    try #require(status == noErr)
+    self.description = try #require(description)
+    print("PRODUCTION_INPUT_SETUP format_description_ms=\(milliseconds(start, .now))")
+  }
+
+  func sample(at time: CMTime) throws -> CMSampleBuffer {
+    let pcm = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 320))
+    pcm.frameLength = 320
+    for frame in 0..<320 { pcm.floatChannelData![0][frame] = 0.25 }
+    var timing = CMSampleTimingInfo(
+      duration: CMTime(value: 1, timescale: 16_000),
+      presentationTimeStamp: time, decodeTimeStamp: .invalid)
+    var sample: CMSampleBuffer?
+    #expect(
+      CMSampleBufferCreateReady(
+        allocator: kCFAllocatorDefault, dataBuffer: nil,
+        formatDescription: description, sampleCount: 320, sampleTimingEntryCount: 1,
+        sampleTimingArray: &timing, sampleSizeEntryCount: 0, sampleSizeArray: nil,
+        sampleBufferOut: &sample) == noErr)
+    let result = try #require(sample)
+    #expect(
+      CMSampleBufferSetDataBufferFromAudioBufferList(
+        result, blockBufferAllocator: kCFAllocatorDefault,
+        blockBufferMemoryAllocator: kCFAllocatorDefault, flags: 0,
+        bufferList: pcm.audioBufferList) == noErr)
+    return result
+  }
+}
+
+private func productionCaptureCommit(
+  sink: CaptureStreamSink, repository: LocalRepository, session: CaptureArchiveSession,
+  microphoneID: ObjectIdentifier, applicationID: ObjectIdentifier, second: Int,
+  input: ProductionAudioBufferFactory
+) async throws -> ProductionCaptureCommit {
+  let start = ContinuousClock.now
+  for part in 0..<50 {
+    let time = CMTime(value: Int64(second * 50 + part), timescale: 50)
+    let sample = try input.sample(at: time)
+    #expect(sink.enqueue(sample, role: .microphone, streamID: microphoneID, deliveredAt: time))
+    #expect(sink.enqueue(sample, role: .application, streamID: applicationID, deliveredAt: time))
+  }
+  let submittedAt = ContinuousClock.now
+  while sink.ingressStatistics.pendingBuffers > 0 {
+    try await sink.perform { _ in }
+  }
+  let advanceQueuedAt = ContinuousClock.now
+  let (advanceStartedAt, witness, witnessedAt) = try await sink.perform { engine in
+    let began = ContinuousClock.now
+    try engine.advance(at: CMTime(value: Int64((second + 1) * 4 + 1), timescale: 4))
+    // Independent SQL publication witness, after synchronous media/index sync + COMMIT.
+    // The timestamp follows the query and its validation, on the engine queue.
+    let confirmed = try repository.confirmedMediaCursor(callID: session.callID)
+    let witness = try #require(confirmed)
+    try #require(witness.frames == Int64(second + 1) * 16_000)
+    return (began, witness, ContinuousClock.now)
+  }
+  return .init(
+    startedAt: start, submittedAt: submittedAt, advanceQueuedAt: advanceQueuedAt,
+    advanceStartedAt: advanceStartedAt, witnessedAt: witnessedAt, resumedAt: .now,
+    witness: witness)
+}
+
+@Test func productionDurabilityIsRecoverableWhileItsObserverIsDelayed() async throws {
+  let root = repositoryRoot("delayed-observer")
+  let recoveredRoot = root.appendingPathComponent("reopened-master")
+  defer { try? FileManager.default.removeItem(at: root) }
+  let session = try repositorySession(root)
+  try await session.prepare()
+  let repository = try LocalRepository(root: root, archiveID: session.archiveID)
+  let queue = DispatchQueue(label: "trigo.test.delayed-observer", qos: .userInteractive)
+  let sink = try CaptureStreamSink(
+    session: session, queue: queue, origin: .zero,
+    microphone: session.microphone, onSnapshot: { _ in },
+    onMicrophoneFailure: { _ in Issue.record("Unexpected microphone failure") },
+    onFailure: { reason in Issue.record("Unexpected production sink failure: \(reason)") })
+  let (microphone, application) = await MainActor.run {
+    (RecordingTransportFixture(), RecordingTransportFixture())
+  }
+  sink.acceptMicrophoneStream(microphone)
+  sink.acceptApplicationStream(application)
+  let input = try ProductionAudioBufferFactory()
+
+  // Hold publication of the first result to its observer. The capture queue stays
+  // runnable; recovery and another real input/commit must finish before release.
+  let producer = Task {
+    let first = try await productionCaptureCommit(
+      sink: sink, repository: repository, session: session,
+      microphoneID: ObjectIdentifier(microphone), applicationID: ObjectIdentifier(application),
+      second: 0, input: input)
+    #expect(try repository.confirmedMediaCursor(callID: session.callID) == first.witness)
+    try FileManager.default.copyItem(at: session.mediaDirectory, to: recoveredRoot)
+    let reopened = try RecoverableMediaMaster(
+      reopening: recoveredRoot, expectedIdentity: session.mediaMasterIdentity,
+      confirmed: first.witness)
+    #expect(reopened.cursor == first.witness)
+    #expect(reopened.discardedTailBytes == 0)
+    #expect(reopened.cursor.frames == 16_000)
+    let stable = try reopened.readStableBytes(in: 0..<first.witness.stableBytes)
+    let second = try await productionCaptureCommit(
+      sink: sink, repository: repository, session: session,
+      microphoneID: ObjectIdentifier(microphone), applicationID: ObjectIdentifier(application),
+      second: 1, input: input)
+    #expect(second.witness.frames == 32_000)
+    #expect(second.witness.commitCount > first.witness.commitCount)
+    let stillStable = try Data(
+      contentsOf: session.mediaDirectory.appendingPathComponent("master.caf")
+    )
+    .prefix(stable.count)
+    #expect(Data(stillStable) == stable)
+    // This delay is strictly after the first SQL witness and verified queue progress.
+    try await Task.sleep(for: .milliseconds(1100))
+    return first
+  }
+  let first = try await producer.value
+  let observedAt = ContinuousClock.now
+  let callerSeconds = elapsedSeconds(first.startedAt.duration(to: observedAt))
+  print(first.phases(boundary: "delayed-observer", observedAt: observedAt))
+  #expect(1 + callerSeconds > 2)
+  #expect(1 + first.durabilitySeconds <= 2)
+  print(
+    "PRODUCTION_DELAYED_OBSERVER durable_ms=\(milliseconds(first.startedAt, first.witnessedAt)) caller_ms=\(callerSeconds * 1000) post_witness_observer_ms=\(milliseconds(first.witnessedAt, observedAt)) recovered_frames=16000 progressed_frames=32000 stable_prefix=unchanged"
+  )
+  let result = try await sink.finish(at: CMTime(value: 2, timescale: 1), reason: nil)
+  let complete = try await session.complete(media: result.0, interruptionReason: nil)
+  #expect(complete.call.durationMs == 2000)
+  let spans = try repository.captureIntervals(callID: session.callID, through: result.0.cursor)
+  #expect(spans.allSatisfy { $0 == [.init(startMs: 0, endMs: 2000, state: .recorded)] })
 }
