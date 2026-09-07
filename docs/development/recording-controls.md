@@ -14,7 +14,10 @@ while remote health is checking, unavailable, unauthorized or incompatible.
 Server operations remain separately blocked. The retained binding supplies the
 archive ID; the app namespace supplies the local archive root.
 
-Start/shortcut checks the current OS readiness and never requests permissions.
+Start/shortcut checks current OS readiness. Application readiness code makes
+explicit authorization requests only through Enable actions. Invoking
+ScreenCaptureKit may independently display macOS-controlled consent/reminder UI
+even when CoreGraphics preflight reports granted access.
 Before a call, use **Capture readiness** to explicitly enable screen/system-audio
 and microphone access separately; Settings/retry guidance distinguishes unavailable
 access and credential failures. After granting access, focus the target and press

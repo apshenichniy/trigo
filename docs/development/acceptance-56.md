@@ -155,12 +155,23 @@ record the final commit and the acceptance-only post-gate difference.
 
 ## Remaining acceptance
 
-#57 owns the final signed installed build and performed controlled capture,
-recovery, local authenticated status, unchanged relaunch and supported rebuild
-observations. The Allow/Always Allow dialog requester and cause remain unconfirmed.
-The existing #55 controlled fixture and procedure remain its supported preparation;
-this task does not launch/install an app, request consent, touch private data or
-operate on installed Keychain items.
+At the original #56 worker handoff on 2026-09-07, the reported Allow/Always Allow
+dialog requester and cause were unconfirmed. That worker did not launch/install
+an app, request consent, touch private data or operate on installed Keychain items.
+The later [#57 owner observation](acceptance-55.md#scope-and-diagnosis) identifies
+Trigo Dev direct screen/system-audio consent/reminder UI, with Allow / Open System
+Settings buttons. No Allow action is confirmed; repeated prompt cadence and the
+cause of the earlier recurrence remain unconfirmed. This later observation is
+separate from #56's worker-only evidence.
+
+The later [#57 installed evidence](acceptance-57.md) records controlled capture,
+process recovery, source exit, ordinary Quit/relaunch and authenticated unchanged
+connection validation. It also records the final clean signed rebuild and its
+separate app-status observation. Built-in-only hardware leaves physical microphone
+unplug/reconnect unavailable; physical permission revocation and credential-error
+conditions were not exercised. The intermittent installed startup overflow remains
+unresolved and owner-deferred in [#60](https://github.com/apshenichniy/trigo/issues/60).
+These are later #57 results, not installed observations by the #56 worker.
 
 The handoff preserves #13's hosted master/Nova-3 compatibility gate, #32's
 infrastructure recovery gate before first personal deployment, and #10's upload

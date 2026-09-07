@@ -6,15 +6,32 @@ Implemented from accepted integration `4564e3f4643ad94a724bb512a14c56d784025192`
 on `codex/epic-48-issue-55`. This document covers [#55](https://github.com/apshenichniy/trigo/issues/55)
 and section 5 of [#48](https://github.com/apshenichniy/trigo/issues/48).
 
-The owner's **Allow / Always Allow dialog remains unconfirmed**: its requester,
-category and exact text have not been captured in this work. No installed app was
-launched, no OS consent was automated, and no regular or personal credential was
-read or modified. Source inspection cannot establish that this was Keychain,
-TCC, a signing-key request or another process. No Keychain backend migration,
-capture-API replacement, weakened access policy or global reset was attempted.
+During the original #55 worker checks, the reported dialog's requester and
+category had not been captured. That work launched no installed app, automated
+no OS consent, and read or modified no regular or personal credential. No Keychain
+backend migration, capture-API replacement, weakened access policy or global
+reset was attempted.
 
-The diagnosis used the `diagnosing-bugs` workflow. The exact reported dialog lacks
-a reproducible captured instance, so no causal hypothesis is promoted to a fix.
+The later #57 owner screenshot identifies a **Trigo Dev direct screen/system-audio
+access consent/reminder**, with **Allow** and **Open System Settings** buttons.
+The owner recognized it as the reported recurring window and clarified that they
+were checking source activation, without intending to record Telegram. They
+reported closing the window; **no Allow action is confirmed**. This establishes
+the observed dialog category, not Keychain access. The screenshot and clarification
+are retained in `/tmp/trigo-epic-48/57-owner-screen-picker-consent.json`.
+
+Both later diagnostic observations (`57-diagnostic-observation-01.json` and
+`57-diagnostic-observation-02.json`) report no system dialog. The first did not
+start capture; the second recorded a short controlled capture lifecycle. These
+observations do not establish repeated prompt cadence or the cause of the earlier
+recurrence. The installed `capture_queue_overflow` remains unresolved and
+owner-deferred in [#60](https://github.com/apshenichniy/trigo/issues/60).
+The [later installed #57 evidence](acceptance-57.md) records performed controlled
+capture/recovery and unchanged relaunch/validation separately, including each
+unperformed physical boundary.
+
+The original diagnosis used the `diagnosing-bugs` workflow. It did not establish
+the cause of the owner's recurring dialog.
 A separate red-capable loop establishes the confirmed Start/readiness defect:
 
 ```sh
@@ -26,13 +43,17 @@ mise exec -- swift test --package-path apps/macos \
 Before the change, both permission-denied cases observed one request from Start
 instead of zero (`55-readiness-red.log`, two failures, 0.004 s). This tests the
 permission-action boundary; it does **not** reproduce the reported system dialog.
-The installed procedure below provides the missing observation boundary.
+The installed procedure below covers the remaining observation boundaries.
 
 ## Delivered behavior
 
 - Capture readiness appears in the connection window and recording controls.
   Screen/system-audio and microphone have separate explicit enable/Settings
-  actions. Start only refreshes and explains missing access; it never requests it.
+  actions. Application readiness code makes explicit authorization requests only
+  through Enable actions; Start refreshes and explains missing access. Invoking
+  ScreenCaptureKit may independently display macOS-controlled consent/reminder UI
+  even when CoreGraphics preflight reports granted access. This is not a promise
+  of prompt-free capture.
   Setup selects no source. Existing application selection/pinning remains intact.
 - Readiness refreshes on app activation, wake, input-device connection/disconnection,
   view appearance, manual refresh and Start. Microphone not-determined, authorized,
@@ -194,11 +215,11 @@ Do not repeat a consent round merely to accept this intermediate worker build.
     and app-owned item until evidence review; do not remove arbitrary Keychain items,
     archive files or TCC entries. Record every unperformed scenario as pending.
 
-| Observation                                                | Current evidence                                                                           |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Reported Allow / Always Allow requester/cause              | **Unconfirmed**; no captured installed reproduction                                        |
-| App-owned credentials across unchanged launch/save/rebuild | **Pending #57**; deterministic identity/transaction tests are separate                     |
-| First grant, denial and revocation on installed app        | **Pending #57**; OS state/action boundaries are tested with injected adapters              |
-| Locked/inaccessible credential on installed app            | **Pending where observable**; status classification is deterministic, no global lock/reset |
-| Signed build, exact namespace and isolated local runtime   | Prepared from the #55 worker snapshot; final #57 source must be prepared again             |
-| Controlled capture/source/microphone observations          | Fixture prepared; physical execution and retained media inspection remain #57              |
+| Observation                                                                        | Current evidence                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owner-identified screen/audio dialog (previously recalled as Allow / Always Allow) | **Category observed in #57**: Trigo Dev direct screen/system-audio consent/reminder, with Allow / Open System Settings. Owner reported closing the window; no Allow action confirmed. Earlier recurrence cause and repeated prompt cadence remain unconfirmed.                                                                                                                     |
+| App-owned credentials across unchanged launch/save/rebuild                         | **Performed in #57**: unchanged relaunch/save explicitly authenticated with no owner-observed system dialogs; final supported rebuild retained the account and the owner reported a successful requested check and granted permissions. The final reply did not separately quote status/dialog wording; see [installed evidence](acceptance-57.md#supported-clean-signed-rebuild). |
+| First grant, denial and revocation on installed app                                | **Unperformed in #57**; observed grants and actual capture are separate from physical first-grant/denial/revocation. Injected adapters cover OS state/action boundaries.                                                                                                                                                                                                           |
+| Locked/inaccessible credential on installed app                                    | **Pending where observable**; status classification is deterministic, no global lock/reset                                                                                                                                                                                                                                                                                         |
+| Signed build, exact namespace and isolated local runtime                           | Original #55 preparation retained as history; [#57](acceptance-57.md#exact-candidate-and-environment) records final clean integrated source, signed install and stable isolated namespace/runtime.                                                                                                                                                                                 |
+| Controlled capture/source/microphone observations                                  | [Performed in #57](acceptance-57.md#acceptance-results-and-limitations): controlled mic/focus/mute, process recovery and source exit. Physical unplug/reconnect is unavailable with built-in-only hardware; intermittent startup overflow remains owner-deferred.                                                                                                                  |

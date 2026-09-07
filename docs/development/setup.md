@@ -343,18 +343,27 @@ Ordinary builds, tests and CI need no owner signing credentials. Public Develope
 publication remain #4. Archives live under `.local/archives/`.
 
 Use **Capture readiness** in the connection window or recording panel before a call.
-Enable screen/system-audio and microphone access separately. Start and lifecycle
-refreshes only check readiness; they do not request permission. Return from Settings
-or click **Refresh readiness** after changing access. Microphone denial/restriction,
+Enable screen/system-audio and microphone access separately. Application readiness
+code makes explicit authorization requests only through Enable actions; Start and
+lifecycle refreshes check readiness. Invoking ScreenCaptureKit may independently
+display macOS-controlled consent/reminder UI even when CoreGraphics preflight
+reports granted access. Return from Settings or click **Refresh readiness** after
+changing access. Microphone denial/restriction,
 input-device absence and effective recording mute are separate states. Screen
 preflight false means access is required; it does not identify denial versus revocation.
 The supported capture adapter remains ScreenCaptureKit. See the controlled
 [installed acceptance procedure](acceptance-55.md#installed-acceptance-procedure) for
-observations that require the owner's Mac. The reported Allow/Always Allow dialog
-requester and cause remain unconfirmed until observed. Normal unchanged app/item
-relaunch and a supported signed rebuild must be observed separately in #57, using
-the same worktree, bridge, app path and signing identity. A local CLI smoke or
-mocked permission test does not establish OS or app-owned Keychain continuity.
+observations that require the owner's Mac. The later [owner observation](acceptance-55.md#scope-and-diagnosis)
+identifies Trigo Dev direct screen/system-audio consent/reminder UI, with **Allow**
+and **Open System Settings** buttons. No Allow action is confirmed; repeated prompt
+cadence and the cause of the earlier recurrence remain unconfirmed. The
+[installed #57 record](acceptance-57.md) distinguishes performed unchanged
+relaunch/validation and supported signed rebuild evidence, using the same worktree,
+bridge, app path and signing identity. A local CLI smoke or mocked permission test
+does not establish OS or app-owned Keychain continuity. Physical permission
+revocation and microphone unplug/reconnect were not exercised; the owner had only
+the built-in microphone. Intermittent installed startup overflow remains an
+unresolved, owner-deferred [follow-up](https://github.com/apshenichniy/trigo/issues/60).
 
 ## Generation and dependency updates
 
