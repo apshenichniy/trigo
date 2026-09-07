@@ -16,8 +16,8 @@ Baseline: `36d381e2a6b0eb5d32f0f619625650ef88b4febc`.
 | #52   | SQLite archive and durable operations   | Implemented; transaction/recovery checks passed; shared contention acceptance follows the current #53 evidence ([evidence](acceptance-52.md))                               |
 | #53   | Production stereo master recording      | Implemented; current durability and contention verification is recorded in the linked evidence ([evidence](acceptance-53.md)); current integration CI is reported in the PR |
 | #54   | Shared local/cloud product HttpApi      | Implemented; local server/native/offline checks passed; current integration CI is reported in the PR ([evidence](acceptance-54.md))                                         |
-| #55   | Permissions and Keychain readiness      | Implemented; local gates passed; integrated CI pending. Installed credential/permission observations remain in #57 ([evidence](acceptance-55.md))                           |
-| #56   | Commands and architecture documentation | Pending                                                                                                                                                                     |
+| #55   | Permissions and Keychain readiness      | Implemented; local and integrated CI passed. Installed credential/permission observations remain in #57 ([evidence](acceptance-55.md))                                      |
+| #56   | Commands and architecture documentation | Implemented; final local gates and isolated resource proofs passed; integration CI is reported in the PR ([evidence](acceptance-56.md))                                     |
 | #57   | Installed signed app acceptance         | Pending owner-assisted execution                                                                                                                                            |
 
 ## Contention correction
@@ -160,7 +160,46 @@ unchanged two-second limit. The actual native/local smoke passed in 19.082 s und
 external network denial. Final source identity and the separate signed preparation
 are recorded in [the #55 evidence](acceptance-55.md). Raw logs are
 `55-check-server-final.log` and `55-check-macos-final.log` under
-`/tmp/trigo-epic-48/`. Integrated CI is pending publication of this slice.
+`/tmp/trigo-epic-48/`. Both jobs of [CI run 34119318519](https://github.com/apshenichniy/trigo/actions/runs/34119318519)
+passed on `e0ab70a6f70b94f9a89b91ae8cae01335caed833`. Server took 75 s and
+macOS 556 s, with both native cache misses. Locked setup, nine contract tests,
+all 169 native tests in 165.328 s, both Debug apps, the actual sandboxed
+native/local smoke in 17.319 s, nested-lock restoration and clean-checkout
+checks passed. Each contention case completed 120 commits and all background
+work; maximum input-through-durability envelopes were 1,338.214/1,202.075 ms.
+The delayed observer reached durability in 568.663 ms and verified recovery and
+further capture progress before its caller completed in 6,618.790 ms. Both jobs
+checked out `48772ec08b82601ef602e46913f99d6318c7ed7f`, whose whole tree matched
+the published PR tip. The signed worker preparation is retained at
+`/tmp/trigo-epic-48/55-signed-candidate.app`; its signature/CDHash match the
+original prepared bundle. Actual installed observations remain #57.
+
+## Final command and architecture entrypoint
+
+#56 makes the current architecture and setup the documented entrypoint. Thin
+command wrappers reject unknown/duplicate options and missing values before side
+effects, while existing cloud account/stage, signing and credential policies keep
+their ownership. The confirmed unused placeholder is removed, and ordinary source
+searches exclude the pinned read-only Effect reference without blocking explicit
+reference searches. Native capture, repository code, fixtures, cadence, resource
+limits and dependency locks remain unchanged.
+
+Both final local gates passed: 338 unit tests, 36 Workers tests, nine Swift contract
+tests and 169 native tests in 286.012 s, formatting/lint/types, deterministic
+contracts, both Worker bundles and both Debug apps. The native/local smoke passed
+under external network denial in 26.418 s. Dense and production contention
+completed 260/261 commits and all background work; maximum complete envelopes were
+1,652.748/1,604.164 ms, below the unchanged two-second limit.
+
+The same Release test binary then passed isolated one- and three-hour production
+fixtures through full extraction. Their peak RSS was 50,806,784 B and 54,771,712 B,
+below 80 MiB. They verified 57,600,000/172,800,000 frames and
+230,400,068/691,200,068 bytes; elapsed test times were 34.432/115.225 s.
+Source-relative one-hour drift remained 0 ms in the full gate. Source and binary
+identity, detailed phase timings and unchanged-output proof are recorded in
+[the #56 evidence](acceptance-56.md); raw logs are `56-*` under
+`/tmp/trigo-epic-48/`. Current integration CI remains in the PR until its result
+is recorded. Signed installed observations still belong to #57.
 
 ## Completion boundary
 
