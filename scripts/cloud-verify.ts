@@ -1,14 +1,16 @@
 import { spawnSync } from "node:child_process";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { Config, Console, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
+
 import type { OwnerToken } from "../apps/server/src/owner-state.ts";
 import { validateDocument } from "../packages/contracts/src/index.ts";
-import type { CloudTarget } from "./cloud.ts";
-import { cloudDeploymentIdentity, cloudTargetFor } from "./cloud.ts";
 import type { OwnerHandoff, OwnerHandoffTarget } from "./cloud-owner.ts";
 import { ownerHandoffTarget, readOwnerHandoff } from "./cloud-owner.ts";
+import type { CloudTarget } from "./cloud.ts";
+import { cloudDeploymentIdentity, cloudTargetFor } from "./cloud.ts";
 
 export type CloudVerification =
   | { readonly stage: "dev"; readonly mode: "inspect" }
@@ -43,20 +45,26 @@ const D1FixtureResult = Schema.Array(
 const decodeD1FixtureResult = Schema.decodeUnknownEffect(Schema.fromJsonString(D1FixtureResult));
 
 export function parseCloudVerification(args: readonly string[]): CloudVerification {
-  if (args[0] !== "--stage" || args[1] !== "dev")
+  if (args[0] !== "--stage" || args[1] !== "dev") {
     throw new Error("Cloud verification requires --stage dev");
-  if (args.length === 2) return { stage: "dev", mode: "inspect" };
+  }
+  if (args.length === 2) {
+    return { stage: "dev", mode: "inspect" };
+  }
   const flag = args[2];
   const value = args[3];
   if (args.length === 4 && flag === "--owner-handoff" && value !== undefined) {
-    if (!isAbsolute(value)) throw new Error("Pass an absolute path after --owner-handoff");
+    if (!isAbsolute(value)) {
+      throw new Error("Pass an absolute path after --owner-handoff");
+    }
     return { stage: "dev", mode: "owner", handoffPath: value };
   }
   const fixtureId = value;
-  if (args.length !== 4 || (flag !== "--seed" && flag !== "--verify") || fixtureId === undefined)
+  if (args.length !== 4 || (flag !== "--seed" && flag !== "--verify") || fixtureId === undefined) {
     throw new Error(
       "Use test:cloud --stage dev, --seed <fixture-id>, --verify <fixture-id>, or --owner-handoff <absolute-path>",
     );
+  }
   return { stage: "dev", mode: flag === "--seed" ? "seed" : "verify", fixtureId };
 }
 
@@ -72,36 +80,43 @@ export const verifyCloudOwnerStatus = Effect.fn("CloudVerifier.ownerStatus")(fun
   expectedTarget: OwnerHandoffTarget,
   boundary: CloudOwnerStatusBoundary,
 ) {
-  if (handoff.stage !== stage)
+  if (handoff.stage !== stage) {
     return yield* cloudVerificationError(`Owner handoff stage mismatch: expected ${stage}`);
+  }
   if (
     handoff.target.accountId !== expectedTarget.accountId ||
     handoff.target.databaseName !== expectedTarget.databaseName ||
     handoff.target.deploymentIdentity !== expectedTarget.deploymentIdentity
-  )
+  ) {
     return yield* cloudVerificationError("Owner handoff does not match the verified cloud target");
-  if (handoff.action === "revoke")
+  }
+  if (handoff.action === "revoke") {
     return yield* cloudVerificationError("A revoked owner handoff cannot authenticate status");
+  }
   const response = yield* boundary.status(handoff.token);
-  if (response.status < 200 || response.status >= 300)
+  if (response.status < 200 || response.status >= 300) {
     return yield* cloudVerificationError(
       `Authenticated owner status failed with HTTP ${response.status}`,
     );
+  }
   const status = yield* Effect.try({
     try: () => validateDocument("StatusResponse", response.body),
     catch: (cause) => cloudVerificationError("Owner status does not match StatusResponse", cause),
   });
-  if (status.stage !== stage)
+  if (status.stage !== stage) {
     return yield* cloudVerificationError(`Owner status stage mismatch: expected ${stage}`);
-  if (handoff.action === "initialize" && status.archiveId !== handoff.archiveId)
+  }
+  if (handoff.action === "initialize" && status.archiveId !== handoff.archiveId) {
     return yield* cloudVerificationError("Owner status returned an unexpected archive identity");
+  }
   if (
     status.readiness.archive !== "ready" ||
     status.readiness.ownerAuthentication !== "ready" ||
     status.readiness.transcription !== "not_verified" ||
     status.readiness.callOperations !== "unavailable"
-  )
+  ) {
     return yield* cloudVerificationError("Owner status returned unexpected issue #30 readiness");
+  }
   return status;
 });
 
@@ -160,10 +175,11 @@ export function makeWranglerBoundary(
         : devUrl.includes("Public access via the r2.dev URL is disabled")
           ? false
           : undefined;
-      if (publicAccess === undefined)
+      if (publicAccess === undefined) {
         return cloudVerificationError(
           `Wrangler returned an unknown R2 development URL status: ${target.resources.archiveBucket}`,
         );
+      }
       return Effect.succeed({
         publicAccess,
         customDomainCount: domains.includes("There are no custom domains connected to this bucket")
@@ -254,26 +270,30 @@ export const inspectCloudInfrastructure = Effect.fn("CloudVerifier.inspect")(fun
     deployment === null ||
     Array.isArray(deployment) ||
     Object.keys(deployment).length === 0
-  )
+  ) {
     return yield* cloudVerificationError(
       `Cloud Worker deployment status is malformed: ${target.resources.apiWorker}`,
     );
+  }
 
   const r2Exposure = yield* boundary.r2Exposure;
-  if (r2Exposure.publicAccess)
+  if (r2Exposure.publicAccess) {
     return yield* cloudVerificationError(
       `R2 public access is enabled: ${target.resources.archiveBucket}`,
     );
-  if (r2Exposure.customDomainCount !== 0)
+  }
+  if (r2Exposure.customDomainCount !== 0) {
     return yield* cloudVerificationError(
       `R2 custom domains are present: ${target.resources.archiveBucket}`,
     );
+  }
 
   const response = yield* boundary.infrastructure;
-  if (response.status < 200 || response.status >= 300)
+  if (response.status < 200 || response.status >= 300) {
     return yield* cloudVerificationError(
       `Cloud infrastructure endpoint failed: ${apiUrl} (${response.status})`,
     );
+  }
   const reported = response.body;
   const expectedIdentity = cloudDeploymentIdentity(target, accountId);
   const reportedIdentity =
@@ -294,12 +314,13 @@ export const inspectCloudInfrastructure = Effect.fn("CloudVerifier.inspect")(fun
     Object.entries(expectedBindings).some(
       ([key, expected]) => Reflect.get(bindings, key) !== expected,
     )
-  )
+  ) {
     return yield* cloudVerificationError(
       reportedIdentity !== expectedIdentity
         ? "Cloud infrastructure endpoint reported an unexpected target identity"
         : "Cloud infrastructure endpoint reported unexpected bindings",
     );
+  }
 
   return {
     stage: target.stage,
@@ -316,8 +337,9 @@ const fixture = Effect.fn("CloudVerifier.fixture")(function* (
   target: CloudTarget,
   fixtureId: string,
 ) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(fixtureId))
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(fixtureId)) {
     return yield* cloudVerificationError("Cloud fixture ID must be a canonical lowercase UUIDv4");
+  }
   const objectKey = `acceptance/issue-29/${fixtureId}.json`;
   return {
     fixtureId,
@@ -333,8 +355,9 @@ export const seedCloudFixture = Effect.fn("CloudVerifier.seedFixture")(function*
   fixtureId: string,
   boundary: CloudFixtureBoundary,
 ) {
-  if (target.stage !== "dev")
+  if (target.stage !== "dev") {
     return yield* cloudVerificationError("Cloud fixtures may target only dev");
+  }
   const expected = yield* fixture(target, fixtureId);
   yield* boundary.putObject(expected.archiveBucket, expected.objectKey, expected.content);
   yield* boundary.writeCatalog(expected.catalogDatabase, fixtureId);
@@ -345,12 +368,14 @@ export const verifyCloudFixture = Effect.fn("CloudVerifier.verifyFixture")(funct
   fixtureId: string,
   boundary: CloudFixtureBoundary,
 ) {
-  if (target.stage !== "dev")
+  if (target.stage !== "dev") {
     return yield* cloudVerificationError("Cloud fixtures may target only dev");
+  }
   const expected = yield* fixture(target, fixtureId);
   const object = yield* boundary.getObject(expected.archiveBucket, expected.objectKey);
-  if (object !== expected.content)
+  if (object !== expected.content) {
     return yield* cloudVerificationError(`R2 fixture changed or is missing: ${fixtureId}`);
+  }
   const catalog = yield* boundary
     .readCatalog(expected.catalogDatabase, fixtureId)
     .pipe(
@@ -362,8 +387,9 @@ export const verifyCloudFixture = Effect.fn("CloudVerifier.verifyFixture")(funct
         ),
       ),
     );
-  if (!catalog.some((statement) => statement.results.some((row) => row.fixture_id === fixtureId)))
+  if (!catalog.some((statement) => statement.results.some((row) => row.fixture_id === fixtureId))) {
     return yield* cloudVerificationError(`D1 fixture changed or is missing: ${fixtureId}`);
+  }
   return {
     fixtureId,
     objectKey: expected.objectKey,
@@ -389,11 +415,14 @@ function productionWranglerRunner(
             input,
           },
         );
-        if (result.error) throw result.error;
-        if (result.status !== 0)
+        if (result.error) {
+          throw result.error;
+        }
+        if (result.status !== 0) {
           throw new Error(
             `Wrangler ${args.slice(0, 3).join(" ")} failed (${result.status ?? result.signal}): ${result.stderr.trim()}`,
           );
+        }
         return result.stdout;
       },
       catch: (cause) => cloudVerificationCause("Wrangler execution failed", cause),
@@ -432,10 +461,11 @@ const main = Effect.gen(function* () {
       cloudVerificationError("Missing CLOUDFLARE_ACCOUNT_ID for test:cloud", cause),
     ),
   );
-  if (!/^[0-9a-f]{32}$/i.test(accountId))
+  if (!/^[0-9a-f]{32}$/i.test(accountId)) {
     return yield* cloudVerificationError(
       "CLOUDFLARE_ACCOUNT_ID must be exactly 32 hexadecimal characters",
     );
+  }
   const apiToken = yield* Config.redacted("CLOUDFLARE_API_TOKEN").pipe(
     Effect.mapError((cause) =>
       cloudVerificationError("Missing CLOUDFLARE_API_TOKEN for test:cloud", cause),

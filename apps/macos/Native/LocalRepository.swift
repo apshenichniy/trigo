@@ -11,7 +11,9 @@ public final class LocalRepository: Sendable {
   public var root: URL { database.root }
 
   public init(
-    root: URL, archiveID: String, interruption: @escaping PersistenceInterruption = { _ in }
+    root: URL,
+    archiveID: String,
+    interruption: @escaping PersistenceInterruption = { _ in }
   ) throws {
     database = try SQLiteDatabase.open(root: root, archiveID: archiveID)
     self.interruption = interruption
@@ -21,14 +23,18 @@ public final class LocalRepository: Sendable {
     let proposed = try Contract.decode(CallDocument.self, bytes: bytes)
     try requireArchiveIdentity(proposed.value.archiveId)
     if let retained = try database.access({
-      try database.rows(
-        "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
-        [.text(proposed.value.callId), .int(proposed.value.documentVersion)]
-      ).first?.string(0)
+      try database
+        .rows(
+          "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
+          [.text(proposed.value.callId), .int(proposed.value.documentVersion)]
+        )
+        .first?
+        .string(0)
     }) {
       guard retained == proposed.sha256, try documentBytes(retained) == bytes else {
         throw LocalPersistenceError.immutableConflict(
-          "\(proposed.value.callId):\(proposed.value.documentVersion)")
+          "\(proposed.value.callId):\(proposed.value.documentVersion)"
+        )
       }
       return .alreadyPresent
     }
@@ -59,10 +65,13 @@ public final class LocalRepository: Sendable {
   public func snapshotBytes(callID: String, version: Int) async throws -> Data {
     try requireCanonicalIdentifier(callID)
     let hash = try database.access {
-      try database.rows(
-        "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
-        [.text(callID), .int(version)]
-      ).first?.string(0)
+      try database
+        .rows(
+          "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
+          [.text(callID), .int(version)]
+        )
+        .first?
+        .string(0)
     }
     guard let hash else { throw LocalPersistenceError.callNotFound(callID) }
     return try documentBytes(hash)
@@ -80,7 +89,10 @@ public final class LocalRepository: Sendable {
       transcriptRevisions: try Dictionary(
         uniqueKeysWithValues: value.revisions.map {
           ($0.revisionId, try documentBytes($0.sha256))
-        }), audioManifest: try value.audioManifest.map { try documentBytes($0.sha256) })
+        }
+      ),
+      audioManifest: try value.audioManifest.map { try documentBytes($0.sha256) }
+    )
   }
 
   public func call(callID: String) async throws -> CallDocument {
@@ -91,7 +103,10 @@ public final class LocalRepository: Sendable {
   }
 
   /// Keyset pagination is the normal list projection, capped per query, with no long reader.
-  public func calls(after callID: String? = nil, limit: Int = 100) async throws
+  public func calls(
+    after callID: String? = nil,
+    limit: Int = 100
+  ) async throws
     -> [LocalCallSummary]
   {
     guard (1...128).contains(limit) else {
@@ -102,14 +117,21 @@ public final class LocalRepository: Sendable {
         """
         SELECT c.call_id, v.version, v.started_at, v.duration_ms, v.capture_state, v.reason
         FROM calls c JOIN call_values v ON v.hash=c.hash WHERE c.call_id>? ORDER BY c.call_id LIMIT ?
-        """, [.text(callID ?? ""), .int(limit)])
+        """,
+        [.text(callID ?? ""), .int(limit)]
+      )
     }
-    return try rows.map { try resolveTextValues($0) }.map {
-      try LocalCallSummary(
-        callID: $0.string(0), documentVersion: $0.int(1), startedAt: $0.string(2),
-        durationMs: $0.optionalInt(3), captureState: captureState($0.string(4)),
-        interruptionReason: $0.optionalString(5))
-    }
+    return try rows.map { try resolveTextValues($0) }
+      .map {
+        try LocalCallSummary(
+          callID: $0.string(0),
+          documentVersion: $0.int(1),
+          startedAt: $0.string(2),
+          durationMs: $0.optionalInt(3),
+          captureState: captureState($0.string(4)),
+          interruptionReason: $0.optionalString(5)
+        )
+      }
   }
 
   public func callIDs() async throws -> [String] {
@@ -141,13 +163,19 @@ public final class LocalRepository: Sendable {
     try validateAudioManifest(document.value, against: current)
     try await stageDocument(bytes)
     try await stageEvidence(
-      hash: document.sha256, kind: "audio", callID: document.value.callId,
-      identity: document.value.manifestId)
+      hash: document.sha256,
+      kind: "audio",
+      callID: document.value.callId,
+      identity: document.value.manifestId
+    )
     return try database.access {
       try database.transaction(interruption: interruption) {
         try commitEvidence(
-          identity: document.value.manifestId, kind: "audio", callID: document.value.callId,
-          hash: document.sha256)
+          identity: document.value.manifestId,
+          kind: "audio",
+          callID: document.value.callId,
+          hash: document.sha256
+        )
       }
     }
   }
@@ -162,8 +190,11 @@ public final class LocalRepository: Sendable {
     return try database.access {
       try database.transaction(interruption: interruption) {
         try commitEvidence(
-          identity: document.value.revisionId, kind: "revision", callID: document.value.callId,
-          hash: document.sha256)
+          identity: document.value.revisionId,
+          kind: "revision",
+          callID: document.value.callId,
+          hash: document.sha256
+        )
       }
     }
   }
@@ -172,10 +203,16 @@ public final class LocalRepository: Sendable {
     try requireCanonicalIdentifier(callID)
     try requireCanonicalIdentifier(revisionID)
     return try documentBytes(
-      requiredEvidence(identity: revisionID, kind: "revision", callID: callID))
+      requiredEvidence(identity: revisionID, kind: "revision", callID: callID)
+    )
   }
 
-  public func setSpeakerName(_ name: String?, callID: String, revisionID: String, speakerID: String)
+  public func setSpeakerName(
+    _ name: String?,
+    callID: String,
+    revisionID: String,
+    speakerID: String
+  )
     async throws -> LocalCallAggregate
   {
     try requireCanonicalIdentifier(revisionID)
@@ -187,14 +224,18 @@ public final class LocalRepository: Sendable {
     let prior = value
     guard let revision = value.revisions.first(where: { $0.revisionId == revisionID }),
       try database.access({
-        try !database.rows(
-          "SELECT speaker_id FROM revision_speakers WHERE hash=? AND speaker_id=?",
-          [.text(revision.sha256), .text(speakerID)]
-        ).isEmpty
+        try
+          !database.rows(
+            "SELECT speaker_id FROM revision_speakers WHERE hash=? AND speaker_id=?",
+            [.text(revision.sha256), .text(speakerID)]
+          )
+          .isEmpty
       })
     else {
       throw LocalPersistenceError.invalidSpeakerReference(
-        revisionID: revisionID, speakerID: speakerID)
+        revisionID: revisionID,
+        speakerID: speakerID
+      )
     }
     if value.speakerNames[revisionID]?[speakerID] == name {
       return try await loadCall(callID: callID)
@@ -204,8 +245,10 @@ public final class LocalRepository: Sendable {
     value.speakerNames[revisionID] = names.isEmpty ? nil : names
     value.documentVersion += 1
     try validatePublication(
-      from: prior, to: value,
-      allowedSpeakerNameChange: .init(revisionID: revisionID, speakerID: speakerID, name: name))
+      from: prior,
+      to: value,
+      allowedSpeakerNameChange: .init(revisionID: revisionID, speakerID: speakerID, name: name)
+    )
     // Encode the new exchange publication once. The unchanged typed evidence and verified
     // speaker membership do not need to be decoded back through the import boundary.
     let document = StoredDocument(value: value, storedBytes: try Contract.encode(value))
@@ -219,7 +262,12 @@ public final class LocalRepository: Sendable {
   }
 
   /// Bounded typed transcript query; staged and unreferenced revisions remain unreachable.
-  public func turns(callID: String, revisionID: String, after ordinal: Int = -1, limit: Int = 100)
+  public func turns(
+    callID: String,
+    revisionID: String,
+    after ordinal: Int = -1,
+    limit: Int = 100
+  )
     async throws -> [LocalTurn]
   {
     guard (1...128).contains(limit), ordinal >= -1 else { throw invalidRow() }
@@ -233,14 +281,23 @@ public final class LocalRepository: Sendable {
         FROM call_revisions r JOIN revision_turns t ON t.hash=r.revision_hash
         LEFT JOIN speaker_names n ON n.hash=r.hash AND n.revision_id=r.revision_id AND n.speaker_id=t.speaker_id
         WHERE r.hash=? AND r.revision_id=? AND t.ordinal>? ORDER BY t.ordinal LIMIT ?
-        """, [.text(hash), .text(revisionID), .int(ordinal), .int(limit)])
+        """,
+        [.text(hash), .text(revisionID), .int(ordinal), .int(limit)]
+      )
     }
-    return try rows.map { try resolveTextValues($0) }.map {
-      try LocalTurn(
-        ordinal: $0.int(0), turnID: $0.string(1), trackID: $0.string(2),
-        speakerID: $0.optionalString(3),
-        startMs: $0.int(4), endMs: $0.int(5), text: $0.string(6), speakerName: $0.optionalString(7))
-    }
+    return try rows.map { try resolveTextValues($0) }
+      .map {
+        try LocalTurn(
+          ordinal: $0.int(0),
+          turnID: $0.string(1),
+          trackID: $0.string(2),
+          speakerID: $0.optionalString(3),
+          startMs: $0.int(4),
+          endMs: $0.int(5),
+          text: $0.string(6),
+          speakerName: $0.optionalString(7)
+        )
+      }
   }
 
   func currentHash(_ callID: String) throws -> String? {
@@ -262,13 +319,19 @@ public final class LocalRepository: Sendable {
     var result: [String: Data] = [:]
     if let audio = call.audioManifest {
       let hash = try requiredEvidence(
-        identity: audio.manifestId, kind: "audio", callID: call.callId)
+        identity: audio.manifestId,
+        kind: "audio",
+        callID: call.callId
+      )
       guard hash == audio.sha256 else { throw ContractError.checksum }
       result[audio.manifestId] = try documentBytes(hash)
     }
     for revision in call.revisions {
       let hash = try requiredEvidence(
-        identity: revision.revisionId, kind: "revision", callID: call.callId)
+        identity: revision.revisionId,
+        kind: "revision",
+        callID: call.callId
+      )
       guard hash == revision.sha256 else { throw ContractError.checksum }
       result[revision.revisionId] = try documentBytes(hash)
     }
@@ -279,8 +342,10 @@ public final class LocalRepository: Sendable {
     guard
       let row = try database.access({
         try database.rows(
-          "SELECT kind,call_id,hash FROM evidence WHERE identity=?", [.text(identity)]
-        ).first
+          "SELECT kind,call_id,hash FROM evidence WHERE identity=?",
+          [.text(identity)]
+        )
+        .first
       }), try row.string(0) == kind, try row.string(1) == callID
     else { throw ContractError.reference }
     return try row.string(2)
@@ -288,28 +353,38 @@ public final class LocalRepository: Sendable {
 
   func validateRevisionAudioReference(_ revision: TranscriptRevision) throws {
     let hash = try requiredEvidence(
-      identity: revision.audioManifest.manifestId, kind: "audio", callID: revision.callId)
+      identity: revision.audioManifest.manifestId,
+      kind: "audio",
+      callID: revision.callId
+    )
     guard hash == revision.audioManifest.sha256 else { throw ContractError.checksum }
   }
 
   func validatePublication(
-    from current: CallDocument, to proposed: CallDocument,
+    from current: CallDocument,
+    to proposed: CallDocument,
     allowedSpeakerNameChange: SpeakerNameChange? = nil
   ) throws {
     guard proposed.documentVersion > current.documentVersion else {
       throw LocalPersistenceError.staleDocumentVersion(
-        current: current.documentVersion, proposed: proposed.documentVersion)
+        current: current.documentVersion,
+        proposed: proposed.documentVersion
+      )
     }
     guard current.callId == proposed.callId, current.archiveId == proposed.archiveId,
       current.startedAt == proposed.startedAt, current.source == proposed.source,
       current.tracks.map(\.trackId) == proposed.tracks.map(\.trackId),
-      zip(current.tracks, proposed.tracks).allSatisfy({
-        $0.role == $1.role && $0.inputDevice == $1.inputDevice
-          && $0.mediaProfileId == $1.mediaProfileId
-      })
+      zip(current.tracks, proposed.tracks)
+        .allSatisfy({
+          $0.role == $1.role && $0.inputDevice == $1.inputDevice
+            && $0.mediaProfileId == $1.mediaProfileId
+        })
     else { throw LocalPersistenceError.immutableConflict(current.callId) }
     try validateEvolution(
-      from: current, to: proposed, allowedSpeakerNameChange: allowedSpeakerNameChange)
+      from: current,
+      to: proposed,
+      allowedSpeakerNameChange: allowedSpeakerNameChange
+    )
   }
 
   func captureChanged(_ a: CallDocument, _ b: CallDocument) -> Bool {
@@ -324,35 +399,51 @@ public final class LocalRepository: Sendable {
     let current = try currentHashLocked(call.callId)
     if current == hash { return .alreadyPresent }
     guard current == expected else { throw LocalPersistenceError.concurrentMutation }
-    if let prior = try database.rows(
-      "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
-      [.text(call.callId), .int(call.documentVersion)]
-    ).first {
+    if let prior =
+      try database.rows(
+        "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
+        [.text(call.callId), .int(call.documentVersion)]
+      )
+      .first
+    {
       guard try prior.string(0) == hash else {
         throw LocalPersistenceError.immutableConflict("\(call.callId):\(call.documentVersion)")
       }
     }
     try database.execute(
       "INSERT INTO calls VALUES (?,?) ON CONFLICT(call_id) DO UPDATE SET hash=excluded.hash",
-      [.text(call.callId), .text(hash)])
+      [.text(call.callId), .text(hash)]
+    )
     try database.execute(
       "INSERT OR IGNORE INTO snapshot_history VALUES (?,?,?)",
-      [.text(call.callId), .int(call.documentVersion), .text(hash)])
+      [.text(call.callId), .int(call.documentVersion), .text(hash)]
+    )
     if current == nil {
       try insertLifecycle(.initial(archiveID: archiveID, callID: call.callId))
     } else {
       try database.execute(
-        "UPDATE lifecycle SET state_version=state_version+1 WHERE call_id=?", [.text(call.callId)])
+        "UPDATE lifecycle SET state_version=state_version+1 WHERE call_id=?",
+        [.text(call.callId)]
+      )
     }
     return .committed
   }
 
-  func commitEvidence(identity: String, kind: String, callID: String, hash: String) throws
+  func commitEvidence(
+    identity: String,
+    kind: String,
+    callID: String,
+    hash: String
+  ) throws
     -> PublicationResult
   {
-    if let row = try database.rows(
-      "SELECT kind,call_id,hash FROM evidence WHERE identity=?", [.text(identity)]
-    ).first {
+    if let row =
+      try database.rows(
+        "SELECT kind,call_id,hash FROM evidence WHERE identity=?",
+        [.text(identity)]
+      )
+      .first
+    {
       guard try row.string(0) == kind, try row.string(1) == callID, try row.string(2) == hash else {
         throw LocalPersistenceError.immutableConflict(identity)
       }
@@ -360,7 +451,8 @@ public final class LocalRepository: Sendable {
     }
     try database.execute(
       "INSERT INTO evidence VALUES (?,?,?,?)",
-      [.text(identity), .text(kind), .text(callID), .text(hash)])
+      [.text(identity), .text(kind), .text(callID), .text(hash)]
+    )
     return .committed
   }
 }

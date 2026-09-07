@@ -30,12 +30,19 @@ private struct StartupAudioPayload: @unchecked Sendable {
     self.holdsStart = holdsStart
     payload = .init(
       sample: try controlledAudioBuffer(
-        sampleRate: 48_000, frames: 4_800, time: .zero, value: 0.25,
-        channels: role == .application ? 2 : 1))
+        sampleRate: 48_000,
+        frames: 4_800,
+        time: .zero,
+        value: 0.25,
+        channels: role == .application ? 2 : 1
+      )
+    )
   }
 
   func addCaptureOutput(
-    _ output: any SCStreamOutput, type: SCStreamOutputType, queue: DispatchQueue
+    _ output: any SCStreamOutput,
+    type: SCStreamOutputType,
+    queue: DispatchQueue
   ) throws {
     sink = try #require(output as? CaptureStreamSink)
   }
@@ -65,18 +72,24 @@ private struct StartupAudioPayload: @unchecked Sendable {
         var timing = CMSampleTimingInfo(
           duration: CMTime(value: 1, timescale: 48_000),
           presentationTimeStamp: CMTimeSubtract(deliveredAt, CMTime(value: 1, timescale: 10)),
-          decodeTimeStamp: .invalid)
+          decodeTimeStamp: .invalid
+        )
         var sample: CMSampleBuffer?
         let status = CMSampleBufferCreateCopyWithNewTiming(
-          allocator: kCFAllocatorDefault, sampleBuffer: payload.sample,
-          sampleTimingEntryCount: 1, sampleTimingArray: &timing, sampleBufferOut: &sample)
+          allocator: kCFAllocatorDefault,
+          sampleBuffer: payload.sample,
+          sampleTimingEntryCount: 1,
+          sampleTimingArray: &timing,
+          sampleBufferOut: &sample
+        )
         guard status == noErr, let sample else {
           Issue.record("Cannot timestamp synthetic PCM")
           continuation.resume(returning: false)
           return
         }
         continuation.resume(
-          returning: sink.enqueue(sample, role: role, streamID: streamID, deliveredAt: deliveredAt))
+          returning: sink.enqueue(sample, role: role, streamID: streamID, deliveredAt: deliveredAt)
+        )
       }
     }
     #expect(accepted)
@@ -112,8 +125,13 @@ private struct StartupAudioPayload: @unchecked Sendable {
   var microphone: StartupAudioTransport
   var failures: [String] = []
   let source = CaptureSource(
-    applicationName: "Synthetic source", bundleID: "test.startup-audio", processID: 123,
-    windowID: 456, windowTitle: nil, processLaunchDate: Date())
+    applicationName: "Synthetic source",
+    bundleID: "test.startup-audio",
+    processID: 123,
+    windowID: 456,
+    windowTitle: nil,
+    processLaunchDate: Date()
+  )
 
   init(delayedMicrophone: Bool) throws {
     application = try .init(role: .application, holdsStart: !delayedMicrophone)
@@ -128,7 +146,10 @@ private struct StartupAudioPayload: @unchecked Sendable {
         microphone: { .init(id: "fixture", name: "Synthetic microphone") },
         stream: { [self] _, configuration, _ in
           configuration.captureMicrophone ? microphone : application
-        }, sourceIsAvailable: { _ in true }))
+        },
+        sourceIsAvailable: { _ in true }
+      )
+    )
     recorder.onFailure = { [weak self] in self?.failures.append($0) }
     return recorder
   }
@@ -149,7 +170,8 @@ private typealias StartupAudioRun = (
 )
 
 @MainActor private func withStartupAudioFixture(
-  delayedMicrophone: Bool, body: @MainActor (StartupAudioRun) async throws -> Void
+  delayedMicrophone: Bool,
+  body: @MainActor (StartupAudioRun) async throws -> Void
 ) async throws {
   let root = masterFixtureRoot()
   let fixture = try StartupAudioFixture(delayedMicrophone: delayedMicrophone)
@@ -178,7 +200,9 @@ private typealias StartupAudioRun = (
 }
 
 @Test(arguments: [false, true]) @MainActor
-func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedMicrophone: Bool)
+func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(
+  delayedMicrophone: Bool
+)
   async throws
 {
   try await withStartupAudioFixture(delayedMicrophone: delayedMicrophone) { run in
@@ -202,7 +226,8 @@ func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedM
       let spans = try repository.captureIntervals(callID: firstSession.callID, through: confirmed)
       #expect(spans[0].allSatisfy { $0.state == .unavailable })
       #expect(
-        spans[1].filter { $0.state == .recorded }.reduce(0) { $0 + $1.endMs - $1.startMs } >= 1000)
+        spans[1].filter { $0.state == .recorded }.reduce(0) { $0 + $1.endMs - $1.startMs } >= 1000
+      )
     }
     _ = try await recorder.stop()
     #expect(recorder.phase == .cancellingStart)
@@ -213,8 +238,12 @@ func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedM
     let stale = try controlledAudioBuffer(sampleRate: 48_000, frames: 480, time: .zero, value: 0.9)
     #expect(
       !oldSink.enqueue(
-        stale, role: .application,
-        streamID: ObjectIdentifier(oldApplication), deliveredAt: .zero))
+        stale,
+        role: .application,
+        streamID: ObjectIdentifier(oldApplication),
+        deliveredAt: .zero
+      )
+    )
     // A fresh call owns fresh transports; late old callbacks cannot consume its capacity.
     fixture.application = try .init(role: .application)
     fixture.microphone = try .init(role: .microphone)
@@ -223,8 +252,12 @@ func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedM
     let nextSink = try #require(fixture.application.sink)
     #expect(
       !nextSink.enqueue(
-        stale, role: .application,
-        streamID: ObjectIdentifier(oldApplication), deliveredAt: .zero))
+        stale,
+        role: .application,
+        streamID: ObjectIdentifier(oldApplication),
+        deliveredAt: .zero
+      )
+    )
     _ = try await recorder.stop()
     #expect(try repository.confirmedMediaCursor(callID: firstSession.callID) == stoppedCursor)
     #expect(recorder.phase == .idle)
@@ -263,13 +296,17 @@ func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedM
     #expect(spans[0].contains { $0.state == .recorded })
     #expect(spans[0].last?.state == .muted)
     #expect(
-      spans[1].filter { $0.state == .recorded }.reduce(0) { $0 + $1.endMs - $1.startMs } >= 500)
+      spans[1].filter { $0.state == .recorded }.reduce(0) { $0 + $1.endMs - $1.startMs } >= 500
+    )
     let file = try AVAudioFile(
-      forReading: session.mediaDirectory.appendingPathComponent("master.caf"))
+      forReading: session.mediaDirectory.appendingPathComponent("master.caf")
+    )
     let pcm = try #require(
       AVAudioPCMBuffer(
         pcmFormat: file.processingFormat,
-        frameCapacity: AVAudioFrameCount(file.length)))
+        frameCapacity: AVAudioFrameCount(file.length)
+      )
+    )
     try file.read(into: pcm)
     let channels = try #require(pcm.floatChannelData)
     for interval in spans[0] where interval.state != .recorded {

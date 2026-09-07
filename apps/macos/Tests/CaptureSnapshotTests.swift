@@ -8,19 +8,32 @@ import TrigoContracts
   let root = masterFixtureRoot()
   defer { try? FileManager.default.removeItem(at: root) }
   let session = try await CaptureArchiveSession.begin(
-    root: root, archiveID: UUID().uuidString.lowercased(),
+    root: root,
+    archiveID: UUID().uuidString.lowercased(),
     source: .init(
-      applicationName: "Réunion / \"会議\"", bundleID: "test.snapshot", processID: 123,
-      windowID: 456, windowTitle: "A\nB\\C", processLaunchDate: Date()),
-    microphone: .init(id: "mic/é", name: "\"Microphone\""))
+      applicationName: "Réunion / \"会議\"",
+      bundleID: "test.snapshot",
+      processID: 123,
+      windowID: 456,
+      windowTitle: "A\nB\\C",
+      processLaunchDate: Date()
+    ),
+    microphone: .init(id: "mic/é", name: "\"Microphone\"")
+  )
   let writer = try CaptureMediaWriter(session: session)
   let timeline = CaptureTimeline(writer: writer)
   try timeline.append(
-    role: .microphone, startFrame: 0, samples: Array(repeating: Int16(5000), count: 32_000))
+    role: .microphone,
+    startFrame: 0,
+    samples: Array(repeating: Int16(5000), count: 32_000)
+  )
   try timeline.setMicrophoneEnabled(false, atMs: 500)
   try timeline.setMicrophoneEnabled(true, atMs: 1500)
   try timeline.append(
-    role: .application, startFrame: 8000, samples: Array(repeating: Int16(-2500), count: 24_000))
+    role: .application,
+    startFrame: 8000,
+    samples: Array(repeating: Int16(-2500), count: 24_000)
+  )
   try timeline.flush(throughMs: 2000)
   let master = try finishCapture(writer, reason: "system_sleep")
   let completion = try await session.complete(media: master, interruptionReason: "system_sleep")
@@ -30,10 +43,14 @@ import TrigoContracts
   let value = try Contract.decode(CallDocument.self, bytes: bytes)
   let audio = try Contract.decode(AudioManifest.self, bytes: session.audioBytes(master))
   let expected = try session.callBytes(
-    media: master, reason: "system_sleep", version: 2,
-    finalized: true, microphoneIntervals: captureIntervals(writer, role: .microphone),
+    media: master,
+    reason: "system_sleep",
+    version: 2,
+    finalized: true,
+    microphoneIntervals: captureIntervals(writer, role: .microphone),
     applicationIntervals: captureIntervals(writer, role: .application),
-    reference: .init(manifestId: session.audioManifestID, sha256: audio.sha256))
+    reference: .init(manifestId: session.audioManifestID, sha256: audio.sha256)
+  )
   #expect(bytes == expected)
   #expect(value.sha256 == completion.snapshotSHA256)
   #expect(bytes.count == completion.snapshotByteLength)

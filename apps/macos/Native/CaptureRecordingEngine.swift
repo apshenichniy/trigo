@@ -29,8 +29,12 @@ public final class CaptureRecordingEngine {
     microphoneDecoder = try CaptureAudioDecoder()
     try timeline.setMicrophoneAvailable(microphone != nil, atMs: 0)
     snapshot = .init(
-      state: .recording, elapsedMs: 0, microphoneEnabled: true,
-      microphone: microphone, interruptionReason: nil)
+      state: .recording,
+      elapsedMs: 0,
+      microphoneEnabled: true,
+      microphone: microphone,
+      interruptionReason: nil
+    )
   }
 
   public func receive(_ sample: CMSampleBuffer, role: MediaSourceRole) throws {
@@ -42,8 +46,11 @@ public final class CaptureRecordingEngine {
       // Reject before conversion: resampler history must never retain suppressed speech.
       if relative * Double(MediaMasterProfile.sampleRate) < Double(microphoneEpochFrame) { return }
     }
-    let decoded = try (role == .microphone ? microphoneDecoder : applicationDecoder).decode(
-      sample, origin: origin)
+    let decoded = try (role == .microphone ? microphoneDecoder : applicationDecoder)
+      .decode(
+        sample,
+        origin: origin
+      )
     if role == .microphone && decoded.startFrame < microphoneEpochFrame { return }
     try timeline.append(role: role, startFrame: decoded.startFrame, samples: decoded.samples)
   }
@@ -62,7 +69,8 @@ public final class CaptureRecordingEngine {
       pendingMs = ms
     }
     try timeline.flush(
-      throughMs: min(max(writer.durationMs, ms - 250), max(writer.durationMs, pendingMs)))
+      throughMs: min(max(writer.durationMs, ms - 250), max(writer.durationMs, pendingMs))
+    )
     snapshot.elapsedMs = ms
   }
 

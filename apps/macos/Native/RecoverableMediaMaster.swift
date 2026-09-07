@@ -29,8 +29,12 @@ public final class RecoverableMediaMaster {
     let header = MediaMasterIndex.header(identity)
     chain = header.suffix(32)
     cursor = .init(
-      identity: identity, frames: 0, stableBytes: 68, commitCount: 0,
-      integritySHA256: chain.masterHex)
+      identity: identity,
+      frames: 0,
+      stableBytes: 68,
+      commitCount: 0,
+      integritySHA256: chain.masterHex
+    )
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     media = try MediaMasterIO.create(directory.appendingPathComponent("master.caf"))
     index = try MediaMasterIO.create(directory.appendingPathComponent("master.index"))
@@ -45,17 +49,23 @@ public final class RecoverableMediaMaster {
   /// Validates every recorded PCM hash with a bounded scan. A repository witness prevents accepting
   /// an index shortened below already-published progress. Reopen preserves allocated identities.
   public convenience init(
-    reopening directory: URL, expectedIdentity: MediaMasterIdentity,
+    reopening directory: URL,
+    expectedIdentity: MediaMasterIdentity,
     confirmed: MediaMasterCursor? = nil
   ) throws {
     try self.init(
-      reopening: directory, expectedIdentity: expectedIdentity, confirmed: confirmed,
-      io: MediaMasterIO())
+      reopening: directory,
+      expectedIdentity: expectedIdentity,
+      confirmed: confirmed,
+      io: MediaMasterIO()
+    )
   }
 
   init(
-    reopening directory: URL, expectedIdentity: MediaMasterIdentity,
-    confirmed: MediaMasterCursor? = nil, io: MediaMasterIO
+    reopening directory: URL,
+    expectedIdentity: MediaMasterIdentity,
+    confirmed: MediaMasterCursor? = nil,
+    io: MediaMasterIO
   ) throws {
     self.directory = directory
     self.io = io
@@ -66,8 +76,12 @@ public final class RecoverableMediaMaster {
     guard identity == expectedIdentity else { throw MediaMasterError.identityMismatch }
     chain = header.suffix(32)
     cursor = .init(
-      identity: identity, frames: 0, stableBytes: 68, commitCount: 0,
-      integritySHA256: chain.masterHex)
+      identity: identity,
+      frames: 0,
+      stableBytes: 68,
+      commitCount: 0,
+      integritySHA256: chain.masterHex
+    )
     guard try media.readMasterBytes(upToCount: 68) == MediaMasterProfile.header else {
       throw MediaMasterError.invalidHeader
     }
@@ -110,11 +124,17 @@ public final class RecoverableMediaMaster {
       else { throw MediaMasterError.corruptIndex(record: sequence) }
       do {
         _ = try MediaMasterIndex.intervals(
-          record, channel: 0, startMs: Int(cursor.frames / 16),
-          countMs: Int((frames - cursor.frames) / 16))
+          record,
+          channel: 0,
+          startMs: Int(cursor.frames / 16),
+          countMs: Int((frames - cursor.frames) / 16)
+        )
         _ = try MediaMasterIndex.intervals(
-          record, channel: 1, startMs: Int(cursor.frames / 16),
-          countMs: Int((frames - cursor.frames) / 16))
+          record,
+          channel: 1,
+          startMs: Int(cursor.frames / 16),
+          countMs: Int((frames - cursor.frames) / 16)
+        )
       } catch { throw MediaMasterError.corruptIndex(record: sequence) }
       let pcm = try media.readMasterBytes(upToCount: Int(bytes - cursor.stableBytes)) ?? Data()
       guard pcm.count == bytes - cursor.stableBytes, pcm.masterSHA256 == hash else {
@@ -123,8 +143,12 @@ public final class RecoverableMediaMaster {
       digest.update(data: pcm)
       chain = record.suffix(32)
       cursor = .init(
-        identity: identity, frames: frames, stableBytes: bytes, commitCount: sequence,
-        integritySHA256: chain.masterHex)
+        identity: identity,
+        frames: frames,
+        stableBytes: bytes,
+        commitCount: sequence,
+        integritySHA256: chain.masterHex
+      )
       if cursor == confirmed { witnessFound = true }
     }
     guard witnessFound else { throw MediaMasterError.confirmedCursorMissing }
@@ -143,7 +167,8 @@ public final class RecoverableMediaMaster {
 
   @discardableResult
   public func append(
-    interleaved: [Int16], microphoneIntervals: [CaptureInterval],
+    interleaved: [Int16],
+    microphoneIntervals: [CaptureInterval],
     applicationIntervals: [CaptureInterval]
   ) throws -> MediaMasterCommit {
     guard !failed, finalized == nil else { throw MediaMasterError.closed }
@@ -154,9 +179,17 @@ public final class RecoverableMediaMaster {
     let milliseconds = frames / 16
     let startMs = Int(cursor.frames / 16)
     let mic = try MediaMasterIndex.states(
-      microphoneIntervals, startMs: startMs, countMs: milliseconds, microphone: true)
+      microphoneIntervals,
+      startMs: startMs,
+      countMs: milliseconds,
+      microphone: true
+    )
     let app = try MediaMasterIndex.states(
-      applicationIntervals, startMs: startMs, countMs: milliseconds, microphone: false)
+      applicationIntervals,
+      startMs: startMs,
+      countMs: milliseconds,
+      microphone: false
+    )
     var samples = interleaved
     var states = Data()
     for ms in 0..<milliseconds {
@@ -172,7 +205,13 @@ public final class RecoverableMediaMaster {
     let endFrame = cursor.frames + Int64(frames)
     let endByte = cursor.stableBytes + Int64(pcm.count)
     let record = MediaMasterIndex.record(
-      final: false, frames: endFrame, bytes: endByte, hash: hash, previous: chain, states: states)
+      final: false,
+      frames: endFrame,
+      bytes: endByte,
+      hash: hash,
+      previous: chain,
+      states: states
+    )
     do {
       try io.writeAll(pcm, to: media)
       try io.event(.beforeMediaSync)
@@ -190,11 +229,19 @@ public final class RecoverableMediaMaster {
     digest.update(data: pcm)
     chain = record.suffix(32)
     cursor = .init(
-      identity: identity, frames: endFrame, stableBytes: endByte,
-      commitCount: cursor.commitCount + 1, integritySHA256: chain.masterHex)
+      identity: identity,
+      frames: endFrame,
+      stableBytes: endByte,
+      commitCount: cursor.commitCount + 1,
+      integritySHA256: chain.masterHex
+    )
     return .init(
-      cursor: cursor, startFrame: startFrame, pcmSHA256: hash.masterHex,
-      microphoneIntervals: microphoneIntervals, applicationIntervals: applicationIntervals)
+      cursor: cursor,
+      startFrame: startFrame,
+      pcmSHA256: hash.masterHex,
+      microphoneIntervals: microphoneIntervals,
+      applicationIntervals: applicationIntervals
+    )
   }
 
   /// The final whole-master digest is independent of the integrity chain and multipart ETags.
@@ -204,7 +251,12 @@ public final class RecoverableMediaMaster {
     if let finalized { return finalized }
     let hash = Data(digest.finalize())
     let record = MediaMasterIndex.record(
-      final: true, frames: cursor.frames, bytes: cursor.stableBytes, hash: hash, previous: chain)
+      final: true,
+      frames: cursor.frames,
+      bytes: cursor.stableBytes,
+      hash: hash,
+      previous: chain
+    )
     do {
       try io.writeAll(record, to: index)
       try io.event(.beforeFinalizationSync)
@@ -240,7 +292,8 @@ public final class RecoverableMediaMaster {
   /// Streams only intersecting records. The consumer must persist/process each callback rather than
   /// collect a whole call. Interval times stay call-relative; channels remain source roles.
   public func forEachCommit(
-    intersecting frames: Range<Int64>, _ consume: (MediaMasterCommit) throws -> Void
+    intersecting frames: Range<Int64>,
+    _ consume: (MediaMasterCommit) throws -> Void
   ) throws {
     guard frames.lowerBound >= 0, frames.upperBound <= cursor.frames else {
       throw MediaMasterError.invalidInput
@@ -263,13 +316,28 @@ public final class RecoverableMediaMaster {
         try consume(
           .init(
             cursor: .init(
-              identity: identity, frames: end, stableBytes: record.integer(at: 16, as: Int64.self),
-              commitCount: sequence, integritySHA256: record.suffix(32).masterHex),
-            startFrame: start, pcmSHA256: record.subdata(in: 24..<56).masterHex,
+              identity: identity,
+              frames: end,
+              stableBytes: record.integer(at: 16, as: Int64.self),
+              commitCount: sequence,
+              integritySHA256: record.suffix(32).masterHex
+            ),
+            startFrame: start,
+            pcmSHA256: record.subdata(in: 24..<56).masterHex,
             microphoneIntervals: MediaMasterIndex.intervals(
-              record, channel: 0, startMs: Int(start / 16), countMs: countMs),
+              record,
+              channel: 0,
+              startMs: Int(start / 16),
+              countMs: countMs
+            ),
             applicationIntervals: MediaMasterIndex.intervals(
-              record, channel: 1, startMs: Int(start / 16), countMs: countMs)))
+              record,
+              channel: 1,
+              startMs: Int(start / 16),
+              countMs: countMs
+            )
+          )
+        )
       }
       start = end
       if start >= frames.upperBound { break }
@@ -279,7 +347,8 @@ public final class RecoverableMediaMaster {
   /// Post-call frame-exact extraction with constant 64 KiB PCM working memory. Output metadata is
   /// delivered incrementally to the caller; no growing whole-call JSON document is constructed.
   public func extract(
-    frames: Range<Int64>, to destination: URL,
+    frames: Range<Int64>,
+    to destination: URL,
     intervals: (MediaMasterSourceIntervals) throws -> Void = { _ in }
   ) throws -> MediaMasterExtraction {
     guard let final = finalized, frames.lowerBound >= 0, frames.upperBound <= cursor.frames,
@@ -313,14 +382,24 @@ public final class RecoverableMediaMaster {
           startFrame: max(frames.lowerBound, commit.startFrame),
           endFrame: min(frames.upperBound, commit.cursor.frames),
           microphoneIntervals: clippedCaptureIntervals(
-            commit.microphoneIntervals, startMs: Int(frames.lowerBound / 16),
-            endMs: Int(frames.upperBound / 16)),
+            commit.microphoneIntervals,
+            startMs: Int(frames.lowerBound / 16),
+            endMs: Int(frames.upperBound / 16)
+          ),
           applicationIntervals: clippedCaptureIntervals(
-            commit.applicationIntervals, startMs: Int(frames.lowerBound / 16),
-            endMs: Int(frames.upperBound / 16))))
+            commit.applicationIntervals,
+            startMs: Int(frames.lowerBound / 16),
+            endMs: Int(frames.upperBound / 16)
+          )
+        )
+      )
     }
     return .init(
-      master: final, startFrame: frames.lowerBound, endFrame: frames.upperBound,
-      sha256: Data(hash.finalize()).masterHex, byteLength: 68 + Int64(frames.count) * 4)
+      master: final,
+      startFrame: frames.lowerBound,
+      endFrame: frames.upperBound,
+      sha256: Data(hash.finalize()).masterHex,
+      byteLength: 68 + Int64(frames.count) * 4
+    )
   }
 }

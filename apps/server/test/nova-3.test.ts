@@ -1,5 +1,6 @@
 import { expect, it } from "@effect/vitest";
 import { Effect } from "effect";
+
 import { normalizeNova3, Nova3NormalizationError } from "../src/nova-3.ts";
 
 const microphoneTrack = "00000000-0000-4000-8000-000000001302";

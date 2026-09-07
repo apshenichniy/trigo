@@ -1,5 +1,6 @@
-import { ErrorEnvelopeSchema, StatusResponse } from "@trigo/contracts";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+
+import { ErrorEnvelopeSchema, StatusResponse } from "@trigo/contracts";
 
 /** The supported product surface; upload/transcription/sync remain unavailable. */
 export const ProductApi = HttpApi.make("trigo").add(

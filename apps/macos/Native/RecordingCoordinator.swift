@@ -25,7 +25,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       permissions: SystemCaptureSource.permissions,
       frontmost: SystemCaptureSource.frontmost,
       requestPermission: SystemCaptureSource.requestPermission,
-      openSettings: { NSWorkspace.shared.open($0.settingsURL) })
+      openSettings: { NSWorkspace.shared.open($0.settingsURL) }
+    )
   }
 }
 
@@ -36,7 +37,10 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
 /// One control owner for the floating panel, global shortcut and application termination.
 @MainActor public final class RecordingCoordinator: ObservableObject {
   @Published public private(set) var connectionSnapshot = ConnectionSnapshot(
-    binding: nil, health: .setupRequired, lastAttemptIssue: nil)
+    binding: nil,
+    health: .setupRequired,
+    lastAttemptIssue: nil
+  )
   @Published public private(set) var isConnecting = false
   @Published public private(set) var capturePermissions: CapturePermissions
   @Published public private(set) var isRequestingPermission = false
@@ -66,12 +70,17 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
 
   public convenience init(connection: ServerConnection, namespace: AppNamespace) {
     self.init(
-      connection: connection, namespace: namespace, capture: ScreenCaptureRecording(),
-      sources: .live)
+      connection: connection,
+      namespace: namespace,
+      capture: ScreenCaptureRecording(),
+      sources: .live
+    )
   }
 
   init(
-    connection: ServerConnection, namespace: AppNamespace, capture: ScreenCaptureRecording,
+    connection: ServerConnection,
+    namespace: AppNamespace,
+    capture: ScreenCaptureRecording,
     sources: RecordingSourceAccess
   ) {
     self.connection = connection
@@ -196,7 +205,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         title: "Open System Settings",
         message: permission == .screenAudio
           ? CaptureStartFailure.screenAudioPermission.recoverySuggestion
-          : CaptureStartFailure.microphonePermission.recoverySuggestion)
+          : CaptureStartFailure.microphonePermission.recoverySuggestion
+      )
     }
   }
 
@@ -345,7 +355,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         if !useFrontmost && pinnedSource == nil {
           notice = .init(
             title: "Choose an application",
-            message: "Focus the target application and use the global recording shortcut.")
+            message: "Focus the target application and use the global recording shortcut."
+          )
           return
         }
         refreshCaptureReadiness()
@@ -353,7 +364,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         if !preflight.ready {
           report(
             preflight.screenAudio
-              ? CaptureStartFailure.microphonePermission : .screenAudioPermission)
+              ? CaptureStartFailure.microphonePermission : .screenAudioPermission
+          )
           return
         }
         let selected: CaptureSource
@@ -364,7 +376,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         } else {
           notice = .init(
             title: "Choose an application",
-            message: "Focus the target application and use the global recording shortcut.")
+            message: "Focus the target application and use the global recording shortcut."
+          )
           return
         }
         guard selected.processID != ProcessInfo.processInfo.processIdentifier else {
@@ -373,8 +386,11 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         pinnedSource = selected
         guard !current.cancelled else { return }
         _ = try CaptureSourceResolver.resolve(
-          permissions: preflight, frontmostPID: selected.processID,
-          ownPID: ProcessInfo.processInfo.processIdentifier, windows: [selected])
+          permissions: preflight,
+          frontmostPID: selected.processID,
+          ownPID: ProcessInfo.processInfo.processIdentifier,
+          windows: [selected]
+        )
         guard case .eligible(let archiveID) = connectionSnapshot.recordingEligibility else {
           return
         }
@@ -394,7 +410,9 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   private func mayStart() -> Bool {
     if case .requiresSetup = connectionSnapshot.recordingEligibility {
       notice = .init(
-        title: "Setup required", message: "Connect to your archive before the first recording.")
+        title: "Setup required",
+        message: "Connect to your archive before the first recording."
+      )
     }
     return canStart
   }

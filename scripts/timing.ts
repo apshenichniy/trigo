@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+
 import { run } from "./process.ts";
 
 export function timedRun(phase: string, command: string[], options?: Parameters<typeof run>[1]) {
@@ -16,10 +17,11 @@ export function timedRun(phase: string, command: string[], options?: Parameters<
       mkdirSync(dirname(file), { recursive: true });
       appendFileSync(file, `${JSON.stringify({ phase, seconds, passed })}\n`);
     }
-    if (process.env.GITHUB_STEP_SUMMARY)
+    if (process.env.GITHUB_STEP_SUMMARY) {
       appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
         `- ${phase}: **${seconds.toFixed(3)} s** (${passed ? "passed" : "failed"})\n`,
       );
+    }
   }
 }

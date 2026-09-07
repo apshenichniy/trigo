@@ -24,7 +24,8 @@ func repositorySIGKILLChild() async throws {
         // modifies existing retained bytes only inside the deliberately doomed transaction.
         try database.execute(
           "UPDATE document_chunks SET bytes=zeroblob(length(bytes)) WHERE hash=?",
-          [.text(Contract.hash(repositoryBallast))])
+          [.text(Contract.hash(repositoryBallast))]
+        )
       }
       _ = Darwin.kill(Darwin.getpid(), SIGKILL)
       while true { Darwin.pause() }
@@ -33,22 +34,33 @@ func repositorySIGKILLChild() async throws {
   let session = fixedRepositorySession(root)
   let callID = phase == "import" ? repositoryCallID : session.callID
   let work = OperationIntent(
-    operationID: repositoryKillOperationID, archiveID: repositoryArchiveID,
-    callID: callID, kind: .replica, payload: Data("joint-work".utf8))
+    operationID: repositoryKillOperationID,
+    archiveID: repositoryArchiveID,
+    callID: callID,
+    kind: .replica,
+    payload: Data("joint-work".utf8)
+  )
   switch phase {
   case "begin": _ = try await repository.beginCapture(session, associatedWork: work)
   case "progress":
     let writer = try RecoverableMediaMaster(
-      reopening: session.mediaDirectory, expectedIdentity: session.mediaMasterIdentity,
-      confirmed: repository.confirmedMediaCursor(callID: callID))
+      reopening: session.mediaDirectory,
+      expectedIdentity: session.mediaMasterIdentity,
+      confirmed: repository.confirmedMediaCursor(callID: callID)
+    )
     try repository.commitMediaProgress(appendRepositorySecond(writer))
   case "finalize":
     _ = try await repository.finalizeCapture(
-      session, master: nil, reason: "system_sleep",
-      associatedWork: work)
+      session,
+      master: nil,
+      reason: "system_sleep",
+      associatedWork: work
+    )
   case "import":
     _ = try await repository.importRevision(
-      repositoryFixture("revision.json"), associatedWork: work)
+      repositoryFixture("revision.json"),
+      associatedWork: work
+    )
   default: throw RepositoryInjectedFailure()
   }
   Issue.record("The child must terminate inside the selected semantic transaction")
@@ -56,7 +68,8 @@ func repositorySIGKILLChild() async throws {
 
 @Test(arguments: ["begin", "progress", "finalize", "import"], [false, true])
 func repositoryRealSIGKILLReopensJointTransactionsIncludingHotJournals(
-  phase: String, afterCommit: Bool
+  phase: String,
+  afterCommit: Bool
 ) async throws {
   let root = repositoryRoot("kill-\(phase)")
   defer { try? FileManager.default.removeItem(at: root) }
@@ -70,13 +83,17 @@ func repositoryRealSIGKILLReopensJointTransactionsIncludingHotJournals(
     var call = try await repository!.call(callID: repositoryCallID)
     call.documentVersion = 2
     call.audioManifest = .init(
-      manifestId: "00000000-0000-4000-8000-000000000004", sha256: Contract.hash(audio))
+      manifestId: "00000000-0000-4000-8000-000000000004",
+      sha256: Contract.hash(audio)
+    )
     _ = try await repository!.publishManifest(Contract.encode(call))
   } else if phase != "begin" {
     _ = try await repository!.beginCapture(session)
     if phase == "progress" {
       let writer = try RecoverableMediaMaster(
-        directory: session.mediaDirectory, identity: session.mediaMasterIdentity)
+        directory: session.mediaDirectory,
+        identity: session.mediaMasterIdentity
+      )
       try repository!.commitMediaProgress(appendRepositorySecond(writer))
     }
   }
@@ -94,7 +111,9 @@ func repositoryRealSIGKILLReopensJointTransactionsIncludingHotJournals(
     [
       "TRIGO_SQLITE_KILL_ROOT": root.path, "TRIGO_SQLITE_KILL_PHASE": phase,
       "TRIGO_SQLITE_KILL_AFTER": afterCommit ? "1" : "0",
-    ], uniquingKeysWith: { _, value in value })
+    ],
+    uniquingKeysWith: { _, value in value }
+  )
   child.standardOutput = FileHandle.nullDevice
   child.standardError = FileHandle.nullDevice
   try child.run()
@@ -124,8 +143,10 @@ func repositoryRealSIGKILLReopensJointTransactionsIncludingHotJournals(
     let witness = try #require(try reopened.confirmedMediaCursor(callID: session.callID))
     #expect(witness.frames == (afterCommit ? 32000 : 16000))
     let media = try RecoverableMediaMaster(
-      reopening: session.mediaDirectory, expectedIdentity: session.mediaMasterIdentity,
-      confirmed: witness)
+      reopening: session.mediaDirectory,
+      expectedIdentity: session.mediaMasterIdentity,
+      confirmed: witness
+    )
     #expect(media.cursor.frames == 32000)
     try media.forEachCommit(intersecting: 0..<media.cursor.frames) {
       _ = try reopened.commitMediaProgress($0)
@@ -142,7 +163,8 @@ func repositoryRealSIGKILLReopensJointTransactionsIncludingHotJournals(
     #expect((try await reopened.call(callID: repositoryCallID).revisions.count == 1) == afterCommit)
     #expect(
       (try await reopened.lifecycle(callID: repositoryCallID)?.importState.state == .imported)
-        == afterCommit)
+        == afterCommit
+    )
     #expect((try await reopened.operation(repositoryKillOperationID) != nil) == afterCommit)
   }
   print(
@@ -152,14 +174,22 @@ func repositoryRealSIGKILLReopensJointTransactionsIncludingHotJournals(
 
 private func fixedRepositorySession(_ root: URL) -> CaptureArchiveSession {
   .init(
-    root: root, archiveID: repositoryArchiveID,
+    root: root,
+    archiveID: repositoryArchiveID,
     callID: "00000000-0000-4000-8000-000000000201",
     microphoneTrackID: "00000000-0000-4000-8000-000000000202",
     applicationTrackID: "00000000-0000-4000-8000-000000000203",
     audioManifestID: "00000000-0000-4000-8000-000000000204",
-    masterID: "00000000-0000-4000-8000-000000000205", startedAt: Date(timeIntervalSince1970: 1000),
+    masterID: "00000000-0000-4000-8000-000000000205",
+    startedAt: Date(timeIntervalSince1970: 1000),
     source: .init(
-      applicationName: "Fixture", bundleID: "fixture.sqlite", processID: 123,
-      windowID: 456, windowTitle: nil, processLaunchDate: Date(timeIntervalSince1970: 100)),
-    microphone: nil)
+      applicationName: "Fixture",
+      bundleID: "fixture.sqlite",
+      processID: 123,
+      windowID: 456,
+      windowTitle: nil,
+      processLaunchDate: Date(timeIntervalSince1970: 100)
+    ),
+    microphone: nil
+  )
 }

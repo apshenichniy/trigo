@@ -15,8 +15,12 @@ public struct LocalDevelopmentConfiguration: Sendable {
 
   public init(worktreeId: String, namespaceId: String, serverURL: URL, ownerToken: String) throws {
     let bridge = LocalDevelopmentBridge(
-      formatVersion: 1, worktreeId: worktreeId, namespaceId: namespaceId,
-      serverURL: serverURL.absoluteString, ownerToken: ownerToken)
+      formatVersion: 1,
+      worktreeId: worktreeId,
+      namespaceId: namespaceId,
+      serverURL: serverURL.absoluteString,
+      ownerToken: ownerToken
+    )
     _ = try Contract.encode(bridge)
     try self.init(validated: bridge, worktree: worktreeId)
   }
@@ -52,9 +56,12 @@ public struct LocalDevelopmentConfiguration: Sendable {
       (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600,
       (attributes[.ownerAccountID] as? NSNumber)?.uint32Value == getuid()
     else { throw LocalDevelopmentError.unsafeConfigurationFile }
-    let bridge = try Contract.decode(
-      LocalDevelopmentBridge.self, bytes: Data(contentsOf: url)
-    ).value
+    let bridge =
+      try Contract.decode(
+        LocalDevelopmentBridge.self,
+        bytes: Data(contentsOf: url)
+      )
+      .value
     return try Self(validated: bridge, worktree: worktree)
   }
 }

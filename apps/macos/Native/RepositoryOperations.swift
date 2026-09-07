@@ -34,24 +34,40 @@ extension LocalRepository {
     return report
   }
 
-  @discardableResult public func markRunning(_ operationID: String) async throws
+  @discardableResult public func markRunning(
+    _ operationID: String
+  ) async throws
     -> JournaledOperation
   {
     try await changeOperation(operationID, phase: .running, incrementAttempt: true, failure: nil)
   }
 
-  @discardableResult public func markBlocked(_ operationID: String, failure: LifecycleFailure)
+  @discardableResult public func markBlocked(
+    _ operationID: String,
+    failure: LifecycleFailure
+  )
     async throws -> JournaledOperation
   {
     try await changeOperation(
-      operationID, phase: .blocked, incrementAttempt: false, failure: failure)
+      operationID,
+      phase: .blocked,
+      incrementAttempt: false,
+      failure: failure
+    )
   }
 
-  @discardableResult public func markFailed(_ operationID: String, failure: LifecycleFailure)
+  @discardableResult public func markFailed(
+    _ operationID: String,
+    failure: LifecycleFailure
+  )
     async throws -> JournaledOperation
   {
     try await changeOperation(
-      operationID, phase: .failed, incrementAttempt: false, failure: failure)
+      operationID,
+      phase: .failed,
+      incrementAttempt: false,
+      failure: failure
+    )
   }
 
   public func acknowledge(_ operationID: String) async throws {
@@ -61,14 +77,17 @@ extension LocalRepository {
       try database.transaction(interruption: interruption) {
         // Retained tombstones prevent reusing an acknowledged immutable operation identity.
         try database.execute(
-          "UPDATE operations SET acknowledged=1 WHERE operation_id=?", [.text(operationID)])
+          "UPDATE operations SET acknowledged=1 WHERE operation_id=?",
+          [.text(operationID)]
+        )
       }
     }
     try interruption(.afterJournalAcknowledgement)
   }
 
   public func perform<Result: Sendable>(
-    _ intent: OperationIntent, failureOnError: LifecycleFailure,
+    _ intent: OperationIntent,
+    failureOnError: LifecycleFailure,
     sideEffect: @Sendable (JournaledOperation) async throws -> Result
   ) async throws -> Result {
     let recorded = try await recordIntent(intent)
@@ -95,10 +114,13 @@ extension LocalRepository {
 
   func commitOperation(_ prepared: PreparedOperation) throws {
     let intent = prepared.intent
-    if let row = try database.rows(
-      "SELECT call_id,kind,payload_hash FROM operations WHERE operation_id=?",
-      [.text(intent.operationID)]
-    ).first {
+    if let row =
+      try database.rows(
+        "SELECT call_id,kind,payload_hash FROM operations WHERE operation_id=?",
+        [.text(intent.operationID)]
+      )
+      .first
+    {
       guard try row.string(0) == intent.callID, try row.string(1) == intent.kind.rawValue,
         try row.string(2) == prepared.payloadHash
       else {
@@ -112,7 +134,8 @@ extension LocalRepository {
         .text(intent.operationID), .text(intent.callID), .text(intent.kind.rawValue),
         .text(prepared.payloadHash),
         .integer(prepared.createdMs), .integer(prepared.createdMs),
-      ])
+      ]
+    )
   }
 
   private func operationIDs() throws -> [String] {
@@ -123,7 +146,8 @@ extension LocalRepository {
       let page = try database.access {
         try database.rows(
           "SELECT operation_id,created_ms FROM operations WHERE acknowledged=0 AND (created_ms,operation_id)>(?,?) ORDER BY created_ms,operation_id LIMIT 128",
-          [.integer(timestamp), .text(id)])
+          [.integer(timestamp), .text(id)]
+        )
       }
       for row in page { result.append(try row.string(0)) }
       if page.count < 128 { return result }
@@ -140,7 +164,8 @@ extension LocalRepository {
         try database.rows(
           "SELECT call_id,kind,payload_hash,phase,created_ms,updated_ms,attempt,failure,retry,acknowledged FROM operations WHERE operation_id=?",
           [.text(id)]
-        ).first
+        )
+        .first
       })
     else { return nil }
     let row = try resolveTextValues(storedRow)
@@ -154,14 +179,26 @@ extension LocalRepository {
     else { throw invalidRow() }
     let hash = try row.string(2)
     return try .init(
-      schemaVersion: 1, operationID: id, archiveID: archiveID, callID: callID,
-      kind: kind, payload: documentBytes(hash), payloadSHA256: hash, phase: phase,
-      createdAtMilliseconds: row.integer(4), updatedAtMilliseconds: row.integer(5),
+      schemaVersion: 1,
+      operationID: id,
+      archiveID: archiveID,
+      callID: callID,
+      kind: kind,
+      payload: documentBytes(hash),
+      payloadSHA256: hash,
+      phase: phase,
+      createdAtMilliseconds: row.integer(4),
+      updatedAtMilliseconds: row.integer(5),
       attempt: row.int(6),
-      lastFailure: failure(row, index: 7), acknowledged: acknowledged)
+      lastFailure: failure(row, index: 7),
+      acknowledged: acknowledged
+    )
   }
 
-  private func requiredOperation(_ id: String, includeAcknowledged: Bool = false) throws
+  private func requiredOperation(
+    _ id: String,
+    includeAcknowledged: Bool = false
+  ) throws
     -> JournaledOperation
   {
     guard let operation = try readOperation(id, includeAcknowledged: includeAcknowledged) else {
@@ -171,7 +208,10 @@ extension LocalRepository {
   }
 
   private func changeOperation(
-    _ id: String, phase: OperationPhase, incrementAttempt: Bool, failure: LifecycleFailure?
+    _ id: String,
+    phase: OperationPhase,
+    incrementAttempt: Bool,
+    failure: LifecycleFailure?
   ) async throws -> JournaledOperation {
     _ = try requiredOperation(id)
     if let failure, !isStableFailureCode(failure.code) {
@@ -184,14 +224,18 @@ extension LocalRepository {
     try database.access {
       try database.transaction(interruption: interruption) {
         guard
-          let row = try database.rows(
-            "SELECT acknowledged FROM operations WHERE operation_id=?", [.text(id)]
-          ).first,
+          let row =
+            try database.rows(
+              "SELECT acknowledged FROM operations WHERE operation_id=?",
+              [.text(id)]
+            )
+            .first,
           try row.int(0) == 0
         else { throw LocalPersistenceError.operationNotFound(id) }
         try database.execute(
           "UPDATE operations SET phase=?,attempt=attempt+?,updated_ms=max(updated_ms,?),failure=?,retry=? WHERE operation_id=?",
-          values)
+          values
+        )
       }
     }
     return try requiredOperation(id)

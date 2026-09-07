@@ -20,7 +20,8 @@ import TrigoContracts
   #expect(file.fileFormat.sampleRate == 16_000)
   #expect(file.fileFormat.channelCount == 2)
   let buffer = try #require(
-    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_000))
+    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_000)
+  )
   try file.read(into: buffer)
   #expect(buffer.frameLength == 16_000)
   #expect(buffer.floatChannelData?[0][0] == 0.25)
@@ -35,7 +36,8 @@ import TrigoContracts
   #expect(try repository.finalizedMaster(callID: writer.session.callID) == result)
   #expect(
     try FileManager.default.contentsOfDirectory(atPath: writer.session.mediaDirectory.path).sorted()
-      == ["master.caf", "master.index"])
+      == ["master.caf", "master.index"]
+  )
 }
 
 @Test func captureRecoveryDiscardsOnlyUncommittedTailAndNeverResumesRecording() async throws {
@@ -62,7 +64,9 @@ import TrigoContracts
 }
 
 @Test(arguments: ["corrupt-complete-index", "missing-confirmed-index"])
-func productionRecoveryRejectsIndexDamageWithoutDiscardingWitnessedMedia(damage: String)
+func productionRecoveryRejectsIndexDamageWithoutDiscardingWitnessedMedia(
+  damage: String
+)
   async throws
 {
   let root = masterFixtureRoot()
@@ -70,12 +74,16 @@ func productionRecoveryRejectsIndexDamageWithoutDiscardingWitnessedMedia(damage:
   let writer = try await captureWriter(root: root)
   let timeline = CaptureTimeline(writer: writer)
   try timeline.append(
-    role: .application, startFrame: 0, samples: Array(repeating: Int16(500), count: 16_000))
+    role: .application,
+    startFrame: 0,
+    samples: Array(repeating: Int16(500), count: 16_000)
+  )
   try timeline.flush(throughMs: 1000)
   let confirmed = try writer.confirmedCursor()
   let original = try Data(contentsOf: writer.master.mediaURL)
   let index = try FileHandle(
-    forWritingTo: writer.session.mediaDirectory.appendingPathComponent("master.index"))
+    forWritingTo: writer.session.mediaDirectory.appendingPathComponent("master.index")
+  )
   if damage == "corrupt-complete-index" {
     try index.seek(toOffset: 128 + 100)
     try index.write(contentsOf: Data([0xff]))
@@ -108,12 +116,19 @@ func productionRecoveryRejectsIndexDamageWithoutDiscardingWitnessedMedia(damage:
   }
   let audioBytes = try writer.session.audioBytes(final)
   let callBytes = try writer.session.callBytes(
-    media: final, reason: nil, version: 2, finalized: true,
-    reference: .init(manifestId: writer.session.audioManifestID, sha256: Contract.hash(audioBytes)))
+    media: final,
+    reason: nil,
+    version: 2,
+    finalized: true,
+    reference: .init(manifestId: writer.session.audioManifestID, sha256: Contract.hash(audioBytes))
+  )
   for witness in [nil, forged] {
     await #expect(throws: LocalPersistenceError.invalidMediaProgress) {
       try await repository.finalizeCapture(
-        callSnapshot: callBytes, audioManifest: audioBytes, verifiedMaster: witness)
+        callSnapshot: callBytes,
+        audioManifest: audioBytes,
+        verifiedMaster: witness
+      )
     }
   }
   let complete = try await writer.session.complete(media: final, interruptionReason: nil)
@@ -134,7 +149,9 @@ private final class CaptureDiskFault {
 }
 
 @Test(arguments: [true, false])
-func productionRecoveryDiscardsATornCompleteRecordOnlyAboveItsSQLWitness(terminal: Bool)
+func productionRecoveryDiscardsATornCompleteRecordOnlyAboveItsSQLWitness(
+  terminal: Bool
+)
   async throws
 {
   let root = masterFixtureRoot()
@@ -144,17 +161,24 @@ func productionRecoveryDiscardsATornCompleteRecordOnlyAboveItsSQLWitness(termina
   let writer = try await captureWriter(root: root, io: .init(event: fault.check))
   let timeline = CaptureTimeline(writer: writer)
   try timeline.append(
-    role: .application, startFrame: 0, samples: Array(repeating: Int16(100), count: 16_000))
+    role: .application,
+    startFrame: 0,
+    samples: Array(repeating: Int16(100), count: 16_000)
+  )
   try timeline.flush(throughMs: 1000)
   let witness = try writer.confirmedCursor()
   let prefix = try writer.readStableBytes(in: 0..<witness.stableBytes)
   try timeline.append(
-    role: .application, startFrame: 16_000, samples: Array(repeating: Int16(200), count: 16_000))
+    role: .application,
+    startFrame: 16_000,
+    samples: Array(repeating: Int16(200), count: 16_000)
+  )
   fault.fail = true
   #expect(throws: CaptureDiskFault.Failure.self) { try timeline.flush(throughMs: 2000) }
   #expect(try writer.confirmedCursor() == witness)
   let index = try FileHandle(
-    forWritingTo: writer.session.mediaDirectory.appendingPathComponent("master.index"))
+    forWritingTo: writer.session.mediaDirectory.appendingPathComponent("master.index")
+  )
   try index.seek(toOffset: 128 + 2120 + 100)
   try index.write(contentsOf: Data([0xff]))
   if !terminal {

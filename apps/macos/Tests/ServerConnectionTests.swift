@@ -14,8 +14,11 @@ struct ServerConnectionTests {
     let credentials = MemoryCredentialStore()
     let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
 
     let connected = await connection.connect(serverURL: "https://dev.example.test", token: "first")
 
@@ -26,8 +29,11 @@ struct ServerConnectionTests {
     #expect(connected.lastAttemptIssue == nil)
 
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let restored = await relaunched.restore()
 
     #expect(restored.binding == connected.binding)
@@ -43,14 +49,20 @@ struct ServerConnectionTests {
     let credentials = MemoryCredentialStore()
     let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata,
-      credentialStore: credentials, statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     _ = await connection.connect(serverURL: "https://dev.example.test", token: "first")
     let committed = try #require(await metadata.value?.committed)
     let writes = await metadata.successfulSaves
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata,
-      credentialStore: credentials, statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     _ = await relaunched.restore()
     let saved = await relaunched.connect(serverURL: "https://dev.example.test", token: "first")
     #expect(saved.lastAttemptIssue == nil)
@@ -66,13 +78,18 @@ struct ServerConnectionTests {
   {
     let old = StoredConnection.fixture(
       archiveId: archiveA,
-      serverURL: "https://dev.example.test", credentialAccount: "saved")
+      serverURL: "https://dev.example.test",
+      credentialAccount: "saved"
+    )
     let metadata = MemoryConnectionMetadataStore(value: ConnectionMetadata(committed: old))
     let credentials = MemoryCredentialStore(values: ["saved": "first"])
     let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata,
-      credentialStore: credentials, statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let error = ConnectionPersistenceError.keychain(statusCode)
     let expected: CredentialAccessFailure
     switch statusCode {
@@ -105,12 +122,17 @@ struct ServerConnectionTests {
       "replacement": .success(.fixture(archiveId: archiveA)),
     ])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     _ = await connection.connect(serverURL: "https://old.example.test", token: "first")
 
     let replaced = await connection.connect(
-      serverURL: "https://new.example.test", token: "replacement")
+      serverURL: "https://new.example.test",
+      token: "replacement"
+    )
 
     #expect(replaced.binding?.archiveId == archiveA)
     #expect(replaced.binding?.serverURL.absoluteString == "https://new.example.test")
@@ -118,8 +140,11 @@ struct ServerConnectionTests {
     #expect(await credentials.values == ["replacement"])
 
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     #expect(await relaunched.restore().binding == replaced.binding)
   }
 
@@ -127,12 +152,15 @@ struct ServerConnectionTests {
   func knownInvalidCredentialUsesTheRepairTransactionAndPreservesRollback(failCommit: Bool) async {
     let old = StoredConnection.fixture(
       archiveId: archiveA,
-      serverURL: "https://dev.example.test", credentialAccount: "damaged")
+      serverURL: "https://dev.example.test",
+      credentialAccount: "damaged"
+    )
     let metadata = MemoryConnectionMetadataStore(value: ConnectionMetadata(committed: old))
     let credentials = MemoryCredentialStore(values: ["damaged": "unreadable-fixture"])
     await credentials.markInvalid(account: "damaged")
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata,
+      expectedStage: .dev,
+      metadataStore: metadata,
       credentialStore: credentials,
       statusClient: StubStatusClient(responses: ["repair": .success(.fixture(archiveId: archiveA))])
     )
@@ -163,7 +191,8 @@ struct ServerConnectionTests {
       ("personal", .success(.fixture(archiveId: archiveA, stage: .personal))),
     ])
   private func rejectedCandidatesPreserveThePriorConnection(
-    token: String, response: StubStatusClient.Result
+    token: String,
+    response: StubStatusClient.Result
   ) async {
     let metadata = MemoryConnectionMetadataStore()
     let credentials = MemoryCredentialStore()
@@ -171,13 +200,20 @@ struct ServerConnectionTests {
       "first": .success(.fixture(archiveId: archiveA)), token: response,
     ])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let original = await connection.connect(
-      serverURL: "https://old.example.test", token: "first")
+      serverURL: "https://old.example.test",
+      token: "first"
+    )
 
     let rejected = await connection.connect(
-      serverURL: "https://candidate.example.test", token: token)
+      serverURL: "https://candidate.example.test",
+      token: token
+    )
 
     #expect(rejected.binding == original.binding)
     #expect(rejected.health == original.health)
@@ -186,8 +222,11 @@ struct ServerConnectionTests {
     #expect(await credentials.values == ["first"])
 
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     #expect(await relaunched.restore().binding == original.binding)
   }
 
@@ -199,21 +238,31 @@ struct ServerConnectionTests {
       "replacement": .success(.fixture(archiveId: archiveA)),
     ])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let original = await connection.connect(
-      serverURL: "https://old.example.test", token: "first")
+      serverURL: "https://old.example.test",
+      token: "first"
+    )
     await metadata.failSave(afterSuccessfulSaves: 1)
 
     let failed = await connection.connect(
-      serverURL: "https://new.example.test", token: "replacement")
+      serverURL: "https://new.example.test",
+      token: "replacement"
+    )
 
     #expect(failed.binding == original.binding)
     #expect(failed.lastAttemptIssue == .persistence)
 
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let restored = await relaunched.restore()
     #expect(restored.binding == original.binding)
     #expect(restored.recordingEligibility == .eligible(archiveId: archiveA))
@@ -228,15 +277,22 @@ struct ServerConnectionTests {
       "replacement": .success(.fixture(archiveId: archiveA)),
     ])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let original = await connection.connect(
-      serverURL: "https://old.example.test", token: "first")
+      serverURL: "https://old.example.test",
+      token: "first"
+    )
     await metadata.failSave(afterSuccessfulSaves: 1)
     await credentials.failNextDelete()
 
     let failed = await connection.connect(
-      serverURL: "https://new.example.test", token: "replacement")
+      serverURL: "https://new.example.test",
+      token: "replacement"
+    )
 
     #expect(failed.binding == original.binding)
     #expect(failed.lastAttemptIssue == .persistence)
@@ -244,8 +300,11 @@ struct ServerConnectionTests {
     #expect(await credentials.values == ["first", "replacement"])
 
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let restored = await relaunched.restore()
     #expect(restored.binding == original.binding)
     #expect(await metadata.value?.pending == nil)
@@ -260,14 +319,21 @@ struct ServerConnectionTests {
       "replacement": .success(.fixture(archiveId: archiveA)),
     ])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let original = await connection.connect(
-      serverURL: "https://old.example.test", token: "first")
+      serverURL: "https://old.example.test",
+      token: "first"
+    )
     await credentials.failNextSave()
 
     let failed = await connection.connect(
-      serverURL: "https://new.example.test", token: "replacement")
+      serverURL: "https://new.example.test",
+      token: "replacement"
+    )
 
     #expect(failed.binding == original.binding)
     #expect(failed.lastAttemptIssue == .persistence)
@@ -277,17 +343,27 @@ struct ServerConnectionTests {
 
   @Test func relaunchRollsBackAnInterruptedPendingReplacement() async throws {
     let old = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://old.example.test", credentialAccount: "old")
+      archiveId: archiveA,
+      serverURL: "https://old.example.test",
+      credentialAccount: "old"
+    )
     let pending = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://new.example.test", credentialAccount: "pending")
+      archiveId: archiveA,
+      serverURL: "https://new.example.test",
+      credentialAccount: "pending"
+    )
     let metadata = MemoryConnectionMetadataStore(
-      value: ConnectionMetadata(committed: old, pending: pending))
+      value: ConnectionMetadata(committed: old, pending: pending)
+    )
     let credentials = MemoryCredentialStore(values: ["old": "first", "pending": "replacement"])
     let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
 
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let restored = await relaunched.restore()
 
     #expect(restored.binding?.serverURL.absoluteString == "https://old.example.test")
@@ -297,18 +373,28 @@ struct ServerConnectionTests {
 
   @Test func failedPendingCredentialCleanupRemainsRetryableAcrossRelaunch() async {
     let old = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://old.example.test", credentialAccount: "old")
+      archiveId: archiveA,
+      serverURL: "https://old.example.test",
+      credentialAccount: "old"
+    )
     let pending = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://new.example.test", credentialAccount: "pending")
+      archiveId: archiveA,
+      serverURL: "https://new.example.test",
+      credentialAccount: "pending"
+    )
     let metadata = MemoryConnectionMetadataStore(
-      value: ConnectionMetadata(committed: old, pending: pending))
+      value: ConnectionMetadata(committed: old, pending: pending)
+    )
     let credentials = MemoryCredentialStore(values: ["old": "first", "pending": "replacement"])
     await credentials.failNextDelete()
     let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
 
     let firstRelaunch = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let firstRestore = await firstRelaunch.restore()
 
     #expect(firstRestore.binding?.archiveId == archiveA)
@@ -316,8 +402,11 @@ struct ServerConnectionTests {
     #expect(await metadata.value?.pending == pending)
 
     let secondRelaunch = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let recovered = await secondRelaunch.restore()
     #expect(recovered.health == .connected(.fixture(archiveId: archiveA)))
     #expect(await metadata.value?.pending == nil)
@@ -326,11 +415,18 @@ struct ServerConnectionTests {
 
   @Test func sameProcessRetryRecoversPendingCredentialBeforeStartingAnotherCommit() async {
     let old = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://old.example.test", credentialAccount: "old")
+      archiveId: archiveA,
+      serverURL: "https://old.example.test",
+      credentialAccount: "old"
+    )
     let pending = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://new.example.test", credentialAccount: "pending")
+      archiveId: archiveA,
+      serverURL: "https://new.example.test",
+      credentialAccount: "pending"
+    )
     let metadata = MemoryConnectionMetadataStore(
-      value: ConnectionMetadata(committed: old, pending: pending))
+      value: ConnectionMetadata(committed: old, pending: pending)
+    )
     let credentials = MemoryCredentialStore(values: ["old": "first", "pending": "replacement"])
     await credentials.failNextDelete()
     let status = StubStatusClient(responses: [
@@ -338,12 +434,17 @@ struct ServerConnectionTests {
       "retry": .success(.fixture(archiveId: archiveA)),
     ])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     _ = await connection.restore()
 
     let recovered = await connection.connect(
-      serverURL: "https://retry.example.test", token: "retry")
+      serverURL: "https://retry.example.test",
+      token: "retry"
+    )
 
     #expect(recovered.binding?.serverURL.absoluteString == "https://retry.example.test")
     #expect(recovered.lastAttemptIssue == nil)
@@ -356,14 +457,20 @@ struct ServerConnectionTests {
     let credentials = MemoryCredentialStore()
     let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     _ = await connection.connect(serverURL: "https://dev.example.test", token: "first")
     await status.set("first", result: .failure(.unreachable))
 
     let relaunched = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
     let restored = await relaunched.restore()
 
     #expect(restored.health == .blocked(.unreachable))
@@ -378,11 +485,17 @@ struct ServerConnectionTests {
 
   @Test func missingCredentialPreservesBindingButBlocksServerOperations() async {
     let record = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://dev.example.test", credentialAccount: "missing")
+      archiveId: archiveA,
+      serverURL: "https://dev.example.test",
+      credentialAccount: "missing"
+    )
     let metadata = MemoryConnectionMetadataStore(value: ConnectionMetadata(committed: record))
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: MemoryCredentialStore(),
-      statusClient: StubStatusClient())
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: MemoryCredentialStore(),
+      statusClient: StubStatusClient()
+    )
 
     let restored = await connection.restore()
 
@@ -393,14 +506,20 @@ struct ServerConnectionTests {
 
   @Test func keychainReadFailureIsNotReportedAsANetworkOutage() async {
     let record = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://dev.example.test", credentialAccount: "saved")
+      archiveId: archiveA,
+      serverURL: "https://dev.example.test",
+      credentialAccount: "saved"
+    )
     let metadata = MemoryConnectionMetadataStore(value: ConnectionMetadata(committed: record))
     let credentials = MemoryCredentialStore(values: ["saved": "token"])
     await credentials.failNextLoad()
     let status = StubStatusClient()
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
-      statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
 
     let restored = await connection.restore()
 
@@ -414,8 +533,11 @@ struct ServerConnectionTests {
   func invalidURLNeverReachesTheNetworkOrChangesTheBinding(serverURL: String) async {
     let status = StubStatusClient()
     let connection = ServerConnection(
-      expectedStage: .dev, metadataStore: MemoryConnectionMetadataStore(),
-      credentialStore: MemoryCredentialStore(), statusClient: status)
+      expectedStage: .dev,
+      metadataStore: MemoryConnectionMetadataStore(),
+      credentialStore: MemoryCredentialStore(),
+      statusClient: status
+    )
 
     let snapshot = await connection.connect(serverURL: serverURL, token: "secret")
 
@@ -429,11 +551,15 @@ struct ServerConnectionTests {
     let valid = Data(
       """
       {"schemaVersion":1,"apiVersion":1,"archiveId":"\(archiveA)","stage":"dev","readiness":{"archive":"ready","ownerAuthentication":"ready","transcription":"not_verified","callOperations":"unavailable"},"errors":[]}
-      """.utf8)
+      """
+      .utf8
+    )
     let invalid = Data(
       """
       {"schemaVersion":2,"apiVersion":1,"archiveId":"\(archiveA)","stage":"dev","readiness":{"archive":"ready","ownerAuthentication":"ready","transcription":"not_verified","callOperations":"unavailable"},"errors":[]}
-      """.utf8)
+      """
+      .utf8
+    )
 
     #expect(try ServerStatusDecoder.decode(valid).archiveId == archiveA)
     #expect(throws: ConnectionIssue.incompatible) {
@@ -463,13 +589,17 @@ struct ServerConnectionTests {
 
   @Test func fileMetadataStorePersistsAtomicallyWithPrivatePermissions() async throws {
     let root = FileManager.default.temporaryDirectory.appending(
-      path: "trigo-connection-\(UUID())", directoryHint: .isDirectory)
+      path: "trigo-connection-\(UUID())",
+      directoryHint: .isDirectory
+    )
     let url = root.appending(path: "connection.json")
     defer { try? FileManager.default.removeItem(at: root) }
     let store = FileConnectionMetadataStore(url: url)
     let connection = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://dev.example.test",
-      credentialAccount: "00000000-0000-4000-8000-000000000033")
+      archiveId: archiveA,
+      serverURL: "https://dev.example.test",
+      credentialAccount: "00000000-0000-4000-8000-000000000033"
+    )
     let expected = ConnectionMetadata(committed: connection)
 
     try await store.save(expected)
@@ -482,28 +612,42 @@ struct ServerConnectionTests {
   @Test func wrongStageOrCollidingAccountsCannotBecomeRecordingEligible() async {
     let account = "00000000-0000-4000-8000-000000000033"
     let wrongStage = StoredConnection(
-      serverURL: URL(string: "https://personal.example.test")!, archiveId: archiveA,
-      stage: .personal, credentialAccount: account)
+      serverURL: URL(string: "https://personal.example.test")!,
+      archiveId: archiveA,
+      stage: .personal,
+      credentialAccount: account
+    )
     let wrongStageConnection = ServerConnection(
       expectedStage: .dev,
       metadataStore: MemoryConnectionMetadataStore(
-        value: ConnectionMetadata(committed: wrongStage)),
+        value: ConnectionMetadata(committed: wrongStage)
+      ),
       credentialStore: MemoryCredentialStore(values: [account: "token"]),
-      statusClient: StubStatusClient())
+      statusClient: StubStatusClient()
+    )
     let wrongStageSnapshot = await wrongStageConnection.restore()
     #expect(wrongStageSnapshot.binding == nil)
     #expect(wrongStageSnapshot.recordingEligibility == .unavailableUntilRecovery)
 
     let committed = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://dev.example.test", credentialAccount: account)
+      archiveId: archiveA,
+      serverURL: "https://dev.example.test",
+      credentialAccount: account
+    )
     let pending = StoredConnection.fixture(
-      archiveId: archiveA, serverURL: "https://new.example.test", credentialAccount: account)
+      archiveId: archiveA,
+      serverURL: "https://new.example.test",
+      credentialAccount: account
+    )
     let credentials = MemoryCredentialStore(values: [account: "active-token"])
     let collisionConnection = ServerConnection(
       expectedStage: .dev,
       metadataStore: MemoryConnectionMetadataStore(
-        value: ConnectionMetadata(committed: committed, pending: pending)),
-      credentialStore: credentials, statusClient: StubStatusClient())
+        value: ConnectionMetadata(committed: committed, pending: pending)
+      ),
+      credentialStore: credentials,
+      statusClient: StubStatusClient()
+    )
     let collisionSnapshot = await collisionConnection.restore()
     #expect(collisionSnapshot.binding == nil)
     #expect(collisionSnapshot.recordingEligibility == .unavailableUntilRecovery)
@@ -593,19 +737,32 @@ private enum TestFailure: Error { case injected }
 extension ServerStatus {
   fileprivate static func fixture(archiveId: String, stage: ServerStage = .dev) -> Self {
     ServerStatus(
-      schemaVersion: 1, apiVersion: 1, archiveId: archiveId, stage: stage,
+      schemaVersion: 1,
+      apiVersion: 1,
+      archiveId: archiveId,
+      stage: stage,
       readiness: ServerReadiness(
-        archive: "ready", ownerAuthentication: "ready", transcription: .notVerified,
-        callOperations: .unavailable), errors: [])
+        archive: "ready",
+        ownerAuthentication: "ready",
+        transcription: .notVerified,
+        callOperations: .unavailable
+      ),
+      errors: []
+    )
   }
 }
 
 extension StoredConnection {
   fileprivate static func fixture(
-    archiveId: String, serverURL: String, credentialAccount: String
+    archiveId: String,
+    serverURL: String,
+    credentialAccount: String
   ) -> Self {
     StoredConnection(
-      serverURL: URL(string: serverURL)!, archiveId: archiveId, stage: .dev,
-      credentialAccount: credentialAccount)
+      serverURL: URL(string: serverURL)!,
+      archiveId: archiveId,
+      stage: .dev,
+      credentialAccount: credentialAccount
+    )
   }
 }

@@ -9,8 +9,13 @@ import ScreenCaptureKit
   let microphone = RecordingTransportFixture()
   var microphoneDevice: CaptureMicrophone? = .init(id: "fixture-mic", name: "Fixture microphone")
   var source = CaptureSource(
-    applicationName: "Fixture target", bundleID: "test.target", processID: 123,
-    windowID: 456, windowTitle: "Fixture window", processLaunchDate: Date())
+    applicationName: "Fixture target",
+    bundleID: "test.target",
+    processID: 123,
+    windowID: 456,
+    windowTitle: "Fixture window",
+    processLaunchDate: Date()
+  )
   var permissions = CapturePermissions(screenAudio: true, microphone: true)
   var permissionRequests = 0
   var requestedPermissions: [CapturePermission] = []
@@ -40,11 +45,15 @@ import ScreenCaptureKit
 
   init() throws {
     support = FileManager.default.temporaryDirectory.appendingPathComponent(
-      "trigo-coordinator-\(UUID())")
+      "trigo-coordinator-\(UUID())"
+    )
     namespace = try AppNamespace(variant: .dev, worktree: "fixture", support: support)
     connection = ServerConnection(
-      expectedStage: .dev, metadataStore: metadata,
-      credentialStore: RecordingCredentialsFixture(), statusClient: status)
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: RecordingCredentialsFixture(),
+      statusClient: status
+    )
     let os = self.os
     capture = ScreenCaptureRecording(
       system: .init(
@@ -58,11 +67,17 @@ import ScreenCaptureKit
         stream: { _, configuration, _ in
           configuration.captureMicrophone ? os.microphone : os.application
         },
-        audioQueue: { os.audioQueue }, sourceIsAvailable: { _ in os.sourceAvailable }))
+        audioQueue: { os.audioQueue },
+        sourceIsAvailable: { _ in os.sourceAvailable }
+      )
+    )
     coordinator = RecordingCoordinator(
-      connection: connection, namespace: namespace, capture: capture,
+      connection: connection,
+      namespace: namespace,
+      capture: capture,
       sources: .init(
-        permissions: { os.permissions }, frontmost: os.frontmost,
+        permissions: { os.permissions },
+        frontmost: os.frontmost,
         requestPermission: { permission in
           os.requestedPermissions.append(permission)
           os.permissionRequests += 1
@@ -72,7 +87,9 @@ import ScreenCaptureKit
         openSettings: { permission in
           os.settingsOpened.append(permission)
           return true
-        }))
+        }
+      )
+    )
   }
 
   func bind() async {

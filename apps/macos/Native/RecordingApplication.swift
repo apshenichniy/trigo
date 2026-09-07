@@ -13,7 +13,9 @@ import Foundation
   public convenience init(namespace: AppNamespace, variant: AppVariant) {
     self.init(namespace: namespace) {
       RecordingCoordinator(
-        connection: .live(namespace: namespace, variant: variant), namespace: namespace)
+        connection: .live(namespace: namespace, variant: variant),
+        namespace: namespace
+      )
     }
   }
 

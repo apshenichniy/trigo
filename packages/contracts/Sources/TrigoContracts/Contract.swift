@@ -56,9 +56,12 @@ public enum Contract {
         return (
           kind,
           try Schema(
-            instance: String(decoding: bytes, as: UTF8.self), formatValidators: [UTCFormat()])
+            instance: String(decoding: bytes, as: UTF8.self),
+            formatValidators: [UTCFormat()]
+          )
         )
-      })
+      }
+    )
   }
 
   public static func hash(_ bytes: Data) -> String {
@@ -89,7 +92,10 @@ public enum Contract {
     }
     return result
   }
-  public static func validateArchive(_ bytes: Data, references: [String: Data]) throws
+  public static func validateArchive(
+    _ bytes: Data,
+    references: [String: Data]
+  ) throws
     -> ValidatedDocument
   {
     let result = try validate("CallDocument", bytes: bytes)
@@ -106,7 +112,9 @@ public enum Contract {
       audio = try resolve("AudioManifest", ref["manifestId"].text, ref["sha256"].text)
       try require(
         audio["callId"] == call["callId"] && audio["manifestId"] == ref["manifestId"]
-          && audio["durationMs"] == call["durationMs"], .reference)
+          && audio["durationMs"] == call["durationMs"],
+        .reference
+      )
       for track in tracks {
         try require(track["mediaProfileId"] == audio["mediaProfileId"], .reference)
       }
@@ -114,22 +122,27 @@ public enum Contract {
       for object in audio["objects"].items {
         for expected in profile.channels {
           guard
-            let channel = object["channelMap"].items.first(where: {
-              $0["channelIndex"].integerValue == expected.index
-            })
+            let channel = object["channelMap"].items
+              .first(where: {
+                $0["channelIndex"].integerValue == expected.index
+              })
           else { throw ContractError.reference }
           try require(
             tracks.contains {
               $0["trackId"] == channel["trackId"]
                 && $0["role"].text == expected.role.rawValue
-            }, .reference)
+            },
+            .reference
+          )
         }
       }
       for track in tracks {
         var cursor = 0
-        for object in audio["objects"].items.filter({
-          $0["channelMap"].items.contains { $0["trackId"] == track["trackId"] }
-        }) {
+        for object in audio["objects"].items
+          .filter({
+            $0["channelMap"].items.contains { $0["trackId"] == track["trackId"] }
+          })
+        {
           try require(object["startMs"].integerValue == cursor, .reference)
           cursor = object["endMs"].integerValue
         }
@@ -143,7 +156,9 @@ public enum Contract {
       let revision = try resolve("TranscriptRevision", ref["revisionId"].text, ref["sha256"].text)
       try require(
         revision["callId"] == call["callId"] && revision["revisionId"] == ref["revisionId"]
-          && revision["createdAt"] == ref["createdAt"], .reference)
+          && revision["createdAt"] == ref["createdAt"],
+        .reference
+      )
       try require(!audio.isNull && revision["audioManifest"] == call["audioManifest"], .reference)
       for speaker in revision["speakers"].items {
         try require(tracks.contains { $0["trackId"] == speaker["trackId"] }, .reference)
@@ -151,7 +166,9 @@ public enum Contract {
       for turn in revision["turns"].items {
         try require(
           tracks.contains { $0["trackId"] == turn["trackId"] }
-            && turn["endMs"].integerValue <= call["durationMs"].integerValue, .reference)
+            && turn["endMs"].integerValue <= call["durationMs"].integerValue,
+          .reference
+        )
       }
       for speaker in revision["speakers"].items {
         try require(speakerIds.insert(speaker["speakerId"]).inserted, .reference)
@@ -165,7 +182,9 @@ public enum Contract {
       guard let revision = revisions[revisionId] else { throw ContractError.reference }
       for speakerId in names.object!.keys {
         try require(
-          revision["speakers"].items.contains { $0["speakerId"].text == speakerId }, .reference)
+          revision["speakers"].items.contains { $0["speakerId"].text == speakerId },
+          .reference
+        )
       }
     }
     return result

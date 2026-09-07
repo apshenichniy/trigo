@@ -1,9 +1,11 @@
-import { type StatusResponse } from "@trigo/contracts";
 import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { authenticateOwner, type OwnerContext } from "./owner-state.ts";
+
+import { type StatusResponse } from "@trigo/contracts";
+
 import { errorResponse, httpErrorBoundary, ownerErrorResponses } from "./http-errors.ts";
+import { authenticateOwner, type OwnerContext } from "./owner-state.ts";
 import { ProductApi } from "./product-api.ts";
 
 export interface ProductEnvironment {
@@ -43,13 +45,14 @@ const productResponse = Effect.fn("ProductApi.respond")(function* (
 ) {
   // Keep the exact bearer grammar and authentication-before-disclosure for unavailable routes.
   const owner = yield* authenticateOwner(env.CATALOG, request);
-  if (request.method !== "GET" || new URL(request.url).pathname !== "/v1/status")
+  if (request.method !== "GET" || new URL(request.url).pathname !== "/v1/status") {
     return errorResponse(
       501,
       "operation_unavailable",
       "after_correction",
       "This owner operation is not implemented yet.",
     );
+  }
   const handlers = HttpApiBuilder.group(ProductApi, "owner", (group) =>
     group.handle("status", () => Effect.succeed(ownerStatus(owner, env.DEPLOYMENT_STAGE))),
   );

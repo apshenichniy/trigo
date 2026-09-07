@@ -1,6 +1,8 @@
 import { it, expect } from "@effect/vitest";
 import { Effect } from "effect";
+
 import { validateDocument } from "@trigo/contracts";
+
 import { fakeAsr, type Asr } from "../src/asr.ts";
 import { noSpeechInput } from "../src/local-fixture.ts";
 import { Nova3NormalizationError } from "../src/nova-3.ts";

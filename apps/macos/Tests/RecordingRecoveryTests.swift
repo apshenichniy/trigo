@@ -22,10 +22,14 @@ import Testing
   defer { fixture.cleanup() }
   let session = try await CaptureArchiveSession.begin(
     root: fixture.namespace.archive,
-    archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
+    archiveID: fixture.status.archiveID,
+    source: fixture.os.source,
+    microphone: nil
+  )
   await #expect(throws: Crash.self) {
     try await session.finish(
-      media: nil, interruptionReason: "system_sleep"
+      media: nil,
+      interruptionReason: "system_sleep"
     ) { point in
       if point == .beforeCommit { throw Crash() }
     }
@@ -35,14 +39,20 @@ import Testing
   #expect(recovered.interruptionReason == "system_sleep")
   #expect(recovered.explanation.contains("System sleep"))
   let archive = try LocalRepository(
-    root: fixture.namespace.archive, archiveID: fixture.status.archiveID)
+    root: fixture.namespace.archive,
+    archiveID: fixture.status.archiveID
+  )
   let before = try await archive.loadCall(callID: session.callID)
   let fresh = RecordingCoordinator(
-    connection: fixture.connection, namespace: fixture.namespace,
+    connection: fixture.connection,
+    namespace: fixture.namespace,
     capture: fixture.capture,
     sources: .init(
       permissions: { fixture.os.permissions },
-      frontmost: fixture.os.frontmost, requestPermission: { _ in fixture.os.permissions }))
+      frontmost: fixture.os.frontmost,
+      requestPermission: { _ in fixture.os.permissions }
+    )
+  )
   await fresh.restore()
   #expect(fresh.recoveryReport.recoveredCallIDs.isEmpty)
   #expect(fresh.recoveryReport.warnings.isEmpty)
@@ -58,7 +68,10 @@ import Testing
   let root = fixture.namespace.archive.appendingPathComponent("unrelated")
   let session = try await CaptureArchiveSession.begin(
     root: root,
-    archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
+    archiveID: fixture.status.archiveID,
+    source: fixture.os.source,
+    microphone: nil
+  )
   await fixture.bind()
   #expect(fixture.coordinator.recoveryReport.recoveredCalls.isEmpty)
   #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == ["archive"])
@@ -74,7 +87,10 @@ import Testing
   defer { fixture.cleanup() }
   let session = try await CaptureArchiveSession.begin(
     root: fixture.namespace.archive,
-    archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
+    archiveID: fixture.status.archiveID,
+    source: fixture.os.source,
+    microphone: nil
+  )
   let writer = try CaptureMediaWriter(session: session)
   try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
   let file = try FileHandle(forWritingTo: writer.master.mediaURL)
@@ -97,8 +113,11 @@ import Testing
   let fixture = try RecordingControlFixture()
   defer { fixture.cleanup() }
   let session = try await CaptureArchiveSession.begin(
-    root: fixture.namespace.archive, archiveID: fixture.status.archiveID,
-    source: fixture.os.source, microphone: nil)
+    root: fixture.namespace.archive,
+    archiveID: fixture.status.archiveID,
+    source: fixture.os.source,
+    microphone: nil
+  )
   await fixture.bind()
   #expect(fixture.coordinator.recoveryReport.recoveredCallIDs == [session.callID])
   #expect(fixture.coordinator.phase == .interrupted)
@@ -120,7 +139,8 @@ import Testing
   let root = fixture.namespace.archive
   try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
   let artifact = root.appendingPathComponent(
-    kind == "legacy" ? "capture-session.json" : SQLiteDatabase.filename)
+    kind == "legacy" ? "capture-session.json" : SQLiteDatabase.filename
+  )
   let bytes = Data("unfamiliar retained evidence".utf8)
   if kind == "symlink" {
     let foreign = fixture.support.appendingPathComponent("foreign.sqlite3")
@@ -135,7 +155,8 @@ import Testing
   #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == ["archive"])
   #expect(try Data(contentsOf: artifact) == bytes)
   #expect(
-    try FileManager.default.contentsOfDirectory(atPath: root.path) == [artifact.lastPathComponent])
+    try FileManager.default.contentsOfDirectory(atPath: root.path) == [artifact.lastPathComponent]
+  )
   await fixture.coordinator.shortcutPressed()
   #expect(fixture.os.frontmostReads == 0)
   #expect(!fixture.os.application.running)

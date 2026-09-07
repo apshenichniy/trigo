@@ -13,7 +13,9 @@ import TrigoContracts
   var call = try await repository!.call(callID: repositoryCallID)
   call.documentVersion += 1
   call.audioManifest = .init(
-    manifestId: "00000000-0000-4000-8000-000000000004", sha256: Contract.hash(audio))
+    manifestId: "00000000-0000-4000-8000-000000000004",
+    sha256: Contract.hash(audio)
+  )
   _ = try await repository!.publishManifest(Contract.encode(call))
   let revisionBytes = try repositoryFixture("revision.json")
   let revision = try Contract.decode(TranscriptRevision.self, bytes: revisionBytes).value
@@ -37,17 +39,23 @@ import TrigoContracts
   let loaded = try await reopened.call(callID: repositoryCallID)
   #expect(loaded.tracks.map { $0.intervals[0].reason } == reasons)
   let renamed = try await reopened.setSpeakerName(
-    "Renamed speaker", callID: repositoryCallID,
-    revisionID: revision.revisionId, speakerID: revision.speakers[0].speakerId)
+    "Renamed speaker",
+    callID: repositoryCallID,
+    revisionID: revision.revisionId,
+    speakerID: revision.speakers[0].speakerId
+  )
   #expect(renamed.manifest.value.documentVersion == call.documentVersion + 1)
   #expect(renamed.manifest.value.tracks.map { $0.intervals[0].reason } == reasons)
   let published = try Contract.decode(CallDocument.self, bytes: renamed.manifest.storedBytes)
   #expect(published.value.tracks.map { $0.intervals[0].reason } == reasons)
   #expect(
     published.value.speakerNames[revision.revisionId]?[revision.speakers[0].speakerId]
-      == "Renamed speaker")
+      == "Renamed speaker"
+  )
   let originalAfterRename = try await reopened.snapshotBytes(
-    callID: repositoryCallID, version: call.documentVersion)
+    callID: repositoryCallID,
+    version: call.documentVersion
+  )
   #expect(originalAfterRename == original)
   #expect(Contract.hash(originalAfterRename) == originalHash)
 }
@@ -63,10 +71,13 @@ import TrigoContracts
   try repository.database.access {
     try repository.database.transaction {
       try repository.database.execute(
-        "INSERT INTO documents VALUES (?,?,0)", [.text(hash), .int(payload.count)])
+        "INSERT INTO documents VALUES (?,?,0)",
+        [.text(hash), .int(payload.count)]
+      )
       try repository.database.execute(
         "INSERT INTO document_chunks VALUES (?,0,?)",
-        [.text(hash), .blob(Data(repeating: 80, count: 256 * 1024))])
+        [.text(hash), .blob(Data(repeating: 80, count: 256 * 1024))]
+      )
     }
   }
   await #expect(throws: LocalPersistenceError.immutableConflict(hash)) {
@@ -84,15 +95,22 @@ import TrigoContracts
   let payload = Data(repeating: 79, count: 256 * 1024) + Data(repeating: 80, count: 128)
   let hash = Contract.hash(payload)
   let intent = repositoryIntent(payload: payload)
-  try repository!.database.access {
-    try repository!.database.transaction {
-      try repository!.database.execute(
-        "INSERT INTO documents VALUES (?,?,0)", [.text(hash), .int(payload.count)])
-      try repository!.database.execute(
-        "INSERT INTO document_chunks VALUES (?,0,?)",
-        [.text(hash), .blob(payload.prefix(256 * 1024))])
+  try repository!.database
+    .access {
+      try repository!.database
+        .transaction {
+          try repository!.database
+            .execute(
+              "INSERT INTO documents VALUES (?,?,0)",
+              [.text(hash), .int(payload.count)]
+            )
+          try repository!.database
+            .execute(
+              "INSERT INTO document_chunks VALUES (?,0,?)",
+              [.text(hash), .blob(payload.prefix(256 * 1024))]
+            )
+        }
     }
-  }
   let initial = try await repository!.recordIntent(intent)
   #expect(initial.payload == payload)
   #expect(initial.payloadSHA256 == hash)
@@ -105,7 +123,9 @@ import TrigoContracts
 }
 
 @Test(arguments: ["missing", "empty", "oversized", "truncated", "checksum"])
-func repositoryDocumentReadersRejectCorruptChunksWithoutRepairingReplay(_ fault: String)
+func repositoryDocumentReadersRejectCorruptChunksWithoutRepairingReplay(
+  _ fault: String
+)
   async throws
 {
   let root = repositoryRoot("document-corruption-\(fault)")
@@ -118,7 +138,9 @@ func repositoryDocumentReadersRejectCorruptChunksWithoutRepairingReplay(_ fault:
     try repository.database.transaction {
       if fault == "missing" {
         try repository.database.execute(
-          "DELETE FROM document_chunks WHERE hash=? AND part=0", [.text(operation.payloadSHA256)])
+          "DELETE FROM document_chunks WHERE hash=? AND part=0",
+          [.text(operation.payloadSHA256)]
+        )
       } else {
         let bytes: Data
         let part: Int
@@ -130,7 +152,8 @@ func repositoryDocumentReadersRejectCorruptChunksWithoutRepairingReplay(_ fault:
         }
         try repository.database.execute(
           "UPDATE document_chunks SET bytes=? WHERE hash=? AND part=?",
-          [.blob(bytes), .text(operation.payloadSHA256), .int(part)])
+          [.blob(bytes), .text(operation.payloadSHA256), .int(part)]
+        )
       }
     }
   }

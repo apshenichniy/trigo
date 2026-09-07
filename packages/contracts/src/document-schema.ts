@@ -1,5 +1,6 @@
-import { CaptureMasterProfile } from "./capture-master-profile.ts";
 import { Schema } from "effect";
+
+import { CaptureMasterProfile } from "./capture-master-profile.ts";
 import { MediaProfile, MediaSourceRole } from "./media-profile.ts";
 
 /** Exchange identities deliberately accept versions other than UUID v4. */

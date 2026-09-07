@@ -56,6 +56,9 @@ accepted peer range. The two workerd versions are deliberately independent.
 
 ## Effect development tooling
 
+See [code style](code-style.md) for TypeScript and Swift readability rules,
+format-on-save setup, and the distinction between formatting and structural review.
+
 The repository pins the Effect Language Service through `@effect/tsgo`. The root
 `prepare` script patches the workspace TypeScript 7 and Oxlint installations after
 every package install. `tsconfig.json` enables language-service completions,

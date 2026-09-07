@@ -3,8 +3,10 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { Console, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
+
 import {
   AsrProbeTranscriptionResponse,
   AsrProbeUploadResponse,
@@ -14,9 +16,9 @@ import {
   selectedMediaProfile,
   type AsrProbeLanguageCode,
 } from "../packages/contracts/src/index.ts";
-import { cloudTargetFor, parseCloudStage, readCloudConfiguration } from "./cloud.ts";
-import { readProbeCredential } from "./asr-credential.ts";
 import { commandOptions } from "./arguments.ts";
+import { readProbeCredential } from "./asr-credential.ts";
+import { cloudTargetFor, parseCloudStage, readCloudConfiguration } from "./cloud.ts";
 
 type ProbeLanguage = AsrProbeLanguageCode;
 
@@ -61,8 +63,12 @@ const fixtures: Record<
 
 function run(program: string, args: readonly string[]): void {
   const result = spawnSync(program, [...args], { stdio: "inherit" });
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`${program} failed with status ${result.status}`);
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`${program} failed with status ${result.status}`);
+  }
 }
 
 function synthesize(voice: string, text: string, output: string, rate: number): void {
@@ -110,17 +116,19 @@ export function generateProbeFixture(language: ProbeLanguage, output: string): v
     const audio = new Uint8Array(readFileSync(raw));
     const bytesPerFrame =
       selectedMediaProfile.channels.length * (selectedMediaProfile.bitsPerSample / 8);
-    if (audio.byteLength % bytesPerFrame !== 0)
+    if (audio.byteLength % bytesPerFrame !== 0) {
       throw new Error("Generated fixture is not aligned to the selected sample frame");
+    }
     const header = makeWaveHeader(audio.byteLength / bytesPerFrame);
     const wave = new Uint8Array(header.byteLength + audio.byteLength);
     wave.set(header);
     wave.set(audio, header.byteLength);
     const inspection = inspectWaveObject(wave);
-    if (inspection.durationMs !== 18_000)
+    if (inspection.durationMs !== 18_000) {
       throw new Error(
         `Generated fixture duration is ${inspection.durationMs} ms instead of 18000 ms`,
       );
+    }
     writeFileSync(output, wave, { mode: 0o600 });
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -143,8 +151,9 @@ const request = Effect.fn("AsrProbeCli.request")(function* <Success>(
       "x-trigo-media-profile",
       selectedMediaProfile.id,
     );
-    if (body !== undefined)
+    if (body !== undefined) {
       outgoing = HttpClientRequest.bodyUint8Array(outgoing, body, selectedMediaProfile.contentType);
+    }
   }
   const response = yield* HttpClient.execute(outgoing).pipe(
     Effect.timeout("5 minutes"),
@@ -208,10 +217,11 @@ const probe = Effect.fn("AsrProbeCli.probe")(function* (
           const fixture = `two-source-${language}`;
           const url = `${apiUrl}/__trigo/asr-probe/${fixture}?language=${language}`;
           const upload = yield* request(url, token, "PUT", 201, AsrProbeUploadResponse, bytes);
-          if (!upload.ok)
+          if (!upload.ok) {
             return yield* probeCliError(
               `${language} fixture upload failed: HTTP ${upload.status} ${upload.error.code}`,
             );
+          }
           const result = yield* request(url, token, "POST", 200, AsrProbeTranscriptionResponse);
           if (!result.ok) {
             yield* Console.log(
@@ -238,8 +248,9 @@ const main = Effect.gen(function* () {
     catch: (cause) => probeCliError("Cannot resolve the Trigo worktree", cause),
   });
   const [action, ...args] = process.argv.slice(2);
-  if (action !== "generate" && action !== "probe")
+  if (action !== "generate" && action !== "probe") {
     return yield* probeCliError("Expected asr action: generate or probe");
+  }
   const options = yield* Effect.try({
     try: () =>
       commandOptions(
@@ -255,8 +266,12 @@ const main = Effect.gen(function* () {
   if (action === "generate") {
     const language = options.get("--language");
     const output = options.get("--output");
-    if ((language !== "en" && language !== "ru" && language !== "uk") || typeof output !== "string")
+    if (
+      (language !== "en" && language !== "ru" && language !== "uk") ||
+      typeof output !== "string"
+    ) {
       return yield* probeCliError("generate requires --language en|ru|uk and --output <path>");
+    }
     return yield* Effect.try({
       try: () => generateProbeFixture(language, resolve(output)),
       catch: (cause) => probeCliError("Fixture generation failed", cause),
@@ -266,29 +281,34 @@ const main = Effect.gen(function* () {
     try: () => parseCloudStage(args),
     catch: (cause) => probeCliError("Invalid cloud stage", cause),
   });
-  if (stage !== "dev") return yield* probeCliError("Nova-3 probes may target only --stage dev");
+  if (stage !== "dev") {
+    return yield* probeCliError("Nova-3 probes may target only --stage dev");
+  }
   const selectedLanguage = options.get("--language");
   if (
     selectedLanguage !== undefined &&
     selectedLanguage !== "en" &&
     selectedLanguage !== "ru" &&
     selectedLanguage !== "uk"
-  )
+  ) {
     return yield* probeCliError("Use --language en, --language ru, or --language uk");
+  }
   const languages: ReadonlyArray<ProbeLanguage> =
     selectedLanguage === undefined ? ["en", "ru", "uk"] : [selectedLanguage];
   const handoff = options.get("--handoff");
-  if (typeof handoff !== "string")
+  if (typeof handoff !== "string") {
     return yield* probeCliError(
       "Pass --handoff <private dev owner handoff>; probes do not read app Keychain items",
     );
+  }
   const target = cloudTargetFor(stage);
   const configuration = yield* Effect.try({
     try: () => readCloudConfiguration(resolve(root, target.configPath), target),
     catch: (cause) => probeCliError("Cannot read the dev cloud configuration", cause),
   });
-  if (configuration.apiUrl === undefined)
+  if (configuration.apiUrl === undefined) {
     return yield* probeCliError("The dev Cloud API URL is missing");
+  }
   const token = yield* readProbeCredential(resolve(handoff), configuration).pipe(
     Effect.mapError(() => probeCliError("Cannot read a matching dev owner token handoff")),
   );

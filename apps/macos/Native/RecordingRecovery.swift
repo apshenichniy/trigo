@@ -49,14 +49,15 @@ enum RecordingRecovery {
       try requireSafePath(root, directory: true)
       let repository = try LocalRepository(root: root, archiveID: archiveID)
       for child in try files.contentsOfDirectory(
-        at: root, includingPropertiesForKeys: [.isSymbolicLinkKey])
-      {
-        if try child.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true {
-          report.failures.append(
-            .init(
-              callID: child.lastPathComponent,
-              message: "Linked archive entry rejected; retained evidence has not been changed."))
-        }
+        at: root,
+        includingPropertiesForKeys: [.isSymbolicLinkKey]
+      ) where try child.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true {
+        report.failures.append(
+          .init(
+            callID: child.lastPathComponent,
+            message: "Linked archive entry rejected; retained evidence has not been changed."
+          )
+        )
       }
       var after: String?
       while true {
@@ -80,7 +81,8 @@ enum RecordingRecovery {
                   callID: call.callID,
                   message:
                     "Corrupt media tail rejected. Only the verified prefix was recovered; original files remain available for inspection."
-                ))
+                )
+              )
             }
           } catch {
             report.failures.append(
@@ -88,7 +90,8 @@ enum RecordingRecovery {
                 callID: call.callID,
                 message:
                   "Recovery rejected or failed. Verify metadata, archive identity, free disk space and file access; retained evidence has not been deleted."
-              ))
+              )
+            )
           }
         }
         if calls.count < 100 { break }
@@ -100,7 +103,8 @@ enum RecordingRecovery {
           callID: "archive",
           message:
             "Cannot open the local archive. Its identity, version, integrity or file access requires attention; no automatic reset was performed."
-        ))
+        )
+      )
     }
     return report
   }
@@ -108,8 +112,9 @@ enum RecordingRecovery {
   private static func rejectLinkedChildren(_ directory: URL) throws {
     try requireSafePath(directory, directory: true)
     for child in try FileManager.default.contentsOfDirectory(
-      at: directory, includingPropertiesForKeys: [.isSymbolicLinkKey])
-    {
+      at: directory,
+      includingPropertiesForKeys: [.isSymbolicLinkKey]
+    ) {
       guard try child.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink != true else {
         throw LocalPersistenceError.unsafeStore(child.lastPathComponent)
       }

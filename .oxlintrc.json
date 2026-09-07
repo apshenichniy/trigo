@@ -1,7 +1,19 @@
 {
   "$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
   "extends": ["./node_modules/@effect/tsgo/oxlint-presets/recommended.json"],
+  "rules": {
+    "curly": ["error", "all"],
+    "no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
+    "no-else-return": ["error", { "allowElseIf": false }]
+  },
   "overrides": [
+    {
+      "files": ["apps/server/src/**/*.ts", "packages/contracts/src/**/*.ts"],
+      "rules": {
+        "max-depth": ["error", 4],
+        "no-nested-ternary": "error"
+      }
+    },
     {
       "files": ["scripts/**/*.ts"],
       "rules": {

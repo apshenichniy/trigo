@@ -1,7 +1,8 @@
-import { ErrorEnvelopeSchema, type ErrorEnvelope } from "@trigo/contracts";
 import { Cause, Effect, Result } from "effect";
 import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
 import { HttpApiSchemaError } from "effect/unstable/httpapi/HttpApiError";
+
+import { ErrorEnvelopeSchema, type ErrorEnvelope } from "@trigo/contracts";
 
 export function errorEnvelope(
   code: string,
@@ -59,7 +60,9 @@ export const httpErrorBoundary = HttpRouter.middleware((httpEffect) =>
         : response,
     ),
     Effect.catchCause((cause) => {
-      if (Cause.hasInterrupts(cause)) return Effect.failCause(cause);
+      if (Cause.hasInterrupts(cause)) {
+        return Effect.failCause(cause);
+      }
       const defect = Cause.findDefect(cause);
       if (Result.isSuccess(defect) && HttpApiSchemaError.is(defect.success)) {
         const isResponse =

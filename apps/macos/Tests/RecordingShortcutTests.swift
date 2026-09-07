@@ -11,7 +11,9 @@ import Testing
     system: .init(register: { callback in
       callbacks.append(callback)
       return RecordingShortcutLease { cancellations += 1 }
-    }), action: { presses += 1 })
+    }),
+    action: { presses += 1 }
+  )
   shortcut.register()
   shortcut.register()
   #expect(callbacks.count == 1)
@@ -38,7 +40,9 @@ import Testing
   let shortcut = GlobalRecordingShortcut(
     system: .init(register: { _ in
       throw RecordingShortcutError.registrationFailed(-9878)
-    }), action: {})
+    }),
+    action: {}
+  )
   shortcut.register()
   #expect(!shortcut.isRegistered)
   #expect(shortcut.issue?.contains("Keyboard") == true)

@@ -1,4 +1,5 @@
 import { Effect, Redacted, Schema } from "effect";
+
 import { ownerHandoffTarget, readOwnerHandoff } from "./cloud-owner.ts";
 import { cloudTargetFor, type CloudConfiguration } from "./cloud.ts";
 
@@ -22,9 +23,10 @@ export const readProbeCredential = Effect.fn("AsrProbe.readCredential")(function
     handoff.target.accountId !== expected.accountId ||
     handoff.target.databaseName !== expected.databaseName ||
     handoff.target.deploymentIdentity !== expected.deploymentIdentity
-  )
+  ) {
     return yield* new ProbeCredentialError({
       message: "The probe requires a token handoff for this dev deployment",
     });
+  }
   return Redacted.make(handoff.token);
 });

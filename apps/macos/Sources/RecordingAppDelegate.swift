@@ -9,7 +9,9 @@ import TrigoNative
   private var terminationPending = false
 
   func configure(
-    coordinator: RecordingCoordinator, appName: String, openConnection: @escaping () -> Void
+    coordinator: RecordingCoordinator,
+    appName: String,
+    openConnection: @escaping () -> Void
   ) {
     guard self.coordinator == nil else { return }
     self.coordinator = coordinator
@@ -23,7 +25,10 @@ import TrigoNative
     self.shortcut = shortcut
     let panel = NSPanel(
       contentRect: NSRect(x: 0, y: 0, width: 380, height: 560),
-      styleMask: [.titled, .closable, .nonactivatingPanel], backing: .buffered, defer: false)
+      styleMask: [.titled, .closable, .nonactivatingPanel],
+      backing: .buffered,
+      defer: false
+    )
     panel.title = "\(appName) — Recording"
     panel.level = .floating
     panel.isFloatingPanel = true
@@ -33,7 +38,10 @@ import TrigoNative
     panel.contentView = NSHostingView(
       rootView: RecordingPanel(
         coordinator: coordinator,
-        shortcut: shortcut, openConnection: openConnection))
+        shortcut: shortcut,
+        openConnection: openConnection
+      )
+    )
     panel.center()
     self.panel = panel
     shortcut.register()

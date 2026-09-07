@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { closeSync, constants, fstatSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
+
 import { Config, Console, DateTime, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
+
 import type {
   OwnerOperation,
   OwnerOperationResult,
@@ -179,8 +181,9 @@ export const applyRemoteOwnerOperation = Effect.fn("CloudOwner.applyRemoteOperat
   operation: OwnerOperation,
   transport: CloudflareOwnerTransport,
 ): Effect.fn.Return<OwnerOperationResult, OwnerCommandError> {
-  if (!/^[0-9a-f]{32}$/i.test(accountId))
+  if (!/^[0-9a-f]{32}$/i.test(accountId)) {
     return yield* commandError("Cloudflare account ID must be exactly 32 hexadecimal characters");
+  }
   const databasesUrl = new URL(
     `https://api.cloudflare.com/client/v4/accounts/${accountId.toLowerCase()}/d1/database`,
   );
@@ -194,17 +197,19 @@ export const applyRemoteOwnerOperation = Effect.fn("CloudOwner.applyRemoteOperat
       commandError("Cloudflare returned a malformed D1 database list", cause),
     ),
   );
-  if (databaseResponse.status < 200 || databaseResponse.status >= 300 || !databases.success)
+  if (databaseResponse.status < 200 || databaseResponse.status >= 300 || !databases.success) {
     return yield* cloudflareFailure(
       "D1 database lookup",
       databaseResponse.status,
       databases.errors,
     );
+  }
   const matches = databases.result.filter(
     (database) => database.name === databaseName && database.uuid !== undefined,
   );
-  if (matches.length !== 1 || matches[0]?.uuid === undefined)
+  if (matches.length !== 1 || matches[0]?.uuid === undefined) {
     return yield* commandError(`Expected exactly one D1 database named ${databaseName}`);
+  }
 
   const queryUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId.toLowerCase()}/d1/database/${matches[0].uuid}/query`;
   const queryResponse = yield* transport.request(
@@ -219,16 +224,19 @@ export const applyRemoteOwnerOperation = Effect.fn("CloudOwner.applyRemoteOperat
       commandError("Cloudflare returned a malformed D1 query result", cause),
     ),
   );
-  if (queryResponse.status < 200 || queryResponse.status >= 300 || !query.success)
+  if (queryResponse.status < 200 || queryResponse.status >= 300 || !query.success) {
     return yield* cloudflareFailure("D1 owner operation", queryResponse.status, query.errors);
-  if (query.result.some((result) => result.success === false))
+  }
+  if (query.result.some((result) => result.success === false)) {
     return yield* commandError("D1 owner operation batch reported a failed statement");
+  }
   const finalResult = query.result[query.result.length - 1];
   const row = finalResult?.results?.[0];
-  if (row === undefined)
+  if (row === undefined) {
     return yield* commandError(
       "Owner operation conflicts with the current credential generation or content",
     );
+  }
   const state = yield* decodeOwnerStateRow(row).pipe(
     Effect.mapError((cause) => commandError("D1 returned a malformed owner state", cause)),
   );
@@ -244,10 +252,11 @@ export function assertOwnerMutationAllowed(configuration: CloudConfiguration): v
   if (
     configuration.stage === "personal" &&
     configuration.personalDeploymentGate !== "approved-after-32"
-  )
+  ) {
     throw new Error(
       "Personal owner operations are blocked until #32 is accepted and personalDeploymentGate is approved-after-32",
     );
+  }
 }
 
 const liveCloudflareOwnerRequest = Effect.fn("CloudOwner.liveRequest")(function* (
@@ -264,12 +273,13 @@ const liveCloudflareOwnerRequest = Effect.fn("CloudOwner.liveRequest")(function*
   let outgoing = HttpClientRequest.make(method)(request.url, {
     headers: Array.from(request.headers.entries()),
   });
-  if (body !== undefined)
+  if (body !== undefined) {
     outgoing = HttpClientRequest.bodyText(
       outgoing,
       body,
       request.headers.get("content-type") ?? "application/json",
     );
+  }
   const response = yield* HttpClient.execute(outgoing).pipe(
     Effect.provide(FetchHttpClient.layer),
     Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
@@ -292,17 +302,21 @@ function flagValues(args: readonly string[]): ReadonlyMap<string, string> {
   for (let index = 0; index < args.length; index += 2) {
     const flag = args[index];
     const value = args[index + 1];
-    if (flag === undefined || !flag.startsWith("--") || value === undefined)
+    if (flag === undefined || !flag.startsWith("--") || value === undefined) {
       throw new Error("Owner command arguments must be --flag value pairs");
-    if (values.has(flag)) throw new Error(`Pass ${flag} at most once`);
+    }
+    if (values.has(flag)) {
+      throw new Error(`Pass ${flag} at most once`);
+    }
     values.set(flag, value);
   }
   return values;
 }
 
 export function parseOwnerCommand(action: string, args: readonly string[]): OwnerCommand {
-  if (action !== "initialize" && action !== "rotate" && action !== "revoke")
+  if (action !== "initialize" && action !== "rotate" && action !== "revoke") {
     throw new Error("Expected owner action: initialize, rotate, or revoke");
+  }
   const values = flagValues(args);
   const allowed = new Set([
     "--stage",
@@ -311,22 +325,29 @@ export function parseOwnerCommand(action: string, args: readonly string[]): Owne
     ...(action === "initialize" ? [] : ["--expected-generation"]),
   ]);
   const unexpected = Array.from(values.keys()).filter((flag) => !allowed.has(flag));
-  if (unexpected.length > 0) throw new Error(`Unexpected owner argument: ${unexpected.join(", ")}`);
+  if (unexpected.length > 0) {
+    throw new Error(`Unexpected owner argument: ${unexpected.join(", ")}`);
+  }
 
   const stage = values.get("--stage");
-  if (stage !== "dev" && stage !== "personal")
+  if (stage !== "dev" && stage !== "personal") {
     throw new Error("Pass an explicit --stage dev or --stage personal");
+  }
   const handoffPath = values.get("--handoff");
-  if (handoffPath === undefined || !isAbsolute(handoffPath))
+  if (handoffPath === undefined || !isAbsolute(handoffPath)) {
     throw new Error("Pass an absolute path after --handoff");
+  }
   const configured = values.get("--config");
   const config = configured === undefined ? {} : { configPath: resolve(configured) };
-  if (action === "initialize") return { action: "initialize", stage, handoffPath, ...config };
+  if (action === "initialize") {
+    return { action: "initialize", stage, handoffPath, ...config };
+  }
 
   const rawGeneration = values.get("--expected-generation");
   const expectedGeneration = rawGeneration === undefined ? NaN : Number(rawGeneration);
-  if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 1)
+  if (!Number.isSafeInteger(expectedGeneration) || expectedGeneration < 1) {
     throw new Error("Pass a positive integer after --expected-generation");
+  }
   return { action, stage, handoffPath, ...config, expectedGeneration };
 }
 
@@ -356,20 +377,22 @@ function newHandoff(
     operationId: randomUUID(),
     createdAt,
   };
-  if (command.action === "initialize")
+  if (command.action === "initialize") {
     return decodeOwnerHandoffValue({
       ...common,
       action: "initialize",
       archiveId: randomUUID(),
       token: ownerToken(),
     });
-  if (command.action === "rotate")
+  }
+  if (command.action === "rotate") {
     return decodeOwnerHandoffValue({
       ...common,
       action: "rotate",
       expectedGeneration: command.expectedGeneration,
       token: ownerToken(),
     });
+  }
   return decodeOwnerHandoffValue({
     ...common,
     action: "revoke",
@@ -382,20 +405,23 @@ function assertHandoffMatches(
   target: OwnerHandoffTarget,
   handoff: OwnerHandoff,
 ): void {
-  if (handoff.action !== command.action || handoff.stage !== command.stage)
+  if (handoff.action !== command.action || handoff.stage !== command.stage) {
     throw new Error("Existing owner handoff does not match the requested action and stage");
+  }
   if (
     handoff.target.accountId !== target.accountId ||
     handoff.target.databaseName !== target.databaseName ||
     handoff.target.deploymentIdentity !== target.deploymentIdentity
-  )
+  ) {
     throw new Error("Existing owner handoff does not match the requested Cloudflare target");
+  }
   if (
     command.action !== "initialize" &&
     handoff.action !== "initialize" &&
     handoff.expectedGeneration !== command.expectedGeneration
-  )
+  ) {
     throw new Error("Existing owner handoff does not match --expected-generation");
+  }
 }
 
 const decodeOwnerHandoff = Schema.decodeUnknownSync(Schema.fromJsonString(OwnerHandoffSchema));
@@ -411,13 +437,15 @@ function loadOwnerHandoff(handoffPath: string): OwnerHandoff {
       !status.isFile() ||
       status.size > 65_536 ||
       (process.getuid && status.uid !== process.getuid())
-    )
+    ) {
       throw new Error("Owner handoff must be a bounded, owned regular file");
+    }
     const mode = status.mode & 0o777;
-    if (mode !== 0o600)
+    if (mode !== 0o600) {
       throw new Error(
         `Owner handoff permissions must be 0600, found ${mode.toString(8).padStart(4, "0")}`,
       );
+    }
     return decodeOwnerHandoff(readFileSync(fd, "utf8"));
   } finally {
     closeSync(fd);
@@ -429,8 +457,9 @@ export const readOwnerHandoff = Effect.fn("CloudOwner.readHandoff")(
     Effect.try({
       try: () => {
         const handoff = loadOwnerHandoff(handoffPath);
-        if (handoff.stage !== stage)
+        if (handoff.stage !== stage) {
           throw new Error(`Owner handoff stage mismatch: expected ${stage}`);
+        }
         return handoff;
       },
       catch: (cause) => commandError(`Cannot read owner handoff: ${handoffPath}`, cause),
@@ -449,8 +478,13 @@ export const prepareOwnerHandoff = Effect.fn("CloudOwner.prepareHandoff")(functi
         assertHandoffMatches(command, target, handoff);
         return handoff;
       } catch (cause) {
-        if (typeof cause !== "object" || cause === null || Reflect.get(cause, "code") !== "ENOENT")
+        if (
+          typeof cause !== "object" ||
+          cause === null ||
+          Reflect.get(cause, "code") !== "ENOENT"
+        ) {
           throw cause;
+        }
       }
 
       const handoff = newHandoff(command, target, createdAt);
@@ -475,7 +509,7 @@ export const prepareOwnerHandoff = Effect.fn("CloudOwner.prepareHandoff")(functi
 export const ownerOperationFromHandoff = Effect.fn("CloudOwner.operationFromHandoff")(function* (
   handoff: OwnerHandoff,
 ): Effect.fn.Return<OwnerOperation> {
-  if (handoff.action === "initialize")
+  if (handoff.action === "initialize") {
     return {
       kind: "initialize",
       operationId: handoff.operationId,
@@ -483,7 +517,8 @@ export const ownerOperationFromHandoff = Effect.fn("CloudOwner.operationFromHand
       verifierSha256: yield* hashOwnerToken(handoff.token),
       now: DateTime.formatIso(handoff.createdAt),
     };
-  if (handoff.action === "rotate")
+  }
+  if (handoff.action === "rotate") {
     return {
       kind: "rotate",
       operationId: handoff.operationId,
@@ -491,6 +526,7 @@ export const ownerOperationFromHandoff = Effect.fn("CloudOwner.operationFromHand
       verifierSha256: yield* hashOwnerToken(handoff.token),
       now: DateTime.formatIso(handoff.createdAt),
     };
+  }
   return {
     kind: "revoke",
     operationId: handoff.operationId,

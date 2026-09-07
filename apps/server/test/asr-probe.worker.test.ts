@@ -1,3 +1,8 @@
+import { expect, it } from "@effect/vitest";
+import { env } from "cloudflare:workers";
+import { Effect } from "effect";
+import { beforeEach, vi } from "vitest";
+
 import {
   frameCountForDuration,
   makeWaveHeader,
@@ -5,10 +10,7 @@ import {
   validateDocument,
   waveByteLength,
 } from "@trigo/contracts";
-import { expect, it } from "@effect/vitest";
-import { env } from "cloudflare:workers";
-import { Effect } from "effect";
-import { beforeEach, vi } from "vitest";
+
 import ownerIdentityMigration from "../migrations/0001_owner_identity.sql?raw";
 import cloudWorker, { type CloudEnvironmentProbe } from "../src/cloud-worker.ts";
 import {
@@ -178,7 +180,9 @@ it.effect("retains a private provider failure without retrying inference", () =>
       env.LOCAL_ARCHIVE.get("acceptance/issue-13/two-source-en/en/provider-error.json"),
     );
     expect(failure).not.toBeNull();
-    if (failure === null) throw new Error("Expected private provider failure evidence");
+    if (failure === null) {
+      throw new Error("Expected private provider failure evidence");
+    }
     expect(yield* Effect.promise(() => failure.json())).toMatchObject({
       model: "@cf/deepgram/nova-3",
       profileId: selectedMediaProfile.id,
@@ -236,7 +240,9 @@ it.effect("retains private input, raw Nova-3 output, and normalized channel evid
     );
     expect(raw).not.toBeNull();
     expect(normalized).not.toBeNull();
-    if (normalized === null) throw new Error("Expected normalized probe evidence");
+    if (normalized === null) {
+      throw new Error("Expected normalized probe evidence");
+    }
     const normalizedBody = yield* Effect.promise(() => normalized.json());
     expect(validateDocument("TranscriptRevision", normalizedBody)).toMatchObject({
       asr: { profileId: selectedMediaProfile.id },

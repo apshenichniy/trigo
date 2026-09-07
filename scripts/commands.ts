@@ -1,19 +1,22 @@
-import { toolOutput as output, requireNativeTools } from "./toolchain.ts";
-import { snapshotLocks, assertLocksUnchanged } from "./locks.ts";
-import { run } from "./process.ts";
-import { lockedSwiftArguments, swiftTests } from "./native-check.ts";
-import { timedRun } from "./timing.ts";
 import { commandOptions } from "./arguments.ts";
+import { snapshotLocks, assertLocksUnchanged } from "./locks.ts";
+import { lockedSwiftArguments, swiftTests } from "./native-check.ts";
+import { run } from "./process.ts";
+import { timedRun } from "./timing.ts";
+import { toolOutput as output, requireNativeTools } from "./toolchain.ts";
 const command = process.argv[2] ?? "doctor";
 commandOptions(command, process.argv.slice(3), {});
 function native() {
-  if (process.platform !== "darwin")
+  if (process.platform !== "darwin") {
     throw new Error(
       "Full/native checks require macOS and Xcode 26.6 (17F113). Use check:server for the portable subset.",
     );
+  }
 }
 function doctor() {
-  if (process.platform === "darwin") requireNativeTools();
+  if (process.platform === "darwin") {
+    requireNativeTools();
+  }
   const checks: [[string, ...string[]], string][] = [
     [["bun", "--version"], "1.3.13"],
     [["node", "--version"], "v24.14.1"],
@@ -21,7 +24,9 @@ function doctor() {
   for (const [cmd, expected] of checks) {
     const actual = output(cmd);
     console.log(`${cmd[0]}: ${actual}`);
-    if (actual !== expected) throw new Error(`Expected ${expected}`);
+    if (actual !== expected) {
+      throw new Error(`Expected ${expected}`);
+    }
   }
   console.log(
     "Target: local; fake ASR. Cloud commands require an explicit stage and stage config; the opt-in Nova-3 probe requires test:asr --stage dev.",
@@ -79,8 +84,9 @@ const swiftBuild = () => {
 };
 const macosBuild = () => {
   native();
-  for (const variant of ["dev", "personal"])
+  for (const variant of ["dev", "personal"]) {
     run(["bun", "run", "macos:build", "--variant", variant]);
+  }
 };
 async function serverBuild() {
   const result = await Bun.build({
@@ -90,7 +96,9 @@ async function serverBuild() {
     format: "esm",
     external: ["cloudflare:workers"],
   });
-  if (!result.success) throw new Error(result.logs.map((log) => log.message).join("\n"));
+  if (!result.success) {
+    throw new Error(result.logs.map((log) => log.message).join("\n"));
+  }
   console.log("Local and cloud Worker bundles built.");
 }
 const snapshot = snapshotLocks();

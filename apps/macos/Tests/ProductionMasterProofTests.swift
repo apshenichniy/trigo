@@ -14,16 +14,22 @@ private func productionTimelineSecond(_ second: Int, into timeline: CaptureTimel
     try timeline.setMicrophoneAvailable(microphone != .unavailable, atMs: second * 1000 + ms)
     let start = second * 16000 + ms * 16
     try timeline.append(
-      role: .microphone, startFrame: start,
-      samples: (ms * 16..<(ms * 16 + 160)).map {
-        masterSignal(second: second, frame: $0, channel: 0)
-      })
+      role: .microphone,
+      startFrame: start,
+      samples: (ms * 16..<(ms * 16 + 160))
+        .map {
+          masterSignal(second: second, frame: $0, channel: 0)
+        }
+    )
     if masterState(second: second, millisecond: ms, channel: 1) == .recorded {
       try timeline.append(
-        role: .application, startFrame: start,
-        samples: (ms * 16..<(ms * 16 + 160)).map {
-          masterSignal(second: second, frame: $0, channel: 1)
-        })
+        role: .application,
+        startFrame: start,
+        samples: (ms * 16..<(ms * 16 + 160))
+          .map {
+            masterSignal(second: second, frame: $0, channel: 1)
+          }
+      )
     }
   }
   try timeline.flush(throughMs: (second + 1) * 1000)
@@ -40,7 +46,8 @@ private func proveProductionMaster(seconds: Int) async throws {
     try autoreleasepool { try productionTimelineSecond(second, into: timeline) }
     if second == 132 {
       stableRange = try writer.readStableBytes(
-        in: 0..<Int64(MediaMasterProfile.maximumRequestBytes))
+        in: 0..<Int64(MediaMasterProfile.maximumRequestBytes)
+      )
     }
   }
   let appendSeconds = Date().timeIntervalSince(start)
@@ -56,7 +63,8 @@ private func proveProductionMaster(seconds: Int) async throws {
   }
   let file = try AVAudioFile(forReading: writer.master.mediaURL)
   let buffer = try #require(
-    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_000))
+    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_000)
+  )
   for second in 0..<seconds {
     try file.read(into: buffer)
     #expect(buffer.frameLength == 16_000)
@@ -75,8 +83,12 @@ private func proveProductionMaster(seconds: Int) async throws {
   let result = try await writer.session.complete(media: final, interruptionReason: nil)
   let repository = try LocalRepository(root: root, archiveID: writer.session.archiveID)
   let intervalCount = try repository.database.access {
-    try repository.database.rows(
-      "SELECT COUNT(*) FROM track_intervals WHERE hash=?", [.text(result.snapshotSHA256)])[0].int(0)
+    try repository.database
+      .rows(
+        "SELECT COUNT(*) FROM track_intervals WHERE hash=?",
+        [.text(result.snapshotSHA256)]
+      )[0]
+      .int(0)
   }
   var streamedHash = SHA256()
   try repository.forEachSnapshotChunk(callID: writer.session.callID, version: 2) {
@@ -94,7 +106,8 @@ private func proveProductionMaster(seconds: Int) async throws {
   #expect(FileManager.default.fileExists(atPath: writer.master.mediaURL.path))
   #expect(
     try FileManager.default.contentsOfDirectory(atPath: writer.session.mediaDirectory.path).sorted()
-      == ["master.caf", "master.index"])
+      == ["master.caf", "master.index"]
+  )
   masterResources("production-frequent-full-extraction-\(seconds)")
   print(
     "PRODUCTION_MASTER seconds=\(seconds) frames=\(final.cursor.frames) bytes=\(final.cursor.stableBytes) intervals=\(intervalCount) snapshot_bytes=\(result.snapshotByteLength) append_s=\(appendSeconds) final_projection_s=\(projectionSeconds) sha256=\(final.sha256)"

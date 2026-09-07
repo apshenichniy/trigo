@@ -1,5 +1,7 @@
-import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+
+import { expect, it } from "vitest";
+
 import { parseStored, validateArchive, storedByteHash } from "../src/index.ts";
 const read = (name: string) =>
   new Uint8Array(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url)));
@@ -18,8 +20,9 @@ it("rejects an audio channel map that swaps microphone and application tracks", 
   const audio = parseStored("AudioManifest", read("audio"));
   const first = audio.objects[0]?.channelMap[0];
   const second = audio.objects[0]?.channelMap[1];
-  if (call.audioManifest === null || first === undefined || second === undefined)
+  if (call.audioManifest === null || first === undefined || second === undefined) {
     throw new Error("fixture");
+  }
   const swapped = {
     ...audio,
     objects: audio.objects.map((object, index) =>

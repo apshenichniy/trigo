@@ -37,21 +37,27 @@ private func lifecycleRoot() throws -> URL {
 
 @Test func lifecycleEnumsPersistTheExactAcceptedStates() {
   #expect(
-    CaptureLifecycleState.allCases.map(\.rawValue) == ["recording", "stopped", "interrupted"])
+    CaptureLifecycleState.allCases.map(\.rawValue) == ["recording", "stopped", "interrupted"]
+  )
   #expect(
     UploadLifecycleState.allCases.map(\.rawValue)
-      == ["pending", "uploading", "stored", "failed"])
+      == ["pending", "uploading", "stored", "failed"]
+  )
   #expect(
     TranscriptionLifecycleState.allCases.map(\.rawValue)
-      == ["waiting_for_audio", "queued", "running", "result_available", "failed"])
+      == ["waiting_for_audio", "queued", "running", "result_available", "failed"]
+  )
   #expect(
     ImportLifecycleState.allCases.map(\.rawValue)
-      == ["not_available", "pending", "imported", "failed"])
+      == ["not_available", "pending", "imported", "failed"]
+  )
   #expect(
-    ReplicaLifecycleState.allCases.map(\.rawValue) == ["pending", "confirmed", "conflict"])
+    ReplicaLifecycleState.allCases.map(\.rawValue) == ["pending", "confirmed", "conflict"]
+  )
   #expect(
     DeletionLifecycleState.allCases.map(\.rawValue)
-      == ["active", "requested", "draining", "deleting", "complete"])
+      == ["active", "requested", "draining", "deleting", "complete"]
+  )
 }
 
 @Test func independentLifecycleDimensionsAndStructuredFailuresSurviveRelaunch() async throws {
@@ -60,19 +66,23 @@ private func lifecycleRoot() throws -> URL {
   defer { try? FileManager.default.removeItem(at: root) }
   let store = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
   _ = try await store.publishLifecycle(
-    .initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID))
+    .initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID)
+  )
 
   let updated = try await store.updateLifecycle(callID: lifecycleCallID) { snapshot in
     snapshot.upload = LifecycleValue(
       state: .failed,
-      failure: try LifecycleFailure(code: "upload_unavailable", retry: .retryable))
+      failure: try LifecycleFailure(code: "upload_unavailable", retry: .retryable)
+    )
     snapshot.transcription = LifecycleValue(state: .queued)
     snapshot.importState = LifecycleValue(
       state: .failed,
-      failure: try LifecycleFailure(code: "invalid_result", retry: .afterCorrection))
+      failure: try LifecycleFailure(code: "invalid_result", retry: .afterCorrection)
+    )
     snapshot.replica = LifecycleValue(
       state: .conflict,
-      failure: try LifecycleFailure(code: "version_conflict", retry: .afterCorrection))
+      failure: try LifecycleFailure(code: "version_conflict", retry: .afterCorrection)
+    )
     snapshot.deletion = LifecycleValue(state: .draining)
   }
 
@@ -93,12 +103,15 @@ private func lifecycleRoot() throws -> URL {
   defer { try? FileManager.default.removeItem(at: root) }
   let baseline = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
   _ = try await baseline.publishLifecycle(
-    .initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID))
+    .initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID)
+  )
 
   let beforeReplacement = LifecycleFailOnce(at: .beforeRepositoryCommit)
   let interruptedBefore = try LocalRepository(
-    root: root, archiveID: lifecycleArchiveID,
-    interruption: beforeReplacement.callAsFunction)
+    root: root,
+    archiveID: lifecycleArchiveID,
+    interruption: beforeReplacement.callAsFunction
+  )
   await #expect(throws: LifecycleInjectedInterruption.self) {
     try await interruptedBefore.updateLifecycle(callID: lifecycleCallID) {
       $0.upload = LifecycleValue(state: .uploading)
@@ -112,8 +125,10 @@ private func lifecycleRoot() throws -> URL {
 
   let afterReplacement = LifecycleFailOnce(at: .afterRepositoryCommit)
   let interruptedAfter = try LocalRepository(
-    root: root, archiveID: lifecycleArchiveID,
-    interruption: afterReplacement.callAsFunction)
+    root: root,
+    archiveID: lifecycleArchiveID,
+    interruption: afterReplacement.callAsFunction
+  )
   await #expect(throws: LifecycleInjectedInterruption.self) {
     try await interruptedAfter.updateLifecycle(callID: lifecycleCallID) {
       $0.upload = LifecycleValue(state: .uploading)
@@ -123,7 +138,8 @@ private func lifecycleRoot() throws -> URL {
   let relaunchedCommitted = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
   #expect(try await relaunchedCommitted.lifecycle(callID: lifecycleCallID)?.stateVersion == 2)
   #expect(
-    try await relaunchedCommitted.lifecycle(callID: lifecycleCallID)?.upload.state == .uploading)
+    try await relaunchedCommitted.lifecycle(callID: lifecycleCallID)?.upload.state == .uploading
+  )
 }
 
 @Test func lifecycleCorruptionAndForeignIdentityAreRejectedWithoutDeletion() async throws {
@@ -132,10 +148,14 @@ private func lifecycleRoot() throws -> URL {
   defer { try? FileManager.default.removeItem(at: root) }
   let store = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
   let initial = CallLifecycleSnapshot.initial(
-    archiveID: lifecycleArchiveID, callID: lifecycleCallID)
+    archiveID: lifecycleArchiveID,
+    callID: lifecycleCallID
+  )
   _ = try await store.publishLifecycle(initial)
   let foreign = CallLifecycleSnapshot.initial(
-    archiveID: "00000000-0000-4000-8000-000000000099", callID: lifecycleCallID)
+    archiveID: "00000000-0000-4000-8000-000000000099",
+    callID: lifecycleCallID
+  )
   await #expect(throws: LocalPersistenceError.self) {
     try await store.publishLifecycle(foreign)
   }
@@ -144,7 +164,8 @@ private func lifecycleRoot() throws -> URL {
   try store.database.access {
     try store.database.execute(
       "UPDATE lifecycle SET upload_failure='Unstable Code',upload_retry='retryable' WHERE call_id=?",
-      [.text(lifecycleCallID)])
+      [.text(lifecycleCallID)]
+    )
   }
 
   await #expect(throws: LocalPersistenceError.self) {
@@ -154,7 +175,9 @@ private func lifecycleRoot() throws -> URL {
   #expect(report.rejectedCallIDs == [lifecycleCallID])
   #expect(
     FileManager.default.fileExists(
-      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path))
+      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path
+    )
+  )
 }
 
 @Test func lifecycleStoredCallIdentityMustReferenceACanonicalCall() async throws {
@@ -166,7 +189,8 @@ private func lifecycleRoot() throws -> URL {
     try store.database.access {
       try store.database.execute(
         "UPDATE lifecycle SET call_id=? WHERE call_id=?",
-        [.text("00000000-0000-4000-8000-000000000099"), .text(lifecycleCallID)])
+        [.text("00000000-0000-4000-8000-000000000099"), .text(lifecycleCallID)]
+      )
     }
   }
   #expect(try await store.lifecycle(callID: lifecycleCallID)?.capture.state == .recording)

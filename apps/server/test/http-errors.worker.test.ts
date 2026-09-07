@@ -1,8 +1,10 @@
-import { afterAll, describe, expect, it } from "vitest";
 import { Effect, Layer, Schema } from "effect";
 import { HttpRouter, HttpServer, HttpServerResponse } from "effect/unstable/http";
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { afterAll, describe, expect, it } from "vitest";
+
 import { validateDocument } from "@trigo/contracts";
+
 import { httpErrorBoundary } from "../src/http-errors.ts";
 
 // Narrow transport fixture: the supported status route has no request body to decode.

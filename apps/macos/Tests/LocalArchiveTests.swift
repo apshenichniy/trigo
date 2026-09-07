@@ -63,7 +63,8 @@ private func recordingManifest() throws -> Data {
 
 private func finalizedPreReferenceManifest(documentVersion: Int = 1) throws -> Data {
   var object = try #require(
-    JSONSerialization.jsonObject(with: fixture("call.json")) as? [String: Any])
+    JSONSerialization.jsonObject(with: fixture("call.json")) as? [String: Any]
+  )
   object["documentVersion"] = documentVersion
   object["audioManifest"] = NSNull()
   object["revisions"] = []
@@ -74,7 +75,10 @@ private func finalizedPreReferenceManifest(documentVersion: Int = 1) throws -> D
 
 private func completeManifest() throws -> Data {
   try replacingJSONValue(
-    try fixture("call.json"), key: "speakerNames", value: [:] as [String: Any])
+    try fixture("call.json"),
+    key: "speakerNames",
+    value: [:] as [String: Any]
+  )
 }
 
 private func publishCompleteCall(into archive: LocalRepository) async throws {
@@ -101,15 +105,21 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
   #expect(duplicate == .alreadyPresent)
 
   let original = try await archive.transcriptRevisionBytes(
-    callID: callID, revisionID: firstRevisionID)
+    callID: callID,
+    revisionID: firstRevisionID
+  )
   let conflicting = try replacingJSONValue(
-    try fixture("revision.json"), key: "createdAt", value: "2026-09-05T10:02:00Z")
+    try fixture("revision.json"),
+    key: "createdAt",
+    value: "2026-09-05T10:02:00Z"
+  )
   await #expect(throws: LocalPersistenceError.self) {
     try await archive.publishTranscriptRevision(conflicting)
   }
   #expect(
     try await archive.transcriptRevisionBytes(callID: callID, revisionID: firstRevisionID)
-      == original)
+      == original
+  )
 }
 
 @Test func invalidManifestReferencesAndHashesCannotReplaceAValidCall() async throws {
@@ -135,7 +145,10 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
   }
 
   let foreignArchive = try replacingJSONValue(
-    original, key: "archiveId", value: "00000000-0000-4000-8000-000000000099")
+    original,
+    key: "archiveId",
+    value: "00000000-0000-4000-8000-000000000099"
+  )
   await #expect(throws: LocalPersistenceError.self) {
     try await archive.publishManifest(foreignArchive)
   }
@@ -148,10 +161,15 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
   let archive = try LocalRepository(root: root, archiveID: archiveID)
   try await publishCompleteCall(into: archive)
   _ = try await archive.setSpeakerName(
-    "Саша", callID: callID, revisionID: firstRevisionID, speakerID: firstSpeakerID)
+    "Саша",
+    callID: callID,
+    revisionID: firstRevisionID,
+    speakerID: firstSpeakerID
+  )
   let original = try await archive.loadCall(callID: callID).manifest.storedBytes
   let originalObject = try #require(
-    JSONSerialization.jsonObject(with: original) as? [String: Any])
+    JSONSerialization.jsonObject(with: original) as? [String: Any]
+  )
 
   var withoutRevision = originalObject
   withoutRevision["documentVersion"] = 4
@@ -192,25 +210,37 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
   let archive = try LocalRepository(root: root, archiveID: archiveID)
   try await publishCompleteCall(into: archive)
   _ = try await archive.setSpeakerName(
-    "Саша", callID: callID, revisionID: firstRevisionID, speakerID: firstSpeakerID)
+    "Саша",
+    callID: callID,
+    revisionID: firstRevisionID,
+    speakerID: firstSpeakerID
+  )
   let oldRevision = try await archive.transcriptRevisionBytes(
-    callID: callID, revisionID: firstRevisionID)
+    callID: callID,
+    revisionID: firstRevisionID
+  )
 
   _ = try await archive.publishTranscriptRevision(
-    fixture("valid-fresh-transcription-revision.json"))
+    fixture("valid-fresh-transcription-revision.json")
+  )
   let appended = try replacingJSONValue(
-    try fixture("valid-fresh-transcription.json"), key: "documentVersion", value: 4)
+    try fixture("valid-fresh-transcription.json"),
+    key: "documentVersion",
+    value: 4
+  )
   #expect(try await archive.publishManifest(appended) == .committed)
 
   let loaded = try await archive.loadCall(callID: callID)
   let object = try #require(
-    JSONSerialization.jsonObject(with: loaded.manifest.storedBytes) as? [String: Any])
+    JSONSerialization.jsonObject(with: loaded.manifest.storedBytes) as? [String: Any]
+  )
   let names = try #require(object["speakerNames"] as? [String: [String: String]])
   #expect(object["activeRevisionId"] as? String == thirdRevisionID)
   #expect(names[firstRevisionID]?[firstSpeakerID] == "Саша")
   #expect(
     try await archive.transcriptRevisionBytes(callID: callID, revisionID: firstRevisionID)
-      == oldRevision)
+      == oldRevision
+  )
 }
 
 @Test func audioPublicationRequiresFinalizedMatchingCallAndCompleteTrackCoverage()
@@ -247,7 +277,8 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
   var missingTrack = original
   var incompleteObjects = try #require(missingTrack["objects"] as? [[String: Any]])
   var incompleteChannelMap = try #require(
-    incompleteObjects[0]["channelMap"] as? [[String: Any]])
+    incompleteObjects[0]["channelMap"] as? [[String: Any]]
+  )
   incompleteChannelMap.removeAll {
     $0["trackId"] as? String == "00000000-0000-4000-8000-000000000003"
   }
@@ -275,12 +306,14 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
     try archive.database.access {
       try archive.database.execute(
         "INSERT INTO evidence VALUES (?,'audio',?,?)",
-        [.text(wrongPathID), .text(callID), .text(Contract.hash(audio))])
+        [.text(wrongPathID), .text(callID), .text(Contract.hash(audio))]
+      )
     }
   }
 
   var revision = try #require(
-    JSONSerialization.jsonObject(with: fixture("revision.json")) as? [String: Any])
+    JSONSerialization.jsonObject(with: fixture("revision.json")) as? [String: Any]
+  )
   var reference = try #require(revision["audioManifest"] as? [String: Any])
   reference["manifestId"] = wrongPathID
   reference["sha256"] = "a2b877d544b6b5737fd99993eadaa9ff5ba4a91f042d0b6f04e29cc440b4ae56"
@@ -297,50 +330,81 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
   let archive = try LocalRepository(root: root, archiveID: archiveID)
   try await publishCompleteCall(into: archive)
   _ = try await archive.setSpeakerName(
-    "Саша", callID: callID, revisionID: firstRevisionID, speakerID: firstSpeakerID)
+    "Саша",
+    callID: callID,
+    revisionID: firstRevisionID,
+    speakerID: firstSpeakerID
+  )
   _ = try await archive.publishTranscriptRevision(
-    fixture("valid-fresh-transcription-revision.json"))
+    fixture("valid-fresh-transcription-revision.json")
+  )
   let thirdManifest = try replacingJSONValue(
-    try fixture("valid-fresh-transcription.json"), key: "documentVersion", value: 4)
+    try fixture("valid-fresh-transcription.json"),
+    key: "documentVersion",
+    value: 4
+  )
   _ = try await archive.publishManifest(thirdManifest)
   let firstBytes = try await archive.transcriptRevisionBytes(
-    callID: callID, revisionID: firstRevisionID)
+    callID: callID,
+    revisionID: firstRevisionID
+  )
   let thirdBytes = try await archive.transcriptRevisionBytes(
-    callID: callID, revisionID: thirdRevisionID)
+    callID: callID,
+    revisionID: thirdRevisionID
+  )
 
   _ = try await archive.setSpeakerName(
-    "Guest", callID: callID, revisionID: thirdRevisionID, speakerID: thirdSpeakerID)
+    "Guest",
+    callID: callID,
+    revisionID: thirdRevisionID,
+    speakerID: thirdSpeakerID
+  )
 
   let renamed = try await archive.setSpeakerName(
-    "Alexander", callID: callID, revisionID: firstRevisionID, speakerID: firstSpeakerID)
+    "Alexander",
+    callID: callID,
+    revisionID: firstRevisionID,
+    speakerID: firstSpeakerID
+  )
   let renamedObject = try #require(
-    JSONSerialization.jsonObject(with: renamed.manifest.storedBytes) as? [String: Any])
+    JSONSerialization.jsonObject(with: renamed.manifest.storedBytes) as? [String: Any]
+  )
   let names = try #require(renamedObject["speakerNames"] as? [String: [String: String]])
 
   #expect(names[firstRevisionID]?[firstSpeakerID] == "Alexander")
   #expect(names[secondRevisionID] == nil)
   #expect(names[thirdRevisionID]?[thirdSpeakerID] == "Guest")
   let renamedManifest = try #require(
-    JSONSerialization.jsonObject(with: renamed.manifest.storedBytes) as? [String: Any])
+    JSONSerialization.jsonObject(with: renamed.manifest.storedBytes) as? [String: Any]
+  )
   #expect(renamedManifest["activeRevisionId"] as? String == thirdRevisionID)
   #expect(
     try await archive.transcriptRevisionBytes(callID: callID, revisionID: firstRevisionID)
-      == firstBytes)
+      == firstBytes
+  )
   #expect(
     try await archive.transcriptRevisionBytes(callID: callID, revisionID: thirdRevisionID)
-      == thirdBytes)
+      == thirdBytes
+  )
 
   let removed = try await archive.setSpeakerName(
-    nil, callID: callID, revisionID: firstRevisionID, speakerID: firstSpeakerID)
+    nil,
+    callID: callID,
+    revisionID: firstRevisionID,
+    speakerID: firstSpeakerID
+  )
   let removedObject = try #require(
-    JSONSerialization.jsonObject(with: removed.manifest.storedBytes) as? [String: Any])
+    JSONSerialization.jsonObject(with: removed.manifest.storedBytes) as? [String: Any]
+  )
   let namesAfterRemoval = try #require(
-    removedObject["speakerNames"] as? [String: [String: String]])
+    removedObject["speakerNames"] as? [String: [String: String]]
+  )
   #expect(namesAfterRemoval[firstRevisionID] == nil)
   #expect(namesAfterRemoval[thirdRevisionID]?[thirdSpeakerID] == "Guest")
   #expect(
     try await archive.transcriptRevisionBytes(callID: callID, revisionID: firstRevisionID)
-      == firstBytes)
+      == firstBytes
+  )
 }
 
 @Test func interruptedAtomicPublicationRelaunchesIntoPriorOrCommittedDocument() async throws {
@@ -354,7 +418,10 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
 
   let beforeReplacement = FailOnce(at: .beforeRepositoryCommit)
   let interruptedBefore = try LocalRepository(
-    root: root, archiveID: archiveID, interruption: beforeReplacement.callAsFunction)
+    root: root,
+    archiveID: archiveID,
+    interruption: beforeReplacement.callAsFunction
+  )
   await #expect(throws: InjectedInterruption.self) {
     try await interruptedBefore.publishManifest(completeManifest())
   }
@@ -366,7 +433,10 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
 
   let afterReplacement = FailOnce(at: .afterRepositoryCommit)
   let interruptedAfter = try LocalRepository(
-    root: root, archiveID: archiveID, interruption: afterReplacement.callAsFunction)
+    root: root,
+    archiveID: archiveID,
+    interruption: afterReplacement.callAsFunction
+  )
   await #expect(throws: InjectedInterruption.self) {
     try await interruptedAfter.publishManifest(completeManifest())
   }
@@ -381,7 +451,9 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
   let archive = try LocalRepository(root: root, archiveID: archiveID)
   try await publishCompleteCall(into: archive)
   let original = try await archive.transcriptRevisionBytes(
-    callID: callID, revisionID: firstRevisionID)
+    callID: callID,
+    revisionID: firstRevisionID
+  )
   let stored = try Contract.decode(TranscriptRevision.self, bytes: original)
   let reencoded = try Contract.encode(stored.value)
   #expect(reencoded != original)
@@ -391,7 +463,9 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
     try await archive.publishTranscriptRevision(reencoded)
   }
   let retained = try await archive.transcriptRevisionBytes(
-    callID: callID, revisionID: firstRevisionID)
+    callID: callID,
+    revisionID: firstRevisionID
+  )
   #expect(retained == original)
   #expect(Contract.hash(retained) == stored.sha256)
 }
