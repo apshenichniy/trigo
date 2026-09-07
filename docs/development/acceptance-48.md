@@ -16,7 +16,7 @@ Baseline: `36d381e2a6b0eb5d32f0f619625650ef88b4febc`.
 | #52   | SQLite archive and durable operations   | Implemented; transaction/recovery checks passed; shared contention acceptance follows the current #53 evidence ([evidence](acceptance-52.md))                               |
 | #53   | Production stereo master recording      | Implemented; current durability and contention verification is recorded in the linked evidence ([evidence](acceptance-53.md)); current integration CI is reported in the PR |
 | #54   | Shared local/cloud product HttpApi      | Implemented; local server/native/offline checks passed; current integration CI is reported in the PR ([evidence](acceptance-54.md))                                         |
-| #55   | Permissions and Keychain readiness      | Pending                                                                                                                                                                     |
+| #55   | Permissions and Keychain readiness      | Implemented; local gates passed; integrated CI pending. Installed credential/permission observations remain in #57 ([evidence](acceptance-55.md))                           |
 | #56   | Commands and architecture documentation | Pending                                                                                                                                                                     |
 | #57   | Installed signed app acceptance         | Pending owner-assisted execution                                                                                                                                            |
 
@@ -109,6 +109,58 @@ physical permission or bundle ATS behavior. Those observations remain in #57.
 Raw final logs are `54-check-server-final.log` and `54-check-macos-final.log`
 under `/tmp/trigo-epic-48/`; [the #54 evidence](acceptance-54.md) records scope,
 source identity and earlier failed checks.
+
+Both jobs of [CI run 34113984002](https://github.com/apshenichniy/trigo/actions/runs/34113984002)
+passed on `4564e3f4643ad94a724bb512a14c56d784025192`, completing #54 verification.
+The server job took 75 s and the macOS job 579 s. Both native caches missed;
+locked setup, compilation, nine contract tests, all 161 native tests in 209.851 s,
+both Debug app builds, the actual sandboxed local/native smoke in 19.276 s,
+nested-lock restoration and clean-checkout checks passed. Both contention cases
+completed 120 commits and all background work with maximum envelopes
+1,075.517 ms dense and 1,070.870 ms production. Both jobs checked out synthetic
+merge `942e772607d9f77dcf0d44f3234805dd7a74e879`, whose whole tree matched the
+published PR tip. Raw logs and timing metadata are `54-ci-*` under
+`/tmp/trigo-epic-48/`.
+
+## Capture readiness and credential access
+
+#55 separates explicit setup actions from Start and refreshes readiness on app
+activation, wake and input-device changes. Microphone authorization remains
+separate from device availability and recording mute; screen preflight is
+presented as access required without inferring an unavailable OS distinction.
+Active microphone permission loss retires that input while preserving application
+audio. Screen permission loss interrupts capture with actionable Settings guidance.
+
+The confirmed pre-change Start reproduction requested permission in both denied
+cases, where zero requests were required. The reported Allow / Always Allow dialog
+itself remains unconfirmed: its requester, category and cause have not been
+observed. The final installed gate retains that observation boundary.
+
+Credential failures distinguish missing, interaction-required, denied, cancelled,
+unreadable and unavailable states while retaining offline archive binding. An
+unchanged remote-validated URL/token keeps the committed item; explicitly entered
+replacement for known unreadable data uses the existing safe transaction. Access
+errors do not imply corruption. Success and failed-commit rollback cases passed.
+Live helpers use isolated metadata/adapters or a validated private deployment
+handoff and cannot replace the normal installed app's credential.
+
+The supported installer requires explicit signed or ad-hoc mode, validates bundle
+and designated-requirement continuity, and provides a build/install action without
+launching. Local installs have a separate path and data namespace but share Dev OS
+permission identity. The controlled audio fixture and final installed procedure
+cover pinned-source focus changes, independent microphone mute, interruption,
+credential continuity and supported rebuild; they are preparation, not acceptance.
+
+Both local gates passed on the final runtime source: 311 unit tests, 36 Workers
+tests, nine Swift contract tests and 169 native tests in 376.447 s, deterministic
+generation, formatting/lint/types, both Worker bundles and both Debug apps.
+The native contention cases completed 344/346 commits and all background work;
+maximum input-through-durability envelopes were 1,178.553/1,166.988 ms against the
+unchanged two-second limit. The actual native/local smoke passed in 19.082 s under
+external network denial. Final source identity and the separate signed preparation
+are recorded in [the #55 evidence](acceptance-55.md). Raw logs are
+`55-check-server-final.log` and `55-check-macos-final.log` under
+`/tmp/trigo-epic-48/`. Integrated CI is pending publication of this slice.
 
 ## Completion boundary
 
