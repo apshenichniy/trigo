@@ -81,28 +81,35 @@ export function cloudDeploymentIdentity(target: CloudTarget, accountId: string):
 }
 
 function parseAction(value: string | undefined): CloudAction {
-  if (value === "preflight" || value === "bootstrap" || value === "deploy" || value === "test")
+  if (value === "preflight" || value === "bootstrap" || value === "deploy" || value === "test") {
     return value;
+  }
   throw new Error("Expected cloud action: preflight, bootstrap, deploy, or test");
 }
 
 export function parseCloudStage(args: readonly string[]): CloudStage {
   const stageIndexes = args.flatMap((value, index) => (value === "--stage" ? [index] : []));
-  if (stageIndexes.length > 1) throw new Error("Pass exactly one --stage selector");
+  if (stageIndexes.length > 1) {
+    throw new Error("Pass exactly one --stage selector");
+  }
   const stageIndex = stageIndexes[0];
   const value = stageIndex === undefined ? undefined : args[stageIndex + 1];
-  if (value !== "dev" && value !== "personal")
+  if (value !== "dev" && value !== "personal") {
     throw new Error("Pass an explicit --stage dev or --stage personal");
+  }
   return value;
 }
 
 export function cloudConfigPath(args: readonly string[], target: CloudTarget): string {
   const configIndexes = args.flatMap((value, index) => (value === "--config" ? [index] : []));
-  if (configIndexes.length > 1) throw new Error("Pass at most one --config selector");
+  if (configIndexes.length > 1) {
+    throw new Error("Pass at most one --config selector");
+  }
   const configIndex = configIndexes[0];
   const configured = configIndex === undefined ? target.configPath : args[configIndex + 1];
-  if (!configured || configured.startsWith("-"))
+  if (!configured || configured.startsWith("-")) {
     throw new Error("Pass a configuration path after --config");
+  }
   return resolve(configured);
 }
 
@@ -113,13 +120,15 @@ export function readCloudConfiguration(path: string, target: CloudTarget): Cloud
   } catch (error) {
     throw new Error(`Cloud configuration is not valid JSON: ${path}`, { cause: error });
   }
-  if (typeof value !== "object" || value === null || Array.isArray(value))
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`Cloud configuration must be a JSON object: ${path}`);
+  }
 
   const allowed = new Set(["stage", "accountId", "profile", "apiUrl", "personalDeploymentGate"]);
   const unexpected = Object.keys(value).filter((key) => !allowed.has(key));
-  if (unexpected.length > 0)
+  if (unexpected.length > 0) {
     throw new Error(`Unknown cloud configuration field: ${unexpected.join(", ")}`);
+  }
 
   const stage = Reflect.get(value, "stage");
   const accountId = Reflect.get(value, "accountId");
@@ -127,15 +136,21 @@ export function readCloudConfiguration(path: string, target: CloudTarget): Cloud
   const apiUrl = Reflect.get(value, "apiUrl");
   const personalDeploymentGate = Reflect.get(value, "personalDeploymentGate");
 
-  if (stage !== target.stage) throw new Error(`Cloud stage mismatch: expected ${target.stage}`);
-  if (profile !== target.profile)
+  if (stage !== target.stage) {
+    throw new Error(`Cloud stage mismatch: expected ${target.stage}`);
+  }
+  if (profile !== target.profile) {
     throw new Error(`Cloud profile mismatch: expected ${target.profile}`);
-  if (typeof accountId !== "string" || !/^[0-9a-f]{32}$/i.test(accountId))
+  }
+  if (typeof accountId !== "string" || !/^[0-9a-f]{32}$/i.test(accountId)) {
     throw new Error("Cloud accountId must be exactly 32 hexadecimal characters");
+  }
   let normalizedApiUrl: string | undefined;
   if (apiUrl !== undefined) {
     try {
-      if (typeof apiUrl !== "string") throw new Error("not a string");
+      if (typeof apiUrl !== "string") {
+        throw new Error("not a string");
+      }
       const parsed = new URL(apiUrl);
       if (
         parsed.protocol !== "https:" ||
@@ -144,8 +159,9 @@ export function readCloudConfiguration(path: string, target: CloudTarget): Cloud
         parsed.pathname !== "/" ||
         parsed.search !== "" ||
         parsed.hash !== ""
-      )
+      ) {
         throw new Error("not an HTTPS origin");
+      }
       normalizedApiUrl = parsed.origin;
     } catch (error) {
       throw new Error(
@@ -158,10 +174,11 @@ export function readCloudConfiguration(path: string, target: CloudTarget): Cloud
     personalDeploymentGate !== undefined &&
     personalDeploymentGate !== "blocked-by-32" &&
     personalDeploymentGate !== "approved-after-32"
-  )
+  ) {
     throw new Error(
       "personalDeploymentGate must be blocked-by-32 or approved-after-32 when present",
     );
+  }
 
   return {
     stage: target.stage,
@@ -179,8 +196,9 @@ function readJsonObject(path: string, description: string): object {
   } catch (error) {
     throw new Error(`${description} is missing or invalid: ${path}`, { cause: error });
   }
-  if (typeof value !== "object" || value === null || Array.isArray(value))
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`${description} must be a JSON object: ${path}`);
+  }
   return value;
 }
 
@@ -190,10 +208,11 @@ export function validateAlchemyProfileAccount(
 ): void {
   const profilesPath = resolve(alchemyRoot, "profiles.json");
   const configureProfile = `alchemy login --configure --profile ${configuration.profile}`;
-  if (!existsSync(profilesPath))
+  if (!existsSync(profilesPath)) {
     throw new Error(
       `Alchemy profile ${configuration.profile} is not configured for Cloudflare; run ${configureProfile} and confirm the intended account`,
     );
+  }
   const config = readJsonObject(profilesPath, "Alchemy profile registry");
   const profiles = Reflect.get(config, "profiles");
   const profile =
@@ -204,14 +223,17 @@ export function validateAlchemyProfileAccount(
     typeof profile === "object" && profile !== null
       ? Reflect.get(profile, "Cloudflare")
       : undefined;
-  if (typeof provider !== "object" || provider === null)
+  if (typeof provider !== "object" || provider === null) {
     throw new Error(
       `Alchemy profile ${configuration.profile} is not configured for Cloudflare; run ${configureProfile} and confirm the intended account`,
     );
+  }
 
   const method = Reflect.get(provider, "method");
   let profileAccountId: unknown;
-  if (method === "env") return;
+  if (method === "env") {
+    return;
+  }
   if (method === "oauth") {
     profileAccountId = Reflect.get(provider, "accountId");
   } else if (method === "stored") {
@@ -223,7 +245,9 @@ export function validateAlchemyProfileAccount(
     );
     const credentials = readJsonObject(credentialsPath, "Alchemy stored Cloudflare credentials");
     profileAccountId = Reflect.get(credentials, "accountId");
-    if (profileAccountId === undefined || profileAccountId === "") return;
+    if (profileAccountId === undefined || profileAccountId === "") {
+      return;
+    }
   } else {
     throw new Error(
       `Alchemy profile ${configuration.profile} uses unsupported Cloudflare method: ${String(method)}`,
@@ -233,10 +257,11 @@ export function validateAlchemyProfileAccount(
   if (
     typeof profileAccountId !== "string" ||
     profileAccountId.toLowerCase() !== configuration.accountId
-  )
+  ) {
     throw new Error(
       `Alchemy profile ${configuration.profile} belongs to a different Cloudflare account; rerun ${configureProfile} and confirm the intended account`,
     );
+  }
 }
 
 export function preflightCloudConfiguration(
@@ -244,7 +269,9 @@ export function preflightCloudConfiguration(
   target: CloudTarget,
   alchemyRoot = resolve(homedir(), ".alchemy"),
 ): CloudConfiguration {
-  if (!existsSync(configPath)) throw new Error(`Cloud configuration not found: ${configPath}`);
+  if (!existsSync(configPath)) {
+    throw new Error(`Cloud configuration not found: ${configPath}`);
+  }
   const configuration = readCloudConfiguration(configPath, target);
   validateAlchemyProfileAccount(configuration, alchemyRoot);
   return configuration;
@@ -255,8 +282,9 @@ function rejectUnexpectedCloudActionArgument(
   actionArgs: readonly string[],
 ): void {
   const unsupportedArgument = action === "test" ? undefined : actionArgs[0];
-  if (unsupportedArgument !== undefined)
+  if (unsupportedArgument !== undefined) {
     throw new Error(`Unexpected ${action} argument: ${unsupportedArgument}`);
+  }
 }
 
 export function cloudInvocationFor(
@@ -266,31 +294,35 @@ export function cloudInvocationFor(
   actionArgs: readonly string[] = [],
 ): CloudInvocation {
   rejectUnexpectedCloudActionArgument(action, actionArgs);
-  if (action === "test" && target.stage !== "dev")
+  if (action === "test" && target.stage !== "dev") {
     throw new Error("test:cloud fixtures are destructive and may target only --stage dev");
-  if (action === "test" && configuration.apiUrl === undefined)
+  }
+  if (action === "test" && configuration.apiUrl === undefined) {
     throw new Error(`test:cloud requires apiUrl in ${target.configPath}`);
+  }
   if (
     action === "deploy" &&
     target.stage === "personal" &&
     configuration.personalDeploymentGate !== "approved-after-32"
-  )
+  ) {
     throw new Error(
       "Personal deployment is blocked until #32 is accepted and personalDeploymentGate is approved-after-32",
     );
+  }
   const env = {
     ALCHEMY_PROFILE: configuration.profile,
     CLOUDFLARE_ACCOUNT_ID: configuration.accountId,
     TRIGO_CLOUD_STAGE: target.stage,
     ...(configuration.apiUrl === undefined ? {} : { TRIGO_CLOUD_API_URL: configuration.apiUrl }),
   };
-  if (action === "bootstrap")
+  if (action === "bootstrap") {
     return {
       program: "alchemy",
       args: ["cloudflare", "bootstrap", "--profile", target.profile],
       env,
     };
-  if (action === "deploy")
+  }
+  if (action === "deploy") {
     return {
       program: "alchemy",
       args: [
@@ -304,6 +336,7 @@ export function cloudInvocationFor(
       ],
       env,
     };
+  }
   return {
     program: "cloud-verifier",
     args: ["--stage", target.stage, ...actionArgs],
@@ -319,7 +352,9 @@ export function cloudActionArguments(args: readonly string[]): readonly string[]
       index += 1;
       continue;
     }
-    if (value !== undefined) forwarded.push(value);
+    if (value !== undefined) {
+      forwarded.push(value);
+    }
   }
   return forwarded;
 }
@@ -339,7 +374,9 @@ export function executeCloudInvocation(
     cwd: environment.root,
     env: { ...environment.baseEnv, ...invocation.env },
   });
-  if (result.error) throw result.error;
+  if (result.error) {
+    throw result.error;
+  }
   return result.status ?? 1;
 }
 
@@ -354,7 +391,9 @@ if (import.meta.main) {
     const configuration =
       parsedAction === "test"
         ? (() => {
-            if (!existsSync(config)) throw new Error(`Cloud configuration not found: ${config}`);
+            if (!existsSync(config)) {
+              throw new Error(`Cloud configuration not found: ${config}`);
+            }
             return readCloudConfiguration(config, target);
           })()
         : preflightCloudConfiguration(config, target);

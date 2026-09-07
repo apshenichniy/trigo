@@ -11,7 +11,10 @@ final class AppInstanceLease {
   init(namespace: AppNamespace) throws {
     let directory = namespace.connection.deletingLastPathComponent()
     try FileManager.default.createDirectory(
-      at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+      at: directory,
+      withIntermediateDirectories: true,
+      attributes: [.posixPermissions: 0o700]
+    )
     let path = directory.appendingPathComponent("application.lock").path
     let descriptor = Darwin.open(path, O_RDWR | O_CREAT | O_NOFOLLOW | O_CLOEXEC, 0o600)
     guard descriptor >= 0 else { throw AppInstanceLeaseError.unavailable }

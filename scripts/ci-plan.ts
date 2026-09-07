@@ -5,15 +5,21 @@ export type CheckSelection = { server: boolean; macos: "none" | "smoke" | "full"
 const fullChecks = (): CheckSelection => ({ server: true, macos: "full" });
 
 export function selectChecks(paths: readonly string[]): CheckSelection {
-  if (!paths.length) return fullChecks();
+  if (!paths.length) {
+    return fullChecks();
+  }
   const selection: CheckSelection = { server: false, macos: "none" };
   for (const path of paths) {
-    if (/^(?:README|AGENTS|CONTEXT)\.md$/.test(path) || /^docs\/[^\0]+\.md$/.test(path)) continue;
+    if (/^(?:README|AGENTS|CONTEXT)\.md$/.test(path) || /^docs\/[^\0]+\.md$/.test(path)) {
+      continue;
+    }
     if (path.startsWith("apps/macos/")) {
       selection.macos = "full";
     } else if (path.startsWith("apps/server/") || path.startsWith("infra/")) {
       selection.server = true;
-      if (selection.macos === "none") selection.macos = "smoke";
+      if (selection.macos === "none") {
+        selection.macos = "smoke";
+      }
     } else {
       // Includes contracts, scripts, dependency/tool pins, workflows and unknown areas.
       return fullChecks();
@@ -23,14 +29,16 @@ export function selectChecks(paths: readonly string[]): CheckSelection {
 }
 
 function object(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Invalid event object");
+  }
   return value as Record<string, unknown>;
 }
 
 function sha(value: unknown): string {
-  if (typeof value !== "string" || !/^[0-9a-f]{40}$/.test(value) || /^0+$/.test(value))
+  if (typeof value !== "string" || !/^[0-9a-f]{40}$/.test(value) || /^0+$/.test(value)) {
     throw new Error("Missing usable Git revision");
+  }
   return value;
 }
 
@@ -47,7 +55,9 @@ export function changedPaths(eventName: string, event: unknown, root = process.c
   } else if (eventName === "push") {
     base = sha(payload.before);
     head = sha(payload.after);
-  } else throw new Error(`No verified comparison for event ${eventName}`);
+  } else {
+    throw new Error(`No verified comparison for event ${eventName}`);
+  }
   // Disabling rename detection reports both the deleted old path and added new
   // path, preserving dependency selection across moves out of a component.
   return git(["diff", "--name-only", "-z", "--no-renames", base, head, "--"])
@@ -90,16 +100,18 @@ if (import.meta.main) {
   mkdirSync(".local", { recursive: true });
   writeFileSync(".local/ci-plan.json", `${JSON.stringify(plan, null, 2)}\n`);
   console.log(JSON.stringify(plan, null, 2));
-  if (process.env.GITHUB_OUTPUT)
+  if (process.env.GITHUB_OUTPUT) {
     appendFileSync(
       process.env.GITHUB_OUTPUT,
       `server=${plan.selected.server}\nmacos=${plan.selected.macos}\n`,
     );
-  if (process.env.GITHUB_STEP_SUMMARY)
+  }
+  if (process.env.GITHUB_STEP_SUMMARY) {
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
       `## Check selection\n\nSelective mode: **${plan.selective ? "enabled" : "bootstrap (full checks)"}**. ` +
         `Server: **${plan.selected.server}**; macOS: **${plan.selected.macos}**. ` +
         `${plan.paths.length} changed paths. ${plan.fallback ? "Comparison unavailable; using full checks." : ""}\n`,
     );
+  }
 }

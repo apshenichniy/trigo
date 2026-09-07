@@ -29,10 +29,15 @@ public final class CaptureMediaWriter {
       throw MediaMasterError.identityMismatch
     }
     try FileManager.default.createDirectory(
-      at: session.mediaDirectory, withIntermediateDirectories: true,
-      attributes: [.posixPermissions: 0o700])
+      at: session.mediaDirectory,
+      withIntermediateDirectories: true,
+      attributes: [.posixPermissions: 0o700]
+    )
     master = try RecoverableMediaMaster(
-      directory: session.mediaDirectory, identity: session.mediaMasterIdentity, io: io)
+      directory: session.mediaDirectory,
+      identity: session.mediaMasterIdentity,
+      io: io
+    )
   }
 
   private init(recovering session: CaptureArchiveSession) throws {
@@ -43,8 +48,10 @@ public final class CaptureMediaWriter {
       try repository.confirmedMediaCursor(callID: session.callID)
       ?? repository.initialCursor(session.mediaMasterIdentity)
     master = try RecoverableMediaMaster(
-      reopening: session.mediaDirectory, expectedIdentity: session.mediaMasterIdentity,
-      confirmed: confirmed)
+      reopening: session.mediaDirectory,
+      expectedIdentity: session.mediaMasterIdentity,
+      confirmed: confirmed
+    )
     try master.forEachCommit(intersecting: confirmed.frames..<master.cursor.frames) { commit in
       try repository.commitMediaProgress(commit)
     }
@@ -57,7 +64,8 @@ public final class CaptureMediaWriter {
   }
 
   public func append(
-    interleaved: [Int16], microphoneIntervals: [CaptureInterval]? = nil,
+    interleaved: [Int16],
+    microphoneIntervals: [CaptureInterval]? = nil,
     applicationIntervals: [CaptureInterval]? = nil
   ) throws {
     guard appendingAllowed, !failed, master.finalized == nil else { throw CaptureError.closed }
@@ -76,7 +84,8 @@ public final class CaptureMediaWriter {
         ],
         applicationIntervals: applicationIntervals ?? [
           .init(startMs: start, endMs: end, state: .recorded)
-        ])
+        ]
+      )
       try repository.commitMediaProgress(commit)
     } catch {
       failed = true
@@ -117,7 +126,8 @@ public final class CaptureMediaWriter {
 
   /// Post-call extraction is available once the same final master witness is committed.
   public func extract(
-    frames: Range<Int64>, to destination: URL,
+    frames: Range<Int64>,
+    to destination: URL,
     intervals: (MediaMasterSourceIntervals) throws -> Void = { _ in }
   ) throws -> MediaMasterExtraction {
     guard let final = try finalizedMaster(), master.finalized == final else {

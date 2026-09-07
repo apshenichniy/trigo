@@ -22,16 +22,25 @@ struct MediaMasterIndex {
       bytes.subdata(in: 72..<96) == Data(repeating: 0, count: 24)
     else { throw MediaMasterError.invalidHeader }
     func uuid(_ offset: Int) -> UUID {
-      bytes.subdata(in: offset..<(offset + 16)).withUnsafeBytes {
-        UUID(uuid: $0.loadUnaligned(as: uuid_t.self))
-      }
+      bytes.subdata(in: offset..<(offset + 16))
+        .withUnsafeBytes {
+          UUID(uuid: $0.loadUnaligned(as: uuid_t.self))
+        }
     }
     return MediaMasterIdentity(
-      masterID: uuid(8), callID: uuid(24), microphoneTrackID: uuid(40), applicationTrackID: uuid(56)
+      masterID: uuid(8),
+      callID: uuid(24),
+      microphoneTrackID: uuid(40),
+      applicationTrackID: uuid(56)
     )
   }
 
-  static func states(_ spans: [CaptureInterval], startMs: Int, countMs: Int, microphone: Bool)
+  static func states(
+    _ spans: [CaptureInterval],
+    startMs: Int,
+    countMs: Int,
+    microphone: Bool
+  )
     throws -> [UInt8]
   {
     var result = [UInt8]()
@@ -56,7 +65,12 @@ struct MediaMasterIndex {
     }
   }
 
-  static func intervals(_ bytes: Data, channel: Int, startMs: Int, countMs: Int) throws
+  static func intervals(
+    _ bytes: Data,
+    channel: Int,
+    startMs: Int,
+    countMs: Int
+  ) throws
     -> [CaptureInterval]
   {
     var spans = [CaptureInterval]()
@@ -70,7 +84,9 @@ struct MediaMasterIndex {
       default: throw MediaMasterError.invalidInput
       }
       mergeCaptureInterval(
-        .init(startMs: startMs + ms, endMs: startMs + ms + 1, state: state), into: &spans)
+        .init(startMs: startMs + ms, endMs: startMs + ms + 1, state: state),
+        into: &spans
+      )
     }
     guard
       bytes.subdata(in: (88 + countMs * 2)..<2088) == Data(repeating: 0, count: 2000 - countMs * 2)
@@ -81,7 +97,12 @@ struct MediaMasterIndex {
   }
 
   static func record(
-    final: Bool, frames: Int64, bytes: Int64, hash: Data, previous: Data, states: Data = Data()
+    final: Bool,
+    frames: Int64,
+    bytes: Int64,
+    hash: Data,
+    previous: Data,
+    states: Data = Data()
   ) -> Data {
     var result = Data((final ? "FINAL001" : "AUDIO001").utf8)
     result.appendInteger(frames)

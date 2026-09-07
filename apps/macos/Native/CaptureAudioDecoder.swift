@@ -29,15 +29,22 @@ public final class CaptureAudioDecoder {
       format.channelCount > 0, format.channelCount <= 8,
       Double(sample.numSamples) / format.sampleRate <= 1,
       let input = AVAudioPCMBuffer(
-        pcmFormat: format, frameCapacity: AVAudioFrameCount(sample.numSamples)),
+        pcmFormat: format,
+        frameCapacity: AVAudioFrameCount(sample.numSamples)
+      ),
       let outputFormat = AVAudioFormat(
-        standardFormatWithSampleRate: Double(MediaMasterProfile.sampleRate), channels: 1)
+        standardFormatWithSampleRate: Double(MediaMasterProfile.sampleRate),
+        channels: 1
+      )
     else { throw CaptureError.invalidAudio }
     input.frameLength = AVAudioFrameCount(sample.numSamples)
     guard
       CMSampleBufferCopyPCMDataIntoAudioBufferList(
-        sample, at: 0, frameCount: Int32(sample.numSamples),
-        into: input.mutableAudioBufferList) == noErr
+        sample,
+        at: 0,
+        frameCount: Int32(sample.numSamples),
+        into: input.mutableAudioBufferList
+      ) == noErr
     else { throw CaptureError.invalidAudio }
     let relative = CMTimeSubtract(sample.presentationTimeStamp, origin)
     let seconds = CMTimeGetSeconds(relative)
@@ -69,8 +76,11 @@ public final class CaptureAudioDecoder {
         pcmFormat: outputFormat,
         frameCapacity: AVAudioFrameCount(
           ceil(
-            Double(sample.numSamples) * Double(MediaMasterProfile.sampleRate) / format.sampleRate))
-          + 64)
+            Double(sample.numSamples) * Double(MediaMasterProfile.sampleRate) / format.sampleRate
+          )
+        )
+          + 64
+      )
     else { throw CaptureError.invalidAudio }
     let supply = CaptureConverterInput(input)
     var error: NSError?
@@ -90,7 +100,10 @@ public final class CaptureAudioDecoder {
     nextInputTime = CMTimeAdd(
       sample.presentationTimeStamp,
       CMTime(
-        seconds: Double(sample.numSamples) / format.sampleRate, preferredTimescale: 1_000_000_000))
+        seconds: Double(sample.numSamples) / format.sampleRate,
+        preferredTimescale: 1_000_000_000
+      )
+    )
     nextOutputFrame = startFrame + samples.count
     clockOrigin = origin
     return .init(startFrame: startFrame, samples: samples)
@@ -104,7 +117,10 @@ private final class CaptureConverterInput: @unchecked Sendable {
   private let buffer: AVAudioPCMBuffer
   private var offset: AVAudioFrameCount = 0
   init(_ buffer: AVAudioPCMBuffer) { self.buffer = buffer }
-  func take(count: AVAudioPacketCount, status: UnsafeMutablePointer<AVAudioConverterInputStatus>)
+  func take(
+    count: AVAudioPacketCount,
+    status: UnsafeMutablePointer<AVAudioConverterInputStatus>
+  )
     -> AVAudioBuffer?
   {
     lock.lock()

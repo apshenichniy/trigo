@@ -1,9 +1,14 @@
-import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { timed, timedRun, timingEnvironment, timingRunId } from "./timing.ts";
-import { toolOutput } from "./toolchain.ts";
+import { resolve } from "node:path";
+
+import {
+  artifactReceiptMatches,
+  buildCurrentArtifact,
+  nativeBuildIdentity,
+  supportsBuildReuse,
+} from "./build-reuse.ts";
 import {
   assertNativeTestOutput,
   exactTestFilter,
@@ -12,12 +17,8 @@ import {
   planNativeTests,
   type NativeSuite,
 } from "./native-suites.ts";
-import {
-  artifactReceiptMatches,
-  buildCurrentArtifact,
-  nativeBuildIdentity,
-  supportsBuildReuse,
-} from "./build-reuse.ts";
+import { timed, timedRun, timingEnvironment, timingRunId } from "./timing.ts";
+import { toolOutput } from "./toolchain.ts";
 
 export const swiftPackages = [
   { path: "packages/contracts", configuration: "debug" },
@@ -78,7 +79,9 @@ function buildNativeTests(build: () => void): string {
     },
     build,
     () => {
-      if (!existsSync(nativeArtifact())) throw new Error("Current native test bundle is missing");
+      if (!existsSync(nativeArtifact())) {
+        throw new Error("Current native test bundle is missing");
+      }
     },
   );
   return receipt;
@@ -102,9 +105,12 @@ function runNativeGroup(phase: string, command: string[], resourceTest?: string)
       });
       process.stdout.write(result.stdout ?? "");
       process.stderr.write(result.stderr ?? "");
-      if (result.error) throw result.error;
-      if (result.status !== 0)
+      if (result.error) {
+        throw result.error;
+      }
+      if (result.status !== 0) {
         throw new Error(`${phase} failed (${result.status ?? result.signal})`);
+      }
       assertNativeTestOutput(`${result.stdout}\n${result.stderr}`, resourceTest);
     },
     "release",

@@ -2,7 +2,9 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, renameSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+
 import { expect, it } from "vitest";
+
 import { changedPaths, ciPlan, selectChecks } from "./ci-plan.ts";
 import { assertCIResults } from "./ci-summary.ts";
 

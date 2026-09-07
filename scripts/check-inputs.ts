@@ -44,7 +44,9 @@ export function sourceState(root = process.cwd()) {
       .toString()
       .split("\0")
       .filter(Boolean);
-    if (untracked.length) hash.update(inputFingerprint(untracked, root));
+    if (untracked.length) {
+      hash.update(inputFingerprint(untracked, root));
+    }
   }
   return { revision, fingerprint: hash.digest("hex"), dirty: status.length > 0 };
 }

@@ -11,7 +11,10 @@ public enum CaptureStreamConfiguration {
   public static func microphone(_ device: CaptureMicrophone) -> SCStreamConfiguration {
     make(microphone: device, application: false)
   }
-  private static func make(microphone: CaptureMicrophone?, application: Bool)
+  private static func make(
+    microphone: CaptureMicrophone?,
+    application: Bool
+  )
     -> SCStreamConfiguration
   {
     let configuration = SCStreamConfiguration()
@@ -69,9 +72,11 @@ public enum ScreenCapturePhase: Equatable, Sendable {
 
   public init() {
     system = .init(
-      permissions: SystemCaptureSource.permissions, filter: SystemCaptureSource.filter,
+      permissions: SystemCaptureSource.permissions,
+      filter: SystemCaptureSource.filter,
       microphone: Self.defaultMicrophone,
-      stream: { SCStream(filter: $0, configuration: $1, delegate: $2) })
+      stream: { SCStream(filter: $0, configuration: $1, delegate: $2) }
+    )
   }
 
   init(system: CaptureSystem) { self.system = system }
@@ -102,14 +107,20 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     }
     let permission = system.permissions()
     _ = try CaptureSourceResolver.resolve(
-      permissions: permission, frontmostPID: source.processID,
-      ownPID: ProcessInfo.processInfo.processIdentifier, windows: [source])
+      permissions: permission,
+      frontmostPID: source.processID,
+      ownPID: ProcessInfo.processInfo.processIdentifier,
+      windows: [source]
+    )
     let selectedFilter = try await system.filter(source)
     try checkStart(attempt)
     let microphone = system.microphone()
     let created = try CaptureArchiveSession.allocate(
-      root: root, archiveID: archiveID,
-      source: source, microphone: microphone)
+      root: root,
+      archiveID: archiveID,
+      source: source,
+      microphone: microphone
+    )
     session = created
     allocated = created
     // Retain the identity before even the first durable preparation write.
@@ -119,7 +130,8 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     let output = try CaptureStreamSink(
       session: created,
       queue: system.audioQueue(),
-      origin: CMClockGetTime(CMClockGetHostTimeClock()), microphone: microphone,
+      origin: CMClockGetTime(CMClockGetHostTimeClock()),
+      microphone: microphone,
       onSnapshot: { [weak self] value in
         Task { @MainActor in
           guard self?.session?.callID == created.callID else { return }
@@ -134,7 +146,8 @@ public enum ScreenCapturePhase: Equatable, Sendable {
           guard self?.session?.callID == created.callID else { return }
           await self?.interrupt(reason)
         }
-      })
+      }
+    )
     sink = output
     phase = .starting
     let delegate = CaptureStreamDelegate { [weak self] id in
@@ -226,7 +239,9 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     applicationDelegate = nil
     microphoneDelegate = nil
     let aggregate = try await session.complete(
-      media: result.0, interruptionReason: result.1.interruptionReason)
+      media: result.0,
+      interruptionReason: result.1.interruptionReason
+    )
     try await retirement.retryAll()
     phase = pendingStart == nil ? .idle : .cancellingStart
     return aggregate
@@ -270,7 +285,9 @@ public enum ScreenCapturePhase: Equatable, Sendable {
   private func beginMonitoring() {
     let callID = session?.callID
     sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
-      forName: NSWorkspace.willSleepNotification, object: nil, queue: .main
+      forName: NSWorkspace.willSleepNotification,
+      object: nil,
+      queue: .main
     ) { [weak self] _ in
       Task { @MainActor in
         guard self?.session?.callID == callID else { return }
@@ -423,7 +440,9 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   private let onMicrophoneFailure: @Sendable (ObjectIdentifier) -> Void
 
   init(
-    session: CaptureArchiveSession, queue: DispatchQueue, origin: CMTime,
+    session: CaptureArchiveSession,
+    queue: DispatchQueue,
+    origin: CMTime,
     microphone: CaptureMicrophone?,
     onSnapshot: @escaping @Sendable (CaptureRecordingSnapshot) -> Void,
     onMicrophoneFailure: @escaping @Sendable (ObjectIdentifier) -> Void,
@@ -431,18 +450,26 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   ) throws {
     self.queue = queue
     engine = try CaptureRecordingEngine(
-      writer: CaptureMediaWriter(session: session), origin: origin, microphone: microphone)
+      writer: CaptureMediaWriter(session: session),
+      origin: origin,
+      microphone: microphone
+    )
     routing = CaptureAudioRouting(engine: engine, selection: selection)
     self.onSnapshot = onSnapshot
     self.onMicrophoneFailure = onMicrophoneFailure
     self.onFailure = onFailure
     super.init()
     ingress = CaptureAudioIngress(
-      queue: queue, selection: selection, consume: { [weak self] in self?.receive($0) },
-      overflow: { [weak self] in self?.fail("capture_queue_overflow") })
+      queue: queue,
+      selection: selection,
+      consume: { [weak self] in self?.receive($0) },
+      overflow: { [weak self] in self?.fail("capture_queue_overflow") }
+    )
   }
 
-  func perform<T: Sendable>(_ body: @escaping @Sendable (CaptureRecordingEngine) throws -> T)
+  func perform<T: Sendable>(
+    _ body: @escaping @Sendable (CaptureRecordingEngine) throws -> T
+  )
     async throws -> T
   {
     try await withCheckedThrowingContinuation { continuation in
@@ -496,7 +523,8 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   }
 
   func stream(
-    _ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
+    _ stream: SCStream,
+    didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
     of type: SCStreamOutputType
   ) {
     dispatchPrecondition(condition: .onQueue(callbackQueue))
@@ -508,13 +536,18 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
     default: return  // Screen/video samples are never decoded or persisted.
     }
     enqueue(
-      sampleBuffer, role: role, streamID: ObjectIdentifier(stream),
-      deliveredAt: CMClockGetTime(CMClockGetHostTimeClock()))
+      sampleBuffer,
+      role: role,
+      streamID: ObjectIdentifier(stream),
+      deliveredAt: CMClockGetTime(CMClockGetHostTimeClock())
+    )
   }
 
   @discardableResult
   func enqueue(
-    _ sample: CMSampleBuffer, role: MediaSourceRole, streamID: ObjectIdentifier,
+    _ sample: CMSampleBuffer,
+    role: MediaSourceRole,
+    streamID: ObjectIdentifier,
     deliveredAt: CMTime
   ) -> Bool {
     ingress.submit(sample, role: role, streamID: streamID, deliveredAt: deliveredAt)
@@ -522,13 +555,19 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
 
   var ingressStatistics: CaptureIngressStatistics { ingress.statistics }
 
-  func finish(at time: CMTime, reason: String?) async throws -> (
+  func finish(
+    at time: CMTime,
+    reason: String?
+  ) async throws -> (
     FinalizedMediaMaster, CaptureRecordingSnapshot
   ) {
     try await perform { [self] _ in try finishOnQueue(at: time, reason: reason) }
   }
 
-  func finishOnQueue(at time: CMTime, reason: String?) throws -> (
+  func finishOnQueue(
+    at time: CMTime,
+    reason: String?
+  ) throws -> (
     FinalizedMediaMaster, CaptureRecordingSnapshot
   ) {
     dispatchPrecondition(condition: .onQueue(queue))
@@ -541,8 +580,11 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
     dispatchPrecondition(condition: .onQueue(queue))
     guard !failed else { return }
     switch routing.receive(
-      audio.sample, role: audio.role, streamID: audio.streamID,
-      at: audio.deliveredAt)
+      audio.sample,
+      role: audio.role,
+      streamID: audio.streamID,
+      at: audio.deliveredAt
+    )
     {
     case .accepted, .ignored: break
     case .microphoneUnavailable: onMicrophoneFailure(audio.streamID)

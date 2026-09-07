@@ -59,7 +59,8 @@ public struct ArchiveReconciliationReport: Sendable, Equatable {
 func isCanonicalIdentifier(_ value: String) -> Bool {
   value.range(
     of: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-    options: .regularExpression) != nil
+    options: .regularExpression
+  ) != nil
 }
 
 func requireCanonicalIdentifier(_ value: String) throws {

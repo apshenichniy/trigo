@@ -9,7 +9,9 @@ export function snapshotLocks(): ReadonlyMap<string, string> {
   return new Map(lockPaths.map((path) => [path, readFileSync(path, "utf8")]));
 }
 export function assertLocksUnchanged(before: ReadonlyMap<string, string>): void {
-  for (const [path, content] of before)
-    if (readFileSync(path, "utf8") !== content)
+  for (const [path, content] of before) {
+    if (readFileSync(path, "utf8") !== content) {
       throw new Error(`Operation changed tracked lock: ${path}`);
+    }
+  }
 }

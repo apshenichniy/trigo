@@ -1,5 +1,7 @@
-import { expect, it } from "vitest";
 import { Schema } from "effect";
+import { expect, it } from "vitest";
+
+import validAudio from "../fixtures/valid-audio.json";
 import {
   frameCountForDuration,
   inspectWaveObject,
@@ -10,7 +12,6 @@ import {
   storedByteHash,
   waveByteLength,
 } from "../src/index.ts";
-import validAudio from "../fixtures/valid-audio.json";
 
 it("fixes two logical sources to stable stereo channel provenance", () => {
   expect(selectedMediaProfile.channels).toEqual([
@@ -43,7 +44,9 @@ it("writes and inspects the canonical independently decodable WAVE header", () =
 
 it("keeps the published valid audio fixture aligned with canonical WAVE bytes", async () => {
   const fixture = validAudio.objects[0];
-  if (fixture === undefined) throw new Error("fixture");
+  if (fixture === undefined) {
+    throw new Error("fixture");
+  }
   const frameCount = frameCountForDuration(fixture.endMs - fixture.startMs);
   const object = new Uint8Array(waveByteLength(frameCount));
   object.set(makeWaveHeader(frameCount));
@@ -99,7 +102,9 @@ it("separates the call master from bounded ranges and provider probe input", asy
   expect(master.maxRangeBytes).toBe(8 * 1024 * 1024);
   expect(selectedMediaProfile.asr.requestContentType).toBe("audio/wav");
   const object = validAudio.objects[0];
-  if (!object) throw new Error("fixture");
+  if (!object) {
+    throw new Error("fixture");
+  }
   const audio = {
     ...validAudio,
     durationMs: 10_800_000,
@@ -121,6 +126,7 @@ it("separates the call master from bounded ranges and provider probe input", asy
     { ...audio, objects: [{ ...audio.objects[0], contentType: "audio/wav" }] },
     { ...audio, objects: [{ ...audio.objects[0], byteLength: master.maxRangeBytes }] },
     { ...audio, durationMs: 10_800_001 },
-  ])
+  ]) {
     expect(() => validateDocument("AudioManifest", mutation)).toThrow();
+  }
 });

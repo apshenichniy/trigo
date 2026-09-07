@@ -1,7 +1,9 @@
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+
 import { expect, it } from "vitest";
+
 import { nativeCacheIdentity, nativeDependencyCacheIdentity } from "./native-cache.ts";
 
 it("invalidates restored native products on any lock, toolchain, or build configuration change", () => {
@@ -45,17 +47,20 @@ it("invalidates restored native products on any lock, toolchain, or build config
       const before = readFileSync(full, "utf8");
       writeFileSync(full, `${before}\nchanged input\n`);
       expect(nativeCacheIdentity(inputs), path).not.toBe(original);
-      if (path.endsWith("Package.resolved") || path.endsWith("Package.swift"))
+      if (path.endsWith("Package.resolved") || path.endsWith("Package.swift")) {
         expect(nativeDependencyCacheIdentity(inputs), path).not.toBe(dependencies);
-      else expect(nativeDependencyCacheIdentity(inputs), path).toBe(dependencies);
+      } else {
+        expect(nativeDependencyCacheIdentity(inputs), path).toBe(dependencies);
+      }
       writeFileSync(full, before);
     }
     for (const changed of [
       { platform: "linux" },
       { architecture: "x64" },
       { toolchain: ["Xcode 26.6", "different SDK"] },
-    ])
+    ]) {
       expect(nativeCacheIdentity({ ...inputs, ...changed })).not.toBe(original);
+    }
     rmSync(join(root, "apps/macos/Locks/Package.resolved"));
     expect(() => nativeCacheIdentity(inputs)).toThrow();
   } finally {

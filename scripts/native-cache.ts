@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { lockPaths } from "./locks.ts";
 import { requireNativeTools, toolOutput } from "./toolchain.ts";
 

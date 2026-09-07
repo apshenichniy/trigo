@@ -22,8 +22,10 @@ final class CaptureAudioRouting {
   }
 
   func receive(
-    _ sample: CMSampleBuffer, role: MediaSourceRole,
-    streamID: ObjectIdentifier, at time: CMTime
+    _ sample: CMSampleBuffer,
+    role: MediaSourceRole,
+    streamID: ObjectIdentifier,
+    at time: CMTime
   ) -> CaptureAudioDelivery {
     guard selection.accepts(streamID, for: role) else { return .ignored }
     do {
@@ -47,7 +49,8 @@ final class CaptureStreamSelection: @unchecked Sendable {
   private let lock = NSLock()
   private var ids: [ObjectIdentifier?] = [nil, nil]
   func select(
-    _ id: ObjectIdentifier?, for role: MediaSourceRole,
+    _ id: ObjectIdentifier?,
+    for role: MediaSourceRole,
     update: ([ObjectIdentifier?]) -> Void = { _ in }
   ) {
     lock.withLock {

@@ -1,7 +1,7 @@
 import { Stack, localState } from "alchemy";
+import { providers, D1, Workflows } from "alchemy/Cloudflare";
 import { Bucket } from "alchemy/Cloudflare/R2";
 import { Worker } from "alchemy/Cloudflare/Workers";
-import { providers, D1, Workflows } from "alchemy/Cloudflare";
 import { Config, Effect } from "effect";
 
 // This closed composition declares only supported local Worker/D1/R2/workflow resources. No AI binding,

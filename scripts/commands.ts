@@ -1,4 +1,4 @@
-import { toolOutput as output, requireNativeTools } from "./toolchain.ts";
+import { commandOptions } from "./arguments.ts";
 import { snapshotLocks, assertLocksUnchanged } from "./locks.ts";
 import {
   lockedSwiftArguments,
@@ -6,9 +6,9 @@ import {
   swiftContractTests,
   swiftTests,
 } from "./native-check.ts";
-import { beginTiming, timedAsync, timedRun } from "./timing.ts";
-import { commandOptions } from "./arguments.ts";
 import { nativeSuites } from "./native-suites.ts";
+import { beginTiming, timedAsync, timedRun } from "./timing.ts";
+import { toolOutput as output, requireNativeTools } from "./toolchain.ts";
 const command = process.argv[2] ?? "doctor";
 const options = commandOptions(
   command,
@@ -20,12 +20,17 @@ const options = commandOptions(
       : {},
 );
 const scope = options.get("--scope") ?? "all";
-if (typeof scope !== "string" || !["server", "native", "all"].includes(scope))
+if (typeof scope !== "string" || !["server", "native", "all"].includes(scope)) {
   throw new Error("--scope must be server, native or all");
+}
 const suite = nativeSuites.find((value) => value === (options.get("--suite") ?? "all"));
-if (!suite) throw new Error("--suite must be fast, contention, resource or all");
+if (!suite) {
+  throw new Error("--suite must be fast, contention, resource or all");
+}
 const filter = options.get("--filter");
-if (typeof filter === "string") new RegExp(filter);
+if (typeof filter === "string") {
+  new RegExp(filter);
+}
 beginTiming(
   command,
   command === "check:quick"
@@ -35,13 +40,16 @@ beginTiming(
       : {},
 );
 function native() {
-  if (process.platform !== "darwin")
+  if (process.platform !== "darwin") {
     throw new Error(
       "Full/native checks require macOS and Xcode 26.6 (17F113). Use check:server for the portable subset.",
     );
+  }
 }
 function doctor(includeNative = process.platform === "darwin") {
-  if (includeNative) requireNativeTools();
+  if (includeNative) {
+    requireNativeTools();
+  }
   const checks: [[string, ...string[]], string][] = [
     [["bun", "--version"], "1.3.13"],
     [["node", "--version"], "v24.14.1"],
@@ -49,7 +57,9 @@ function doctor(includeNative = process.platform === "darwin") {
   for (const [cmd, expected] of checks) {
     const actual = output(cmd);
     console.log(`${cmd[0]}: ${actual}`);
-    if (actual !== expected) throw new Error(`Expected ${expected}`);
+    if (actual !== expected) {
+      throw new Error(`Expected ${expected}`);
+    }
   }
   console.log(
     "Target: local; fake ASR. Cloud commands require an explicit stage and stage config; the opt-in Nova-3 probe requires test:asr --stage dev.",
@@ -114,8 +124,9 @@ const swiftBuild = () => {
 };
 const macosBuild = () => {
   native();
-  for (const variant of ["dev", "personal"])
+  for (const variant of ["dev", "personal"]) {
     timedRun(`${variant} app build`, ["bun", "scripts/macos.ts", "build", "--variant", variant]);
+  }
 };
 async function serverBuild() {
   await timedAsync("Worker bundles", async () => {
@@ -126,7 +137,9 @@ async function serverBuild() {
       format: "esm",
       external: ["cloudflare:workers"],
     });
-    if (!result.success) throw new Error(result.logs.map((log) => log.message).join("\n"));
+    if (!result.success) {
+      throw new Error(result.logs.map((log) => log.message).join("\n"));
+    }
   });
   console.log("Local and cloud Worker bundles built.");
 }
@@ -191,9 +204,13 @@ try {
       await serverBuild();
       break;
     case "check:quick":
-      if (scope !== "server") native();
+      if (scope !== "server") {
+        native();
+      }
       doctor(scope !== "server");
-      if (scope !== "native") timedRun("Quick server checks", ["bun", "run", "check:server"]);
+      if (scope !== "native") {
+        timedRun("Quick server checks", ["bun", "run", "check:server"]);
+      }
       if (scope !== "server") {
         swiftformat();
         swiftContractTests();

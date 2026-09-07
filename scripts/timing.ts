@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { randomUUID } from "node:crypto";
-import { run } from "./process.ts";
+
 import { sourceState } from "./check-inputs.ts";
+import { run } from "./process.ts";
 
 type TimingContext = {
   invocationId: string;
@@ -59,11 +60,12 @@ function startSpan(phase: string, configuration: string | null, root = false) {
         mkdirSync(dirname(file), { recursive: true });
         appendFileSync(file, `${JSON.stringify(record)}\n`);
       }
-      if (process.env.GITHUB_STEP_SUMMARY)
+      if (process.env.GITHUB_STEP_SUMMARY) {
         appendFileSync(
           process.env.GITHUB_STEP_SUMMARY,
           `- ${phase}: **${seconds.toFixed(3)} s** (${passed ? "passed" : "failed"}; ${id})\n`,
         );
+      }
     },
   };
 }

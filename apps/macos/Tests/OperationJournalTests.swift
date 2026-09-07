@@ -41,7 +41,8 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     archiveID: journalArchiveID,
     callID: journalCallID,
     kind: kind,
-    payload: Data("{\"fixture\":\(suffix)}".utf8))
+    payload: Data("{\"fixture\":\(suffix)}".utf8)
+  )
 }
 
 @Test func everyLifecycleOwnsAnIndependentDurableStateAcrossRelaunch() async throws {
@@ -58,11 +59,13 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     case 1:
       _ = try await journal.markBlocked(
         operation.operationID,
-        failure: LifecycleFailure(code: "offline", retry: .retryable))
+        failure: LifecycleFailure(code: "offline", retry: .retryable)
+      )
     case 2:
       _ = try await journal.markFailed(
         operation.operationID,
-        failure: LifecycleFailure(code: "provider_failed", retry: .retryable))
+        failure: LifecycleFailure(code: "provider_failed", retry: .retryable)
+      )
     default: break
     }
   }
@@ -71,13 +74,16 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   let operations = try await relaunched.pendingOperations()
   #expect(Set(operations.map(\.kind)) == Set(kinds))
   #expect(
-    Dictionary(uniqueKeysWithValues: operations.map { ($0.kind, $0.phase) })[.capture] == .running)
+    Dictionary(uniqueKeysWithValues: operations.map { ($0.kind, $0.phase) })[.capture] == .running
+  )
   #expect(
-    Dictionary(uniqueKeysWithValues: operations.map { ($0.kind, $0.phase) })[.upload] == .blocked)
+    Dictionary(uniqueKeysWithValues: operations.map { ($0.kind, $0.phase) })[.upload] == .blocked
+  )
   #expect(Dictionary(uniqueKeysWithValues: operations.map { ($0.kind, $0.phase) })[.asr] == .failed)
   #expect(
     Dictionary(uniqueKeysWithValues: operations.map { ($0.kind, $0.phase) })[.importRevision]
-      == .pending)
+      == .pending
+  )
 }
 
 @Test func sideEffectsRunOnlyAfterIntentIsDurableAndFailuresRemainRecoverable() async throws {
@@ -108,7 +114,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   defer { try? FileManager.default.removeItem(at: root) }
   let failOnce = JournalFailOnce(at: .beforeJournalAcknowledgement)
   let interrupted = try LocalRepository(
-    root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
+    root: root,
+    archiveID: journalArchiveID,
+    interruption: failOnce.callAsFunction
+  )
   let operationIntent = intent(.replica, suffix: 21)
   let stableFailure = try LifecycleFailure(code: "replica_failed", retry: .retryable)
 
@@ -135,7 +144,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   defer { try? FileManager.default.removeItem(at: root) }
   let failOnce = JournalFailOnce(at: .afterJournalIntentPersisted)
   let journal = try LocalRepository(
-    root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
+    root: root,
+    archiveID: journalArchiveID,
+    interruption: failOnce.callAsFunction
+  )
   let operationIntent = intent(.upload, suffix: 22)
   let sideEffectRan = LockedFlag()
   let stableFailure = try LifecycleFailure(code: "upload_failed", retry: .retryable)
@@ -158,7 +170,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   defer { try? FileManager.default.removeItem(at: root) }
   let failOnce = JournalFailOnce(at: .beforeRepositoryCommit)
   let interrupted = try LocalRepository(
-    root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
+    root: root,
+    archiveID: journalArchiveID,
+    interruption: failOnce.callAsFunction
+  )
 
   await #expect(throws: JournalInjectedInterruption.self) {
     try await interrupted.recordIntent(intent(.capture, suffix: 23))
@@ -175,7 +190,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   defer { try? FileManager.default.removeItem(at: root) }
   let failOnce = JournalFailOnce(at: .afterJournalAcknowledgement)
   let interrupted = try LocalRepository(
-    root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
+    root: root,
+    archiveID: journalArchiveID,
+    interruption: failOnce.callAsFunction
+  )
   let operationIntent = intent(.importRevision, suffix: 24)
   let stableFailure = try LifecycleFailure(code: "import_failed", retry: .afterCorrection)
 
@@ -200,7 +218,8 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   try journal.database.access {
     try journal.database.execute(
       "UPDATE document_chunks SET bytes=? WHERE hash=(SELECT payload_hash FROM operations WHERE operation_id=?)",
-      [.blob(Data("damaged".utf8)), .text(corrupted.operationID)])
+      [.blob(Data("damaged".utf8)), .text(corrupted.operationID)]
+    )
   }
 
   await #expect(throws: LocalPersistenceError.self) {
@@ -211,7 +230,9 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   #expect(report.rejectedOperationIDs == [corrupted.operationID])
   #expect(
     FileManager.default.fileExists(
-      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path))
+      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path
+    )
+  )
 }
 
 @Test func malformedOperationIdentityIsReportedInsteadOfSilentlyIgnored() async throws {
@@ -224,7 +245,8 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   try journal.database.access {
     try journal.database.execute(
       "UPDATE operations SET operation_id='unknown' WHERE operation_id=?",
-      [.text(valid.operationID)])
+      [.text(valid.operationID)]
+    )
   }
 
   await #expect(throws: LocalPersistenceError.self) {
@@ -234,7 +256,9 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   #expect(report.rejectedOperationIDs == ["unknown"])
   #expect(
     FileManager.default.fileExists(
-      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path))
+      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path
+    )
+  )
 }
 
 @Test func operationIdentityIsIdempotentButCannotBeReusedForAnotherIntent() async throws {
@@ -248,8 +272,12 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   #expect(duplicate == first)
 
   let conflict = OperationIntent(
-    operationID: original.operationID, archiveID: original.archiveID,
-    callID: original.callID, kind: .deletion, payload: original.payload)
+    operationID: original.operationID,
+    archiveID: original.archiveID,
+    callID: original.callID,
+    kind: .deletion,
+    payload: original.payload
+  )
   await #expect(throws: LocalPersistenceError.self) {
     try await journal.recordIntent(conflict)
   }

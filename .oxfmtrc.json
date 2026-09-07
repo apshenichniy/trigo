@@ -1,4 +1,26 @@
 {
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "endOfLine": "lf",
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "all",
+  "objectWrap": "preserve",
+  "overrides": [
+    {
+      "files": ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"],
+      "options": {
+        "sortImports": {
+          "internalPattern": ["@trigo/"],
+          "newlinesBetween": true,
+          "partitionByComment": true,
+          "sortSideEffects": false
+        }
+      }
+    }
+  ],
   "ignorePatterns": [
     ".agents/skills/**",
     "repos/**",

@@ -2,10 +2,11 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+
 import { expect, it } from "@effect/vitest";
 import { DateTime, Effect, Redacted, Schema } from "effect";
+
 import { ownerOperationQueries } from "../apps/server/src/owner-state.ts";
-import { cloudTargetFor } from "./cloud.ts";
 import {
   applyRemoteOwnerOperation,
   assertOwnerMutationAllowed,
@@ -16,6 +17,7 @@ import {
   parseOwnerCommand,
   prepareOwnerHandoff,
 } from "./cloud-owner.ts";
+import { cloudTargetFor } from "./cloud.ts";
 
 const unknownFromJsonString = Schema.fromJsonString(Schema.Unknown);
 const encodeUnknownJson = Schema.encodeSync(unknownFromJsonString);
@@ -38,14 +40,18 @@ it.effect("reuses a private initialization handoff after a lost acknowledgement"
         stage: "dev",
         target: devTarget,
       });
-      if (first.action !== "initialize") throw new Error("Expected initialization handoff");
+      if (first.action !== "initialize") {
+        throw new Error("Expected initialization handoff");
+      }
       expect(first.operationId).toMatch(/^[0-9a-f-]{36}$/);
       expect(first.archiveId).toMatch(/^[0-9a-f-]{36}$/);
       expect(first.token).toMatch(/^trigo_v1_[0-9a-f]{64}$/);
       expect(statSync(handoffPath).mode & 0o777).toBe(0o600);
 
       const operation = yield* ownerOperationFromHandoff(first);
-      if (operation.kind !== "initialize") throw new Error("Expected initialization operation");
+      if (operation.kind !== "initialize") {
+        throw new Error("Expected initialization operation");
+      }
       const requestBody = encodeUnknownJson({ batch: ownerOperationQueries(operation) });
       expect(requestBody).not.toContain(first.token);
       expect(requestBody).toContain(operation.verifierSha256);
@@ -93,8 +99,9 @@ it.effect(
           ]),
           devTarget,
         );
-        if (rotate.action !== "rotate" || revoke.action !== "revoke")
+        if (rotate.action !== "rotate" || revoke.action !== "revoke") {
           throw new Error("Expected rotate and revoke handoffs");
+        }
 
         expect(rotate.expectedGeneration).toBe(7);
         expect(rotate.token).toMatch(/^trigo_v1_[0-9a-f]{64}$/);
@@ -273,7 +280,9 @@ it.effect("applies only verifier material through the authenticated Cloudflare D
         createdAt: "2026-09-05T22:00:00.000Z",
       }),
     );
-    if (verifierSha256.kind !== "initialize") throw new Error("Expected initialization operation");
+    if (verifierSha256.kind !== "initialize") {
+      throw new Error("Expected initialization operation");
+    }
     const requests: Array<Request> = [];
     const responses: Array<{ readonly status: number; readonly body: unknown }> = [
       {
@@ -313,7 +322,9 @@ it.effect("applies only verifier material through the authenticated Cloudflare D
         Effect.sync(() => {
           requests.push(request);
           const response = responses[requests.length - 1];
-          if (response === undefined) throw new Error("Unexpected Cloudflare request");
+          if (response === undefined) {
+            throw new Error("Unexpected Cloudflare request");
+          }
           return response;
         }),
     };
@@ -345,7 +356,9 @@ it.effect("applies only verifier material through the authenticated Cloudflare D
       ),
     ).toBe(true);
     const queryRequest = requests[1];
-    if (queryRequest === undefined) throw new Error("Expected D1 query request");
+    if (queryRequest === undefined) {
+      throw new Error("Expected D1 query request");
+    }
     const body = encodeUnknownJson(yield* Effect.promise(() => queryRequest.json()));
     expect(body).not.toContain(ownerToken);
     expect(body).toContain(verifierSha256.verifierSha256);

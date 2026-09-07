@@ -1,7 +1,9 @@
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { afterEach, expect, it, vi } from "vitest";
+
 import {
   artifactFingerprint,
   artifactReceiptMatches,

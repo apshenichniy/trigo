@@ -1,15 +1,16 @@
 import { spawn, spawnSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtempSync, mkdirSync, realpathSync, rmSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { createHash, randomUUID } from "node:crypto";
-import { createServer } from "node:net";
+
 import { validateDocument } from "../packages/contracts/src/index.ts";
+import { commandOptions } from "./arguments.ts";
 import { localConfiguration, localWorkerEnvironment } from "./local-configuration.ts";
 import { canReuseNativeTests, lockedSwiftArguments } from "./native-check.ts";
-import { commandOptions } from "./arguments.ts";
-import { beginTiming, timedAsync, timingEnvironment } from "./timing.ts";
 import { assertNativeTestOutput } from "./native-suites.ts";
+import { beginTiming, timedAsync, timingEnvironment } from "./timing.ts";
 const options = commandOptions(
   "local dev (cloud stages and resource configuration are unavailable)",
   process.argv.slice(2),
@@ -21,12 +22,14 @@ const options = commandOptions(
 const root = realpathSync(new URL("..", import.meta.url).pathname);
 const testing = options.has("--test");
 const nativeClient = options.has("--native-client");
-if (nativeClient && !testing)
+if (nativeClient && !testing) {
   throw new Error(
     "Local dev accepts only --test [--native-client]; cloud stages and resource configuration are unavailable.",
   );
-if (nativeClient && process.platform !== "darwin")
+}
+if (nativeClient && process.platform !== "darwin") {
   throw new Error("Native local acceptance requires macOS");
+}
 beginTiming(testing ? "test:local" : "dev", { nativeClient });
 const id = createHash("sha256").update(root).digest("hex").slice(0, 12);
 const requestedPort = Number(process.env.TRIGO_LOCAL_PORT ?? (testing ? 0 : 19371));
@@ -34,8 +37,9 @@ if (
   !Number.isInteger(requestedPort) ||
   (requestedPort !== 0 && requestedPort < 1024) ||
   requestedPort > 65535
-)
+) {
   throw new Error("TRIGO_LOCAL_PORT must be an integer in 1024..65535");
+}
 const port = await new Promise<number>((resolvePort, reject) => {
   const server = createServer();
   server.once("error", (error) =>
@@ -71,8 +75,9 @@ const command = [
   `trigo-local-${id}`,
   resolve(root, "infra/local.ts"),
 ];
-if (process.platform === "darwin")
+if (process.platform === "darwin") {
   command.unshift("/usr/bin/sandbox-exec", "-f", resolve(root, "scripts/offline.sb"));
+}
 
 function start() {
   const child = spawn(command[0]!, command.slice(1), {
@@ -84,18 +89,24 @@ function start() {
   let output = "";
   child.stdout.on("data", (data) => {
     output += data;
-    if (!testing) process.stdout.write(data);
+    if (!testing) {
+      process.stdout.write(data);
+    }
   });
   child.stderr.on("data", (data) => {
     output += data;
-    if (!testing) process.stderr.write(data);
+    if (!testing) {
+      process.stderr.write(data);
+    }
   });
   return { child, output: () => output };
 }
 let server = start();
 async function stop() {
   const child = server.child;
-  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
   const exited = new Promise<void>((done) => child.once("exit", () => done()));
   try {
     process.kill(-child.pid!, "SIGTERM");
@@ -118,8 +129,9 @@ async function ready() {
       server.child.exitCode !== null ||
       server.child.signalCode !== null ||
       /alchemy dev: (apply|run) failed/.test(server.output())
-    )
+    ) {
       throw new Error(`Alchemy failed: ${server.output()}`);
+    }
     try {
       const response = await request("/__local/health");
       const health: unknown = await response.json();
@@ -129,8 +141,9 @@ async function ready() {
         health !== null &&
         "runId" in health &&
         health.runId === runId
-      )
+      ) {
         return;
+      }
     } catch {}
     await new Promise((done) => setTimeout(done, 500));
   }
@@ -144,8 +157,9 @@ async function status() {
     value.archiveId !== configuration.namespaceId ||
     value.stage !== "dev" ||
     value.readiness.callOperations !== "unavailable"
-  )
+  ) {
     throw new Error("Local product status differs");
+  }
   return value;
 }
 async function nativeAcceptance() {
@@ -157,7 +171,7 @@ async function nativeAcceptance() {
   const receipt = process.env.TRIGO_NATIVE_BUILD_RECEIPT;
   if (receipt && canReuseNativeTests(receipt)) {
     console.log("Reused the parent check's verified current-source native test build.");
-  } else
+  } else {
     await timedAsync(
       "Local native current-source build",
       async () => {
@@ -179,10 +193,13 @@ async function nativeAcceptance() {
           build.once("error", reject);
           build.once("exit", done);
         });
-        if (buildCode !== 0) throw new Error(`Native local acceptance build failed: ${buildCode}`);
+        if (buildCode !== 0) {
+          throw new Error(`Native local acceptance build failed: ${buildCode}`);
+        }
       },
       "release",
     );
+  }
   const args = [
     "test",
     "--skip-build",
@@ -224,7 +241,9 @@ async function nativeAcceptance() {
         child.once("error", reject);
         child.once("close", done);
       });
-      if (code !== 0) throw new Error(`Native local transport acceptance failed: ${code}`);
+      if (code !== 0) {
+        throw new Error(`Native local transport acceptance failed: ${code}`);
+      }
       assertNativeTestOutput(output);
     },
     "release",
@@ -251,12 +270,14 @@ try {
         response.status !== expected ||
         error.error.code !== code ||
         error.error.retry !== "after_correction"
-      )
+      ) {
         throw new Error(`Local contract mismatch: ${path}`);
+      }
     }
     const created = await request("/__local/probe", { method: "POST", headers: probeHeaders });
-    if (created.status !== 201)
+    if (created.status !== 201) {
       throw new Error(`Local workflow creation failed: ${created.status} ${await created.text()}`);
+    }
     let completed = false;
     for (let i = 0; i < 100; i++) {
       const response = await request("/__local/probe", { headers: probeHeaders });
@@ -266,12 +287,15 @@ try {
           completed = true;
           break;
         }
-        if (state.status === "errored")
+        if (state.status === "errored") {
           throw new Error(`Offline workflow failed: ${JSON.stringify(state)}`);
+        }
       }
       await new Promise((done) => setTimeout(done, 100));
     }
-    if (!completed) throw new Error("Local workflow did not complete");
+    if (!completed) {
+      throw new Error("Local workflow did not complete");
+    }
     const revisionBytes = await (
       await request("/__local/probe/revision", { headers: probeHeaders })
     ).text();
@@ -281,14 +305,18 @@ try {
       revision.asr.model !== "no-speech" ||
       revision.turns.length !== 0 ||
       revision.speakers.length !== 0
-    )
+    ) {
       throw new Error("Unexpected canonical fake ASR result");
-    if (nativeClient) await nativeAcceptance();
+    }
+    if (nativeClient) {
+      await nativeAcceptance();
+    }
     await stop();
     server = start();
     await ready();
-    if (JSON.stringify(await status()) !== JSON.stringify(initial))
+    if (JSON.stringify(await status()) !== JSON.stringify(initial)) {
       throw new Error("D1 identity changed after local restart");
+    }
     const reopened = await (
       await request("/__local/probe/revision", { headers: probeHeaders })
     ).text();
@@ -299,8 +327,9 @@ try {
       workflow === null ||
       !("status" in workflow) ||
       workflow.status !== "complete"
-    )
+    ) {
       throw new Error("R2/workflow state did not survive restart");
+    }
     if (process.platform === "darwin") {
       const probe = spawnSync(
         "/usr/bin/sandbox-exec",
@@ -316,7 +345,9 @@ try {
         ],
         { stdio: "ignore" },
       );
-      if (probe.status === 0) throw new Error("External network unexpectedly available");
+      if (probe.status === 0) {
+        throw new Error("External network unexpectedly available");
+      }
     }
     console.log(
       "Shared product status/auth + Alchemy local D1/R2/workflow + canonical fake ASR + persistent restart passed; external network denied on macOS.",
@@ -324,5 +355,7 @@ try {
   }
 } finally {
   await stop();
-  if (testing) rmSync(directory, { recursive: true, force: true });
+  if (testing) {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }

@@ -1,11 +1,13 @@
-import { CanonicalUUIDv4, SHA256 } from "@trigo/contracts";
+import { DateTime, Effect, Schema } from "effect";
+
 import {
+  CanonicalUUIDv4,
   MediaSourceRole,
   selectedMediaProfile,
+  SHA256,
   type TranscriptRevision,
   validateDocument,
 } from "@trigo/contracts";
-import { DateTime, Effect, Schema } from "effect";
 
 const Seconds = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0));
 const Confidence = Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }));
@@ -152,14 +154,16 @@ function buildRevision(
   input: DecodedNormalizationInput,
   responses: ReadonlyArray<DecodedResponse>,
 ): TranscriptRevision {
-  if (input.objects.length !== responses.length)
+  if (input.objects.length !== responses.length) {
     throw failure("Nova3.normalize", "Every media object must have one provider result");
+  }
   if (
     input.tracks.length !== selectedMediaProfile.channels.length ||
     new Set(input.tracks.map((track) => track.trackId)).size !== input.tracks.length ||
     new Set(input.tracks.map((track) => track.role)).size !== input.tracks.length
-  )
+  ) {
     throw failure("Nova3.normalize", "Normalization input must identify both source tracks");
+  }
 
   const speakers: Array<TranscriptRevision["speakers"][number]> = [];
   const turns: Array<TranscriptRevision["turns"][number]> = [];
@@ -169,23 +173,28 @@ function buildRevision(
 
   for (const [position, object] of input.objects.entries()) {
     const response = responses[position];
-    if (response === undefined) throw failure("Nova3.normalize", "Provider result is missing");
+    if (response === undefined) {
+      throw failure("Nova3.normalize", "Provider result is missing");
+    }
     if (
       object.index !== position ||
       object.startMs !== previousObjectEndMs ||
       object.endMs <= object.startMs
-    )
+    ) {
       throw failure("Nova3.normalize", `Object ${object.index} breaks the media timeline`);
+    }
     previousObjectEndMs = object.endMs;
 
     const channels = response.results?.channels;
-    if (channels === undefined || channels.length !== selectedMediaProfile.channels.length)
+    if (channels === undefined || channels.length !== selectedMediaProfile.channels.length) {
       throw failure(
         "Nova3.normalize",
         `Object ${object.index} must return ${selectedMediaProfile.channels.length} channels`,
       );
-    if (object.channelMap.length !== selectedMediaProfile.channels.length)
+    }
+    if (object.channelMap.length !== selectedMediaProfile.channels.length) {
       throw failure("Nova3.normalize", `Object ${object.index} has an invalid channel map`);
+    }
 
     for (const expectedChannel of selectedMediaProfile.channels) {
       const channelMapping = object.channelMap.find(
@@ -198,25 +207,28 @@ function buildRevision(
         channelMapping === undefined ||
         mappedTrack?.role !== expectedChannel.role ||
         alternative === undefined
-      )
+      ) {
         throw failure(
           "Nova3.normalize",
           `Object ${object.index} channel ${expectedChannel.index} does not map to ${expectedChannel.role}`,
         );
+      }
 
       const words = alternative.words ?? [];
       if (words.length === 0) {
-        if ((alternative.transcript ?? "").trim() !== "")
+        if ((alternative.transcript ?? "").trim() !== "") {
           throw failure(
             "Nova3.normalize",
             `Object ${object.index} channel ${expectedChannel.index} has text without word timing`,
           );
+        }
         continue;
       }
 
       const firstProviderWord = words[0];
-      if (firstProviderWord === undefined)
+      if (firstProviderWord === undefined) {
         throw failure("Nova3.normalize", "Provider word list changed during normalization");
+      }
       let currentWords: Array<TranscriptRevision["turns"][number]["words"][number]> = [];
       let currentLabel = labelFor(firstProviderWord);
       let previousWordEndMs: number = object.startMs;
@@ -224,7 +236,9 @@ function buildRevision(
       const finishTurn = () => {
         const firstWord = currentWords[0];
         const lastWord = currentWords[currentWords.length - 1];
-        if (firstWord === undefined || lastWord === undefined) return;
+        if (firstWord === undefined || lastWord === undefined) {
+          return;
+        }
         const scopeKey = `${object.objectId}:${expectedChannel.index}`;
         const speakerKey = `${scopeKey}:${currentLabel ?? "unknown"}`;
         let speakerId: string | null = null;
@@ -266,11 +280,12 @@ function buildRevision(
           startMs < previousWordEndMs ||
           startMs < object.startMs ||
           endMs > object.endMs
-        )
+        ) {
           throw failure(
             "Nova3.normalize",
             `Object ${object.index} channel ${expectedChannel.index} has invalid word timing`,
           );
+        }
         const label = labelFor(word);
         if (label !== currentLabel) {
           finishTurn();

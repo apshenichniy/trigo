@@ -1,5 +1,4 @@
-import { requireNativeTools, toolOutput } from "./toolchain.ts";
-import { assertLocksUnchanged, snapshotLocks } from "./locks.ts";
+import { createHash } from "node:crypto";
 import {
   copyFileSync,
   existsSync,
@@ -10,24 +9,27 @@ import {
   renameSync,
   rmSync,
 } from "node:fs";
-import { createHash } from "node:crypto";
-import { resolve } from "node:path";
 import { homedir } from "node:os";
-import { run } from "./process.ts";
-import { restoreLock } from "./macos-lock.ts";
-import { lockedSwiftArguments, swiftPackages } from "./native-check.ts";
-import { beginTiming, timedRun } from "./timing.ts";
+import { resolve } from "node:path";
+
+import { commandOptions } from "./arguments.ts";
 import { buildCurrentArtifact, nativeBuildIdentity } from "./build-reuse.ts";
 import { readLocalConfiguration } from "./local-configuration.ts";
+import { assertLocksUnchanged, snapshotLocks } from "./locks.ts";
 import {
   assertSupportedReplacement,
   installationDestination,
   nativeSigning,
 } from "./macos-install.ts";
-import { commandOptions } from "./arguments.ts";
+import { restoreLock } from "./macos-lock.ts";
+import { lockedSwiftArguments, swiftPackages } from "./native-check.ts";
+import { run } from "./process.ts";
+import { beginTiming, timedRun } from "./timing.ts";
+import { requireNativeTools, toolOutput } from "./toolchain.ts";
 const action = process.argv[2] ?? "build";
-if (!["build", "archive", "run", "install", "dependencies", "setup", "prepare"].includes(action))
+if (!["build", "archive", "run", "install", "dependencies", "setup", "prepare"].includes(action)) {
   throw new Error(`Unknown native action: ${action}`);
+}
 const options = commandOptions(`native ${action}`, process.argv.slice(3), {
   "--variant": "value",
   ...(["build", "archive", "install", "run"].includes(action)
@@ -37,13 +39,15 @@ const options = commandOptions(`native ${action}`, process.argv.slice(3), {
   ...(["install", "run"].includes(action) ? { "--replace-worktree": "flag" as const } : {}),
 });
 const variant = options.get("--variant") ?? "dev";
-if (variant !== "dev" && variant !== "personal")
+if (variant !== "dev" && variant !== "personal") {
   throw new Error("--variant must be dev or personal");
+}
 const localConfigPath = options.get("--local-config");
-if (localConfigPath !== undefined && (variant !== "dev" || typeof localConfigPath !== "string"))
+if (localConfigPath !== undefined && (variant !== "dev" || typeof localConfigPath !== "string")) {
   throw new Error(
     "--local-config requires dev build/install/run and a private local configuration path",
   );
+}
 const adHoc = options.has("--ad-hoc");
 const signing = nativeSigning(action, process.env.TRIGO_SIGNING_TEAM, adHoc);
 requireNativeTools();
@@ -60,10 +64,11 @@ const worktree = createHash("sha256").update(root).digest("hex").slice(0, 12);
 if (localConfigPath !== undefined) {
   readLocalConfiguration(resolve(localConfigPath), worktree);
 }
-if (adHoc)
+if (adHoc) {
   console.log(
     "Explicit ad-hoc mode: permission and Keychain continuity after rebuilds is not established.",
   );
+}
 mkdirSync(".local", { recursive: true });
 timedRun(
   "Xcode project generation",
@@ -100,13 +105,14 @@ if (action === "dependencies") {
     if (action === "prepare") {
       console.log("Generated project and restored the canonical dependency lock.");
     } else if (action === "setup") {
-      for (const { path } of swiftPackages)
+      for (const { path } of swiftPackages) {
         timedRun(`${path} locked dependency setup`, [
           "swift",
           "package",
           ...lockedSwiftArguments(path),
           "resolve",
         ]);
+      }
       timedRun("Xcode locked dependency setup", [
         "xcodebuild",
         "-resolvePackageDependencies",
@@ -180,14 +186,16 @@ if (action === "dependencies") {
               "Trigo records your microphone as a separate audio track in your local call archive.",
             ],
           ]) {
-            if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
+            if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected) {
               throw new Error(`Built app identity mismatch: ${key}`);
+            }
           }
           const plist: unknown = JSON.parse(
             toolOutput(["plutil", "-convert", "json", "-o", "-", info]),
           );
-          if (typeof plist !== "object" || plist === null)
+          if (typeof plist !== "object" || plist === null) {
             throw new Error("Built app Info.plist is invalid");
+          }
           const transport =
             "NSAppTransportSecurity" in plist ? plist.NSAppTransportSecurity : undefined;
           if (variant === "dev") {
@@ -196,20 +204,24 @@ if (action === "dependencies") {
               transport === null ||
               !("NSAllowsLocalNetworking" in transport) ||
               transport.NSAllowsLocalNetworking !== true
-            )
+            ) {
               throw new Error("Dev app must contain the Boolean local-network ATS allowance");
-          } else if (transport !== undefined)
+            }
+          } else if (transport !== undefined) {
             throw new Error("Personal app must retain default ATS");
+          }
           if (process.env.TRIGO_SIGNING_TEAM || adHoc) {
             run(["codesign", "--verify", "--strict", bundle]);
           }
-          if (readFileSync(nested, "utf8") !== readFileSync(canonical, "utf8"))
+          if (readFileSync(nested, "utf8") !== readFileSync(canonical, "utf8")) {
             throw new Error("Xcode changed the restored dependency lock");
+          }
           assertLocksUnchanged(before);
         },
       );
-      if (result === "reused")
+      if (result === "reused") {
         console.log(`Reused the verified current-source ${scheme} Debug app build.`);
+      }
       if (action === "run" || action === "install") {
         const applications = resolve(homedir(), "Applications");
         mkdirSync(applications, { recursive: true });
@@ -223,8 +235,9 @@ if (action === "dependencies") {
           toolOutput(["ps", "-axo", "comm="])
             .split("\n")
             .some((path) => path.trim().startsWith(`${destination}/`))
-        )
+        ) {
           throw new Error("Quit the destination app before replacing its installed bundle");
+        }
         const identity = (path: string) => ({
           bundleId: toolOutput([
             "plutil",
@@ -247,8 +260,9 @@ if (action === "dependencies") {
           requirement: toolOutput(["codesign", "-d", "-r-", path]),
         });
         if (existsSync(destination)) {
-          if (lstatSync(destination).isSymbolicLink())
+          if (lstatSync(destination).isSymbolicLink()) {
             throw new Error("Installed app must not be a symlink");
+          }
           assertSupportedReplacement(
             identity(destination),
             identity(bundle),
@@ -258,35 +272,45 @@ if (action === "dependencies") {
         }
         const staging = `${destination}.installing`;
         const backup = `${destination}.previous`;
-        if (existsSync(staging) || existsSync(backup))
+        if (existsSync(staging) || existsSync(backup)) {
           throw new Error(
             "A previous installation needs review; staging/backup paths were retained",
           );
+        }
         run(["ditto", bundle, staging]);
         run(["codesign", "--verify", "--strict", staging]);
-        if (existsSync(destination)) renameSync(destination, backup);
+        if (existsSync(destination)) {
+          renameSync(destination, backup);
+        }
         try {
           renameSync(staging, destination);
         } catch (error) {
-          if (existsSync(backup)) renameSync(backup, destination);
+          if (existsSync(backup)) {
+            renameSync(backup, destination);
+          }
           throw error;
         }
-        if (existsSync(backup)) rmSync(backup, { recursive: true });
-        if (action === "run")
+        if (existsSync(backup)) {
+          rmSync(backup, { recursive: true });
+        }
+        if (action === "run") {
           run(
             localConfigPath
               ? ["open", "-n", destination, "--args", "--local-config", resolve(localConfigPath)]
               : ["open", "-n", destination],
           );
+        }
         console.log(`Installed ${destination}`);
-        if (localConfigPath)
+        if (localConfigPath) {
           console.log(
             "Local data and installation are isolated; this signed Dev bundle shares its macOS permission identity with ordinary Trigo Dev.",
           );
+        }
       }
     }
-    if (readFileSync(nested, "utf8") !== readFileSync(canonical, "utf8"))
+    if (readFileSync(nested, "utf8") !== readFileSync(canonical, "utf8")) {
       throw new Error("Xcode changed the restored dependency lock");
+    }
   } finally {
     assertLocksUnchanged(before);
   }

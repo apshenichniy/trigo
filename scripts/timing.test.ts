@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+
 import { expect, it } from "vitest";
 
 it("retains failed nested command timings with source identity and a shared run without double-counting", () => {

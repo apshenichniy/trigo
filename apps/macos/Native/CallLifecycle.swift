@@ -87,7 +87,9 @@ public struct CallLifecycleSnapshot: Codable, Sendable, Equatable {
   public var deletion: LifecycleValue<DeletionLifecycleState>
 
   public init(
-    archiveID: String, callID: String, stateVersion: Int,
+    archiveID: String,
+    callID: String,
+    stateVersion: Int,
     capture: LifecycleValue<CaptureLifecycleState>,
     upload: LifecycleValue<UploadLifecycleState>,
     transcription: LifecycleValue<TranscriptionLifecycleState>,
@@ -109,13 +111,16 @@ public struct CallLifecycleSnapshot: Codable, Sendable, Equatable {
 
   public static func initial(archiveID: String, callID: String) -> Self {
     Self(
-      archiveID: archiveID, callID: callID, stateVersion: 1,
+      archiveID: archiveID,
+      callID: callID,
+      stateVersion: 1,
       capture: LifecycleValue(state: .recording),
       upload: LifecycleValue(state: .pending),
       transcription: LifecycleValue(state: .waitingForAudio),
       importState: LifecycleValue(state: .notAvailable),
       replica: LifecycleValue(state: .pending),
-      deletion: LifecycleValue(state: .active))
+      deletion: LifecycleValue(state: .active)
+    )
   }
 
   func advancingVersion(to stateVersion: Int) -> Self {

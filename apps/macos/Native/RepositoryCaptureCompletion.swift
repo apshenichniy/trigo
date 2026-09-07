@@ -12,7 +12,9 @@ extension LocalRepository {
   /// Finalization consumes admitted identity, issued external witness and bounded source rows.
   /// It does not re-import those trusted rows through the full public JSON document decoder.
   public func completeCapture(
-    _ session: CaptureArchiveSession, master: FinalizedMediaMaster?, reason: String?,
+    _ session: CaptureArchiveSession,
+    master: FinalizedMediaMaster?,
+    reason: String?,
     associatedWork: OperationIntent? = nil,
     interruption: @escaping PersistenceInterruption = { _ in }
   ) async throws -> CaptureCompletion {
@@ -20,7 +22,10 @@ extension LocalRepository {
       throw LocalPersistenceError.immutableConflict(session.callID)
     }
     let publication = try await prepareCapturePublication(
-      callID: session.callID, reason: reason, associatedWork: associatedWork)
+      callID: session.callID,
+      reason: reason,
+      associatedWork: associatedWork
+    )
     let operation = publication.operation
     let effectiveReason = publication.reason
     if let existing = try captureCompletion(callID: session.callID) {
@@ -51,7 +56,8 @@ extension LocalRepository {
     call.documentVersion += 1
     call.durationMs = master?.durationMs ?? 0
     call.endedAt = formatter.string(
-      from: session.startedAt.addingTimeInterval(Double(call.durationMs!) / 1000))
+      from: session.startedAt.addingTimeInterval(Double(call.durationMs!) / 1000)
+    )
     call.captureState = effectiveReason == nil ? "stopped" : "interrupted"
     call.interruptionReason = effectiveReason
     call.audioManifest = .init(manifestId: session.audioManifestID, sha256: audioDocument.sha256)
@@ -60,7 +66,11 @@ extension LocalRepository {
     let snapshot = try CaptureSnapshotStream()
     try snapshot.encode(call) { channel, consume in
       var iterator = CaptureIntervalCursor(
-        repository: self, callID: session.callID, cursor: master?.cursor, channel: channel)
+        repository: self,
+        callID: session.callID,
+        cursor: master?.cursor,
+        channel: channel
+      )
       while let span = try iterator.next() { try consume(span) }
     }
     let hash = try snapshot.finish()
@@ -68,7 +78,11 @@ extension LocalRepository {
     try await stageCallRows(call, hash: hash)
     for channel in 0..<2 {
       var iterator = CaptureIntervalCursor(
-        repository: self, callID: session.callID, cursor: master?.cursor, channel: channel)
+        repository: self,
+        callID: session.callID,
+        cursor: master?.cursor,
+        channel: channel
+      )
       var ordinal = 0
       while true {
         var rows: [[SQLValue]] = []
@@ -85,16 +99,22 @@ extension LocalRepository {
     }
     _ = try await stageDocument(audio)
     try await stageEvidence(
-      hash: audioDocument.sha256, kind: "audio", callID: session.callID,
-      identity: session.audioManifestID)
+      hash: audioDocument.sha256,
+      kind: "audio",
+      callID: session.callID,
+      identity: session.audioManifestID
+    )
     try database.access(capture: true) {
       try database.transaction(interruption: { point in
         try self.interruption(point)
         try interruption(point)
       }) {
         _ = try commitEvidence(
-          identity: session.audioManifestID, kind: "audio", callID: session.callID,
-          hash: audioDocument.sha256)
+          identity: session.audioManifestID,
+          kind: "audio",
+          callID: session.callID,
+          hash: audioDocument.sha256
+        )
         _ = try commitCall(call, hash: hash, expected: priorHash)
         if let master { try commitFinalMaster(master, callID: session.callID) }
         try commitSemanticWork("finalize:\(session.callID)", operation: operation)
@@ -128,9 +148,11 @@ extension LocalRepository {
     } else {
       guard try confirmedMediaCursor(callID: session.callID) == nil,
         !FileManager.default.fileExists(
-          atPath: session.mediaDirectory.appendingPathComponent("master.caf").path),
+          atPath: session.mediaDirectory.appendingPathComponent("master.caf").path
+        ),
         !FileManager.default.fileExists(
-          atPath: session.mediaDirectory.appendingPathComponent("master.index").path)
+          atPath: session.mediaDirectory.appendingPathComponent("master.index").path
+        )
       else {
         throw LocalPersistenceError.invalidMediaProgress
       }
@@ -145,18 +167,26 @@ extension LocalRepository {
           SELECT v.call_id,v.version,v.started_at,v.duration_ms,v.capture_state,v.reason,c.hash,d.byte_count
           FROM calls c JOIN call_values v ON v.hash=c.hash JOIN documents d ON d.hash=c.hash
           WHERE c.call_id=? AND v.capture_state!='recording'
-          """, [.text(callID)]
-        ).first
+          """,
+          [.text(callID)]
+        )
+        .first
       })
     else { return nil }
     let row = try resolveTextValues(stored)
     return try .init(
       call: .init(
-        callID: row.string(0), documentVersion: row.int(1), startedAt: row.string(2),
-        durationMs: row.optionalInt(3), captureState: captureState(row.string(4)),
-        interruptionReason: row.optionalString(5)),
-      master: finalizedMaster(callID: callID), snapshotSHA256: row.string(6),
-      snapshotByteLength: row.int(7))
+        callID: row.string(0),
+        documentVersion: row.int(1),
+        startedAt: row.string(2),
+        durationMs: row.optionalInt(3),
+        captureState: captureState(row.string(4)),
+        interruptionReason: row.optionalString(5)
+      ),
+      master: finalizedMaster(callID: callID),
+      snapshotSHA256: row.string(6),
+      snapshotByteLength: row.int(7)
+    )
   }
 
   private func stageSnapshot(_ file: CaptureSnapshotStream, hash: String) async throws {
@@ -168,7 +198,11 @@ extension LocalRepository {
   }
 
   /// Exact retained exchange bytes, one bounded chunk at a time; no regeneration or JSON rewrite.
-  public func forEachSnapshotChunk(callID: String, version: Int, consume: (Data) throws -> Void)
+  public func forEachSnapshotChunk(
+    callID: String,
+    version: Int,
+    consume: (Data) throws -> Void
+  )
     throws
   {
     guard
@@ -176,7 +210,8 @@ extension LocalRepository {
         try database.rows(
           "SELECT h.hash FROM snapshot_history h JOIN documents d ON d.hash=h.hash WHERE h.call_id=? AND h.version=? AND d.complete=1",
           [.text(callID), .int(version)]
-        ).first
+        )
+        .first
       })
     else { throw LocalPersistenceError.callNotFound(callID) }
     try forEachDocumentChunk(hash: row.string(0), consume: consume)

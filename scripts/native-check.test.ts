@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+
 import { nativeTests, swiftTests } from "./native-check.ts";
 import { contentionTests, resourceTests } from "./native-suites.ts";
 
@@ -12,7 +13,9 @@ function operations(failedBuild?: string) {
     events,
     execute(phase: string, command: string[]) {
       events.push({ kind: "command", phase, command });
-      if (phase === failedBuild) throw new Error("compiler failed");
+      if (phase === failedBuild) {
+        throw new Error("compiler failed");
+      }
     },
     prepareNative(build: () => void) {
       build();
@@ -30,7 +33,9 @@ function operations(failedBuild?: string) {
 
 it("builds current sources once before discovery and all native groups on every invocation", () => {
   const recorded = operations();
-  for (let attempt = 0; attempt < 2; attempt++) swiftTests(recorded);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    swiftTests(recorded);
+  }
   const builds = recorded.events.filter((event) => event.command.includes("--build-tests"));
   expect(builds).toHaveLength(4);
   for (const event of builds) {
@@ -39,9 +44,11 @@ it("builds current sources once before discovery and all native groups on every 
     expect(event.command).toContain("--force-resolved-versions");
     expect(event.command).toContain("--skip-update");
   }
-  for (const [index, event] of recorded.events.entries())
-    if (event.kind === "discovery")
+  for (const [index, event] of recorded.events.entries()) {
+    if (event.kind === "discovery") {
       expect(recorded.events[index - 1]?.phase).toBe("apps/macos release build tests");
+    }
+  }
   expect(recorded.events.filter((event) => event.phase.startsWith("Native resource"))).toHaveLength(
     resourceTests.length * 2,
   );

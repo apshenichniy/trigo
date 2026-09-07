@@ -13,8 +13,11 @@ struct Fixture: Decodable {
 let fixtureRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
   .deletingLastPathComponent().appendingPathComponent("fixtures")
 @Test func sharedConformance() throws {
-  let fixtures = try JSONDecoder().decode(
-    [Fixture].self, from: Data(contentsOf: fixtureRoot.appendingPathComponent("cases.json")))
+  let fixtures = try JSONDecoder()
+    .decode(
+      [Fixture].self,
+      from: Data(contentsOf: fixtureRoot.appendingPathComponent("cases.json"))
+    )
   for fixture in fixtures {
     do {
       let bytes = try Data(contentsOf: fixtureRoot.appendingPathComponent(fixture.document))
@@ -29,7 +32,9 @@ let fixtureRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
       }
       #expect(fixture.expected == nil, "Unexpected success: \(fixture.name)")
       let roundTrip = try Contract.validate(
-        fixture.kind, bytes: typedRoundTrip(fixture.kind, bytes: document.storedBytes))
+        fixture.kind,
+        bytes: typedRoundTrip(fixture.kind, bytes: document.storedBytes)
+      )
       #expect(roundTrip.value == document.value)
     } catch let error as ContractError {
       #expect(error.rawValue == fixture.expected, "\(fixture.name): \(error.rawValue)")
@@ -39,6 +44,7 @@ let fixtureRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
 @Test func hashesExactBytes() {
   #expect(
     Contract.hash(Data("abc".utf8))
-      == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+      == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  )
   #expect(Contract.hash(Data("{\"a\":1}".utf8)) != Contract.hash(Data("{ \"a\": 1 }".utf8)))
 }

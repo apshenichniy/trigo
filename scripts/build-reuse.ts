@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-import { dirname, relative, resolve } from "node:path";
 import {
   lstatSync,
   mkdirSync,
@@ -11,6 +10,8 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { dirname, relative, resolve } from "node:path";
+
 import { inputFingerprint } from "./check-inputs.ts";
 import { nativeToolchain } from "./native-cache.ts";
 
@@ -22,13 +23,19 @@ export function artifactFingerprint(path: string): string {
     hash.update(`${relative(root, full)}\0${stat.mode}\0`);
     if (stat.isSymbolicLink()) {
       const target = relative(root, realpathSync(full));
-      if (target === ".." || target.startsWith("../"))
+      if (target === ".." || target.startsWith("../")) {
         throw new Error("Artifact symlink escapes its bundle");
+      }
       hash.update(readlinkSync(full));
     } else if (stat.isDirectory()) {
-      for (const name of readdirSync(full).sort()) visit(resolve(full, name));
-    } else if (stat.isFile()) hash.update(readFileSync(full));
-    else throw new Error("Unsupported artifact entry");
+      for (const name of readdirSync(full).sort()) {
+        visit(resolve(full, name));
+      }
+    } else if (stat.isFile()) {
+      hash.update(readFileSync(full));
+    } else {
+      throw new Error("Unsupported artifact entry");
+    }
     hash.update("\0");
   }
   visit(root);
@@ -105,7 +112,9 @@ export function artifactReceiptMatches(
 ): boolean {
   try {
     const value: unknown = JSON.parse(readFileSync(receipt, "utf8"));
-    if (!value || typeof value !== "object") return false;
+    if (!value || typeof value !== "object") {
+      return false;
+    }
     return (
       "version" in value &&
       value.version === 1 &&
@@ -155,10 +164,11 @@ export function buildCurrentArtifact(
   rmSync(options.receipt, { force: true });
   build();
   verify();
-  if (options.identity() !== identity)
+  if (options.identity() !== identity) {
     throw new Error(
       "Build inputs changed while compilation was running; check the current sources again",
     );
+  }
   const value = {
     version: 1,
     root: realpathSync(process.cwd()),

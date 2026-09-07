@@ -50,10 +50,18 @@ actor RecordingStatusFixture: ServerStatusFetching {
     }
     if let failure { throw failure }
     return .init(
-      schemaVersion: 1, apiVersion: 1, archiveId: archiveID, stage: .dev,
+      schemaVersion: 1,
+      apiVersion: 1,
+      archiveId: archiveID,
+      stage: .dev,
       readiness: .init(
-        archive: "ready", ownerAuthentication: "ready", transcription: .notVerified,
-        callOperations: .unavailable), errors: [])
+        archive: "ready",
+        ownerAuthentication: "ready",
+        transcription: .notVerified,
+        callOperations: .unavailable
+      ),
+      errors: []
+    )
   }
 }
 
@@ -68,7 +76,9 @@ actor RecordingStatusFixture: ServerStatusFetching {
   private var observers: [CheckedContinuation<Void, Never>] = []
   private var pending: CheckedContinuation<Void, Never>?
   func addCaptureOutput(
-    _ output: any SCStreamOutput, type: SCStreamOutputType, queue: DispatchQueue
+    _ output: any SCStreamOutput,
+    type: SCStreamOutputType,
+    queue: DispatchQueue
   ) throws {}
   func startCapture() async throws {
     startCalls += 1
@@ -102,16 +112,22 @@ actor RecordingStatusFixture: ServerStatusFetching {
 
 @Test @MainActor func recordingRequiresSetupBeforeAnySourceOrPermissionAction() async throws {
   let support = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "trigo-controls-\(UUID())")
+    "trigo-controls-\(UUID())"
+  )
   defer { try? FileManager.default.removeItem(at: support) }
   let namespace = try AppNamespace(variant: .dev, worktree: "fixture", support: support)
   let connection = ServerConnection(
-    expectedStage: .dev, metadataStore: RecordingMetadataFixture(),
-    credentialStore: RecordingCredentialsFixture(), statusClient: RecordingStatusFixture())
+    expectedStage: .dev,
+    metadataStore: RecordingMetadataFixture(),
+    credentialStore: RecordingCredentialsFixture(),
+    statusClient: RecordingStatusFixture()
+  )
   var sourceReads = 0
   var permissionRequests = 0
   let coordinator = RecordingCoordinator(
-    connection: connection, namespace: namespace, capture: ScreenCaptureRecording(),
+    connection: connection,
+    namespace: namespace,
+    capture: ScreenCaptureRecording(),
     sources: .init(
       permissions: { .init(screenAudio: false, microphone: false) },
       frontmost: {
@@ -121,7 +137,9 @@ actor RecordingStatusFixture: ServerStatusFetching {
       requestPermission: { _ in
         permissionRequests += 1
         return .init(screenAudio: false, microphone: false)
-      }))
+      }
+    )
+  )
   await coordinator.restore()
   #expect(coordinator.phase == .setupRequired)
   await coordinator.shortcutPressed()
@@ -137,32 +155,49 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
   healthFailure: ConnectionIssue
 ) async throws {
   let support = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "trigo-offline-\(UUID())")
+    "trigo-offline-\(UUID())"
+  )
   defer { try? FileManager.default.removeItem(at: support) }
   let namespace = try AppNamespace(variant: .dev, worktree: "fixture", support: support)
   let status = RecordingStatusFixture()
   let connection = ServerConnection(
-    expectedStage: .dev, metadataStore: RecordingMetadataFixture(),
-    credentialStore: RecordingCredentialsFixture(), statusClient: status)
+    expectedStage: .dev,
+    metadataStore: RecordingMetadataFixture(),
+    credentialStore: RecordingCredentialsFixture(),
+    statusClient: status
+  )
   let original = CaptureSource(
-    applicationName: "Target", bundleID: "test.target", processID: 123, windowID: 456,
-    windowTitle: "Original window", processLaunchDate: Date())
+    applicationName: "Target",
+    bundleID: "test.target",
+    processID: 123,
+    windowID: 456,
+    windowTitle: "Original window",
+    processLaunchDate: Date()
+  )
   var frontmost = original
   var sourceReads = 0
   let capture = ScreenCaptureRecording(
     system: .init(
       permissions: { .init(screenAudio: true, microphone: true) },
-      filter: { _ in SCContentFilter() }, microphone: { nil },
-      stream: { _, _, _ in RecordingTransportFixture() }, sourceIsAvailable: { $0 == original }))
+      filter: { _ in SCContentFilter() },
+      microphone: { nil },
+      stream: { _, _, _ in RecordingTransportFixture() },
+      sourceIsAvailable: { $0 == original }
+    )
+  )
   let coordinator = RecordingCoordinator(
-    connection: connection, namespace: namespace, capture: capture,
+    connection: connection,
+    namespace: namespace,
+    capture: capture,
     sources: .init(
       permissions: { .init(screenAudio: true, microphone: true) },
       frontmost: {
         sourceReads += 1
         return frontmost
       },
-      requestPermission: { _ in .init(screenAudio: true, microphone: true) }))
+      requestPermission: { _ in .init(screenAudio: true, microphone: true) }
+    )
+  )
   await coordinator.connect(serverURL: "https://dev.example.test", token: "fixture")
   await status.setFailure(healthFailure)
   await coordinator.restore()
@@ -174,8 +209,13 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
   #expect(coordinator.pinnedSource == original)
   let callID = try #require(coordinator.callID)
   frontmost = .init(
-    applicationName: "Other", bundleID: "test.other", processID: 124, windowID: 457,
-    windowTitle: "Different window", processLaunchDate: Date())
+    applicationName: "Other",
+    bundleID: "test.other",
+    processID: 124,
+    windowID: 457,
+    windowTitle: "Different window",
+    processLaunchDate: Date()
+  )
   await coordinator.shortcutPressed()
   #expect(coordinator.phase == .idle)
   #expect(coordinator.pinnedSource == original)
@@ -184,5 +224,6 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
   let archive = try LocalRepository(root: namespace.archive, archiveID: status.archiveID)
   #expect(
     try await archive.loadCall(callID: callID).manifest.value.captureState
-      == "stopped")
+      == "stopped"
+  )
 }

@@ -1,11 +1,13 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
+
 import { Schema } from "effect";
 import { format } from "oxfmt";
+
 import { documentSchemas } from "../packages/contracts/src/document-schema.ts";
+import { commandOptions } from "./arguments.ts";
 import { assertExchangeSchema } from "./contract-schema.ts";
 import { generateSwift } from "./generate-swift.ts";
-import { commandOptions } from "./arguments.ts";
 
 const checking = commandOptions("contract generation", process.argv.slice(2), {
   "--check": "flag",
@@ -16,15 +18,20 @@ const reference = await Bun.file("repos/effect/packages/effect/package.json").js
 if (
   installed.version !== rootPackage.devDependencies.effect ||
   reference.version !== installed.version
-)
+) {
   throw new Error(
     "Contract generation requires matching pinned, installed and vendored Effect versions",
   );
-for (const schema of Object.values(documentSchemas)) assertExchangeSchema(schema);
+}
+for (const schema of Object.values(documentSchemas)) {
+  assertExchangeSchema(schema);
+}
 const document = Schema.toJsonSchemaDocument(Schema.Union(Object.values(documentSchemas)), {
   generateDescriptions: false,
 });
-if (document.dialect !== "draft-2020-12") throw new Error("Unsupported JSON Schema dialect");
+if (document.dialect !== "draft-2020-12") {
+  throw new Error("Unsupported JSON Schema dialect");
+}
 const schemaSource =
   JSON.stringify(
     {
@@ -38,8 +45,9 @@ const schemaSource =
     2,
   ) + "\n";
 const formattedSchema = await format("schema.json", schemaSource);
-if (formattedSchema.errors.length > 0)
+if (formattedSchema.errors.length > 0) {
   throw new Error("Generated JSON Schema could not be formatted");
+}
 const schemaText = formattedSchema.code;
 const swift = generateSwift(document.definitions, Object.keys(documentSchemas));
 const files: Record<string, string> = {
@@ -58,8 +66,9 @@ const files: Record<string, string> = {
 for (const [relative, content] of Object.entries(files)) {
   const target = `packages/contracts/${relative}`;
   if (checking) {
-    if ((await readFile(target, "utf8").catch(() => "")) !== content)
+    if ((await readFile(target, "utf8").catch(() => "")) !== content) {
       throw new Error(`Generated artifact is stale: ${target}; run bun run contracts:generate`);
+    }
   } else {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, content);

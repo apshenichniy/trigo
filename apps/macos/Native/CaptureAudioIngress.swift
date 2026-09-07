@@ -43,7 +43,8 @@ final class CaptureAudioIngress: @unchecked Sendable {
   private var maxService = 0.0
 
   init(
-    queue: DispatchQueue, selection: CaptureStreamSelection = CaptureStreamSelection(),
+    queue: DispatchQueue,
+    selection: CaptureStreamSelection = CaptureStreamSelection(),
     consume: @escaping @Sendable (CaptureQueuedAudio) -> Void,
     overflow: @escaping @Sendable () -> Void
   ) {
@@ -55,7 +56,9 @@ final class CaptureAudioIngress: @unchecked Sendable {
 
   @discardableResult
   func submit(
-    _ sample: CMSampleBuffer, role: MediaSourceRole, streamID: ObjectIdentifier,
+    _ sample: CMSampleBuffer,
+    role: MediaSourceRole,
+    streamID: ObjectIdentifier,
     deliveredAt: CMTime
   ) -> Bool {
     let rate =
@@ -64,8 +67,13 @@ final class CaptureAudioIngress: @unchecked Sendable {
       } ?? 0
     let duration = rate.isFinite && rate > 0 ? Double(sample.numSamples) / rate : 0
     let value = CaptureQueuedAudio(
-      sample: sample, role: role, streamID: streamID,
-      deliveredAt: deliveredAt, admittedAt: .now, duration: max(0, duration))
+      sample: sample,
+      role: role,
+      streamID: streamID,
+      deliveredAt: deliveredAt,
+      admittedAt: .now,
+      duration: max(0, duration)
+    )
     let channel = role == .microphone ? 0 : 1
     let action = selection.withSelection { ids -> Admission in
       guard ids[channel] == streamID else { return .ignored }
@@ -104,9 +112,12 @@ final class CaptureAudioIngress: @unchecked Sendable {
   var statistics: CaptureIngressStatistics {
     lock.withLock {
       .init(
-        pendingBuffers: outstanding, maximumPendingBuffers: maxBuffers,
-        maximumPendingSourceSeconds: maxSeconds, maximumServiceSeconds: maxService,
-        rejected: rejected)
+        pendingBuffers: outstanding,
+        maximumPendingBuffers: maxBuffers,
+        maximumPendingSourceSeconds: maxSeconds,
+        maximumServiceSeconds: maxService,
+        rejected: rejected
+      )
     }
   }
 
@@ -127,9 +138,10 @@ final class CaptureAudioIngress: @unchecked Sendable {
   /// A timer must not declare already-admitted pending input unavailable before it drains.
   var earliestPendingTime: CMTime? {
     lock.withLock {
-      pending.map { $0.sample.presentationTimeStamp }.filter(\.isNumeric).min {
-        CMTimeCompare($0, $1) < 0
-      }
+      pending.map { $0.sample.presentationTimeStamp }.filter(\.isNumeric)
+        .min {
+          CMTimeCompare($0, $1) < 0
+        }
     }
   }
 

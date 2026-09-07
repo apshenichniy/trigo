@@ -1,5 +1,7 @@
-import { validateDocument } from "@trigo/contracts";
 import { describe, expect, it, vi } from "vitest";
+
+import { validateDocument } from "@trigo/contracts";
+
 import cloudWorker from "../src/cloud-worker.ts";
 
 function cloudBindings() {

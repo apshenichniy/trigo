@@ -10,7 +10,8 @@ extension LocalRepository {
   /// The five processing axes may change independently. Capture is read-only here; only
   /// canonical admission/finalization mutations can change its state or failure reason.
   public func updateLifecycle(
-    callID: String, _ change: @Sendable (inout CallLifecycleSnapshot) throws -> Void
+    callID: String,
+    _ change: @Sendable (inout CallLifecycleSnapshot) throws -> Void
   ) async throws -> CallLifecycleSnapshot {
     guard var value = try await lifecycle(callID: callID) else {
       throw LocalPersistenceError.lifecycleNotFound(callID)
@@ -40,7 +41,9 @@ extension LocalRepository {
     }
     guard proposed.stateVersion == current.stateVersion + 1 else {
       throw LocalPersistenceError.staleDocumentVersion(
-        current: current.stateVersion, proposed: proposed.stateVersion)
+        current: current.stateVersion,
+        proposed: proposed.stateVersion
+      )
     }
     let values = try await prepareTextValues(lifecycleValues(proposed))
     return try database.access {
@@ -49,7 +52,9 @@ extension LocalRepository {
         else { throw LocalPersistenceError.concurrentMutation }
         try database.execute("DELETE FROM lifecycle WHERE call_id=?", [.text(proposed.callID)])
         try database.execute(
-          "INSERT INTO lifecycle VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", values)
+          "INSERT INTO lifecycle VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          values
+        )
         return .committed
       }
     }
@@ -57,7 +62,9 @@ extension LocalRepository {
 
   func insertLifecycle(_ value: CallLifecycleSnapshot) throws {
     try database.execute(
-      "INSERT INTO lifecycle VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", lifecycleValues(value))
+      "INSERT INTO lifecycle VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      lifecycleValues(value)
+    )
   }
 
   private func lifecycleValues(_ value: CallLifecycleSnapshot) -> [SQLValue] {
@@ -81,8 +88,10 @@ extension LocalRepository {
       l.deletion,l.deletion_failure,l.deletion_retry
       FROM lifecycle l JOIN calls c ON c.call_id=l.call_id JOIN call_values v ON v.hash=c.hash
       WHERE l.call_id=?
-      """, [.text(callID)]
-    ).first
+      """,
+      [.text(callID)]
+    )
+    .first
   }
 
   private func decodeLifecycle(_ row: SQLRow, callID: String) throws -> CallLifecycleSnapshot {
@@ -93,22 +102,27 @@ extension LocalRepository {
       let deletion = try DeletionLifecycleState(rawValue: row.string(15))
     else { throw invalidRow() }
     return try .init(
-      archiveID: archiveID, callID: callID, stateVersion: row.int(0),
+      archiveID: archiveID,
+      callID: callID,
+      stateVersion: row.int(0),
       capture: .init(
         state: captureState(row.string(1)),
-        failure: row.optionalString(2).map { try LifecycleFailure(code: $0, retry: .never) }),
+        failure: row.optionalString(2).map { try LifecycleFailure(code: $0, retry: .never) }
+      ),
       upload: .init(state: upload, failure: failure(row, index: 4)),
       transcription: .init(state: transcription, failure: failure(row, index: 7)),
       importState: .init(state: importState, failure: failure(row, index: 10)),
       replica: .init(state: replica, failure: failure(row, index: 13)),
-      deletion: .init(state: deletion, failure: failure(row, index: 16)))
+      deletion: .init(state: deletion, failure: failure(row, index: 16))
+    )
   }
 
   private func validateFailures(_ value: CallLifecycleSnapshot) throws {
     for failure in [
       value.capture.failure, value.upload.failure, value.transcription.failure,
       value.importState.failure, value.replica.failure, value.deletion.failure,
-    ].compactMap({ $0 }) {
+    ]
+    .compactMap({ $0 }) {
       guard isStableFailureCode(failure.code) else {
         throw LocalPersistenceError.invalidFailureCode(failure.code)
       }

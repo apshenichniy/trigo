@@ -11,13 +11,23 @@ private let captureCrashArchiveID = "00000000-0000-4000-8000-000000000253"
 func captureTerminationChild() async throws {
   let root = URL(
     fileURLWithPath: try #require(
-      ProcessInfo.processInfo.environment["TRIGO_CAPTURE_CRASH_DIRECTORY"]))
+      ProcessInfo.processInfo.environment["TRIGO_CAPTURE_CRASH_DIRECTORY"]
+    )
+  )
   var synced = 0
   let session = try await CaptureArchiveSession.begin(
-    root: root, archiveID: captureCrashArchiveID,
+    root: root,
+    archiveID: captureCrashArchiveID,
     source: .init(
-      applicationName: "Fixture", bundleID: "test.kill", processID: 123, windowID: 456,
-      windowTitle: nil, processLaunchDate: Date()), microphone: nil)
+      applicationName: "Fixture",
+      bundleID: "test.kill",
+      processID: 123,
+      windowID: 456,
+      windowTitle: nil,
+      processLaunchDate: Date()
+    ),
+    microphone: nil
+  )
   let writer = try CaptureMediaWriter(
     session: session,
     io: .init(event: { point in
@@ -28,7 +38,8 @@ func captureTerminationChild() async throws {
           while true { Darwin.pause() }
         }
       }
-    }))
+    })
+  )
   for _ in 0..<3 { try writer.append(interleaved: Array(repeating: 123, count: 32_000)) }
   Issue.record("Fixture must be killed at the third one-second sync")
 }
@@ -36,7 +47,8 @@ func captureTerminationChild() async throws {
 @Test(arguments: 0..<25)
 func forcedProcessTerminationLosesOnlyOneSecondOfUncommittedTail(iteration: Int) async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "trigo-kill-fixture-\(UUID())")
+    "trigo-kill-fixture-\(UUID())"
+  )
   defer { try? FileManager.default.removeItem(at: root) }
   let child = Process()
   // SwiftPM's macOS test product is a loadable bundle, not a standalone executable.
@@ -50,7 +62,9 @@ func forcedProcessTerminationLosesOnlyOneSecondOfUncommittedTail(iteration: Int)
     "--filter", "captureTerminationChild", bundlePath, "--testing-library", "swift-testing",
   ]
   child.environment = ProcessInfo.processInfo.environment.merging(
-    ["TRIGO_CAPTURE_CRASH_DIRECTORY": root.path], uniquingKeysWith: { _, new in new })
+    ["TRIGO_CAPTURE_CRASH_DIRECTORY": root.path],
+    uniquingKeysWith: { _, new in new }
+  )
   child.standardOutput = FileHandle.nullDevice
   child.standardError = FileHandle.nullDevice
   try child.run()
@@ -63,8 +77,11 @@ func forcedProcessTerminationLosesOnlyOneSecondOfUncommittedTail(iteration: Int)
   let call = try #require(try await repository.calls().first)
   let session = try #require(try await repository.captureSession(callID: call.callID))
   let bytes =
-    try FileManager.default.attributesOfItem(
-      atPath: session.mediaDirectory.appendingPathComponent("master.caf").path)[.size] as? Int
+    try
+    FileManager.default
+    .attributesOfItem(
+      atPath: session.mediaDirectory.appendingPathComponent("master.caf").path
+    )[.size] as? Int
   #expect(bytes == 192_068)
   #expect(try repository.confirmedMediaCursor(callID: session.callID)?.frames == 32_000)
   let recovered = try await session.recover()
@@ -74,7 +91,7 @@ func forcedProcessTerminationLosesOnlyOneSecondOfUncommittedTail(iteration: Int)
   _ = database
   if iteration == 0 {
     print(
-      "PRODUCTION_SIGKILL durable_frames=32000 media_bytes=192068 recovered_ms=2000 lost_ms=1000")
+      "PRODUCTION_SIGKILL durable_frames=32000 media_bytes=192068 recovered_ms=2000 lost_ms=1000"
+    )
   }
-
 }

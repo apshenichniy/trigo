@@ -24,8 +24,10 @@ struct RecordingPanel: View {
         }
 
         VStack(alignment: .leading, spacing: 4) {
-          Text(coordinator.pinnedSource?.applicationName ?? "No application selected").font(
-            .headline)
+          Text(coordinator.pinnedSource?.applicationName ?? "No application selected")
+            .font(
+              .headline
+            )
           Text(
             coordinator.pinnedSource.map {
               $0.windowTitle ?? "Window title unavailable. All application windows may be included."

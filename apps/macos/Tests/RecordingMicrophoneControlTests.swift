@@ -10,8 +10,10 @@ import Testing
   await fixture.coordinator.shortcutPressed()
   let starts = fixture.os.microphone.startCalls
   fixture.os.permissions = .init(
-    screenAudio: true, microphoneAuthorization: .denied,
-    microphoneAvailable: true)
+    screenAudio: true,
+    microphoneAuthorization: .denied,
+    microphoneAvailable: true
+  )
   for _ in 0..<3 { await fixture.capture.checkSourceAndMicrophone() }
   #expect(fixture.coordinator.phase == .recording)
   #expect(fixture.os.application.running)
@@ -98,7 +100,9 @@ func microphoneStartIsNotPublishedBeforeNativeAcknowledgement(failsAfterStart: B
 }
 
 @Test(arguments: [false, true]) @MainActor
-func unavailableMicrophoneIsNotReportedAsMutedAndDoesNotStopApplicationAudio(streamFails: Bool)
+func unavailableMicrophoneIsNotReportedAsMutedAndDoesNotStopApplicationAudio(
+  streamFails: Bool
+)
   async throws
 {
   let fixture = try RecordingControlFixture()

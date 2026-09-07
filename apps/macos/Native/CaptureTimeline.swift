@@ -36,12 +36,11 @@ public final class CaptureTimeline {
     guard end > committedFrame else { return }  // Late input cannot rewrite durable media.
     ensureCapacity(end - committedFrame)
     let track = channel(role)
-    for frame in max(startFrame, committedFrame)..<end {
-      if role != .microphone || microphoneAllowed(at: frame) {
-        // First delivery wins; a repeated/overlapping callback is not mixed twice.
-        if samples[track][frame - committedFrame] == nil {
-          samples[track][frame - committedFrame] = incoming[frame - startFrame]
-        }
+    for frame in max(startFrame, committedFrame)..<end
+    where role != .microphone || microphoneAllowed(at: frame) {
+      // First delivery wins; a repeated/overlapping callback is not mixed twice.
+      if samples[track][frame - committedFrame] == nil {
+        samples[track][frame - committedFrame] = incoming[frame - startFrame]
       }
     }
   }
@@ -85,7 +84,9 @@ public final class CaptureTimeline {
     }
     while committedFrame < throughMs * MediaMasterProfile.framesPerMs {
       let count = min(
-        MediaMasterProfile.sampleRate, throughMs * MediaMasterProfile.framesPerMs - committedFrame)
+        MediaMasterProfile.sampleRate,
+        throughMs * MediaMasterProfile.framesPerMs - committedFrame
+      )
       ensureCapacity(count)
       var interleaved = [Int16]()
       interleaved.reserveCapacity(count * 2)
@@ -103,22 +104,27 @@ public final class CaptureTimeline {
           .allSatisfy { $0 != nil }
           mergeCaptureInterval(
             .init(
-              startMs: absoluteMs, endMs: absoluteMs + 1,
+              startMs: absoluteMs,
+              endMs: absoluteMs + 1,
               state: track == 0 && !microphonePresent
-                ? .unavailable : muted ? .muted : available ? .recorded : .unavailable),
+                ? .unavailable : muted ? .muted : available ? .recorded : .unavailable
+            ),
             into: &nextSpans[track]
           )
         }
         for index in millisecond..<(millisecond + MediaMasterProfile.framesPerMs) {
           interleaved.append(
             microphonePresent && microphoneAllowed(at: committedFrame + index)
-              ? samples[0][index] ?? 0 : 0)
+              ? samples[0][index] ?? 0 : 0
+          )
           interleaved.append(samples[1][index] ?? 0)
         }
       }
       try writer.append(
         interleaved: interleaved,
-        microphoneIntervals: nextSpans[0], applicationIntervals: nextSpans[1])
+        microphoneIntervals: nextSpans[0],
+        applicationIntervals: nextSpans[1]
+      )
       for track in 0...1 {
         samples[track].removeFirst(count)
       }
@@ -154,7 +160,11 @@ func mergeCaptureInterval(_ span: CaptureInterval, into spans: inout [CaptureInt
   }
 }
 
-func clippedCaptureIntervals(_ spans: [CaptureInterval], startMs: Int, endMs: Int)
+func clippedCaptureIntervals(
+  _ spans: [CaptureInterval],
+  startMs: Int,
+  endMs: Int
+)
   -> [CaptureInterval]
 {
   spans.compactMap { span in

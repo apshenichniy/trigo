@@ -2,7 +2,9 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { expect, it } from "vitest";
+
 import { inputFingerprint } from "./check-inputs.ts";
 
 it("identifies dirty native inputs, additions, deletions and permissions while ignoring unrelated documentation", () => {

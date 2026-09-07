@@ -11,8 +11,11 @@ import Testing
   defer { withExtendedLifetime(first) {} }
   #expect(first.coordinator != nil)
   let session = try await CaptureArchiveSession.begin(
-    root: fixture.namespace.archive, archiveID: fixture.status.archiveID,
-    source: fixture.os.source, microphone: nil)
+    root: fixture.namespace.archive,
+    archiveID: fixture.status.archiveID,
+    source: fixture.os.source,
+    microphone: nil
+  )
   let writer = try CaptureMediaWriter(session: session)
   try writer.append(interleaved: Array(repeating: 123, count: 32_000))
 
@@ -27,7 +30,9 @@ import Testing
   #expect(second.coordinator == nil)
   #expect(second.startupFailure?.title == "This local archive is already open")
   let repository = try LocalRepository(
-    root: fixture.namespace.archive, archiveID: fixture.status.archiveID)
+    root: fixture.namespace.archive,
+    archiveID: fixture.status.archiveID
+  )
   #expect(try repository.captureCompletion(callID: session.callID) == nil)
   #expect(try repository.confirmedMediaCursor(callID: session.callID)?.frames == 16_000)
 
@@ -44,13 +49,16 @@ import Testing
   let namespace = try AppNamespace(variant: .dev, worktree: "first", support: root)
   var owner: AppInstanceLease? = try AppInstanceLease(namespace: namespace)
   let other = try AppInstanceLease(
-    namespace: AppNamespace(variant: .dev, worktree: "second", support: root))
+    namespace: AppNamespace(variant: .dev, worktree: "second", support: root)
+  )
   defer { withExtendedLifetime(other) {} }
   #expect(throws: AppInstanceLeaseError.alreadyRunning) {
     try AppInstanceLease(namespace: namespace)
   }
-  let path = namespace.connection.deletingLastPathComponent().appendingPathComponent(
-    "application.lock")
+  let path = namespace.connection.deletingLastPathComponent()
+    .appendingPathComponent(
+      "application.lock"
+    )
   let attributes = try FileManager.default.attributesOfItem(atPath: path.path)
   #expect(attributes[.posixPermissions] as? Int == 0o600)
   withExtendedLifetime(owner) {}
@@ -59,7 +67,8 @@ import Testing
   defer { withExtendedLifetime(replacement) {} }
   #expect(
     try FileManager.default.attributesOfItem(atPath: path.path)[.systemFileNumber] as? UInt64
-      == attributes[.systemFileNumber] as? UInt64)
+      == attributes[.systemFileNumber] as? UInt64
+  )
 }
 
 @Test @MainActor func unsafeLockRejectsStartupBeforeAnyCoordinatorIsConstructed() throws {
@@ -71,7 +80,9 @@ import Testing
   let bytes = Data("untouched".utf8)
   try bytes.write(to: foreign)
   try FileManager.default.createSymbolicLink(
-    at: directory.appendingPathComponent("application.lock"), withDestinationURL: foreign)
+    at: directory.appendingPathComponent("application.lock"),
+    withDestinationURL: foreign
+  )
   var constructed = false
   let application = RecordingApplication(namespace: fixture.namespace) {
     constructed = true
@@ -89,8 +100,10 @@ private final class AppLeaseTestBundleMarker: NSObject {}
 func applicationLeaseChild() throws {
   let environment = ProcessInfo.processInfo.environment
   let namespace = try AppNamespace(
-    variant: .dev, worktree: "child",
-    support: URL(fileURLWithPath: try #require(environment["TRIGO_APP_LEASE_CHILD_ROOT"])))
+    variant: .dev,
+    worktree: "child",
+    support: URL(fileURLWithPath: try #require(environment["TRIGO_APP_LEASE_CHILD_ROOT"]))
+  )
   if environment["TRIGO_APP_LEASE_CHILD_MODE"] == "blocked" {
     #expect(throws: AppInstanceLeaseError.alreadyRunning) {
       try AppInstanceLease(namespace: namespace)
@@ -107,7 +120,8 @@ func applicationLeaseChild() throws {
 
 @Test func anotherProcessIsExcludedAndKilledOwnerDoesNotLeaveAStaleLease() throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "trigo-owner-process-\(UUID())")
+    "trigo-owner-process-\(UUID())"
+  )
   defer { try? FileManager.default.removeItem(at: root) }
   let namespace = try AppNamespace(variant: .dev, worktree: "child", support: root)
   var owner: AppInstanceLease? = try AppInstanceLease(namespace: namespace)
@@ -136,7 +150,9 @@ private func runLeaseChild(root: URL, mode: String) throws -> Process {
   child.environment = ProcessInfo.processInfo.environment.merging(
     [
       "TRIGO_APP_LEASE_CHILD_ROOT": root.path, "TRIGO_APP_LEASE_CHILD_MODE": mode,
-    ], uniquingKeysWith: { _, new in new })
+    ],
+    uniquingKeysWith: { _, new in new }
+  )
   child.standardOutput = FileHandle.nullDevice
   child.standardError = FileHandle.nullDevice
   try child.run()

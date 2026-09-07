@@ -11,7 +11,8 @@ func masterResources(_ phase: String) {
   getrusage(RUSAGE_SELF, &usage)
   var memory = task_vm_info_data_t()
   var count = mach_msg_type_number_t(
-    MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+    MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size
+  )
   let result = withUnsafeMutablePointer(to: &memory) { pointer in
     pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
       task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
@@ -57,9 +58,12 @@ func masterFixtureSecond(_ second: Int, into writer: RecoverableMediaMaster) thr
     for channel in 0...1 {
       mergeCaptureInterval(
         .init(
-          startMs: second * 1000 + ms, endMs: second * 1000 + ms + 1,
-          state: masterState(second: second, millisecond: ms, channel: channel)),
-        into: &spans[channel])
+          startMs: second * 1000 + ms,
+          endMs: second * 1000 + ms + 1,
+          state: masterState(second: second, millisecond: ms, channel: channel)
+        ),
+        into: &spans[channel]
+      )
     }
     for frame in (ms * 16)..<((ms + 1) * 16) {
       // Deliberately supply nonzero input in suppressed intervals. The first persisted form must
@@ -76,7 +80,8 @@ func appendMasterSecond(_ writer: RecoverableMediaMaster, value: Int16 = 1234) t
   try writer.append(
     interleaved: Array(repeating: value, count: 32000),
     microphoneIntervals: [.init(startMs: ms, endMs: ms + 1000, state: .recorded)],
-    applicationIntervals: [.init(startMs: ms, endMs: ms + 1000, state: .recorded)])
+    applicationIntervals: [.init(startMs: ms, endMs: ms + 1000, state: .recorded)]
+  )
 }
 
 func masterFileHash(_ url: URL) throws -> String {

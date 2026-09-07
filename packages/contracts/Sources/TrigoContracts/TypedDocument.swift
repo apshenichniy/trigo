@@ -44,7 +44,9 @@ public enum JSONScalar: Codable, Equatable, Sendable {
       let value = try container.decode(Double.self)
       guard value.isFinite else {
         throw DecodingError.dataCorruptedError(
-          in: container, debugDescription: "Expected a finite JSON number")
+          in: container,
+          debugDescription: "Expected a finite JSON number"
+        )
       }
       self = .number(value)
     }
@@ -62,14 +64,20 @@ public enum JSONScalar: Codable, Equatable, Sendable {
 }
 
 extension Contract {
-  public static func decode<Value: ContractDocument>(_ type: Value.Type, bytes: Data) throws
+  public static func decode<Value: ContractDocument>(
+    _ type: Value.Type,
+    bytes: Data
+  ) throws
     -> StoredDocument<Value>
   {
     _ = try validate(Value.documentKind, bytes: bytes)
     return try typed(type, bytes: bytes)
   }
 
-  public static func decodeStructure<Value: ContractDocument>(_ type: Value.Type, bytes: Data)
+  public static func decodeStructure<Value: ContractDocument>(
+    _ type: Value.Type,
+    bytes: Data
+  )
     throws
     -> StoredDocument<Value>
   {
@@ -77,7 +85,10 @@ extension Contract {
     return try typed(type, bytes: bytes)
   }
 
-  static func typed<Value: ContractDocument>(_ type: Value.Type, bytes: Data) throws
+  static func typed<Value: ContractDocument>(
+    _ type: Value.Type,
+    bytes: Data
+  ) throws
     -> StoredDocument<Value>
   {
     do {
@@ -94,7 +105,10 @@ extension Contract {
     return bytes
   }
 
-  public static func decodeArchive(_ bytes: Data, references: [String: Data]) throws
+  public static func decodeArchive(
+    _ bytes: Data,
+    references: [String: Data]
+  ) throws
     -> StoredDocument<CallDocument>
   {
     _ = try validateArchive(bytes, references: references)

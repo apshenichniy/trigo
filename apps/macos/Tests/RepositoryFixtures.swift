@@ -9,19 +9,28 @@ let repositoryCallID = "00000000-0000-4000-8000-000000000001"
 
 func repositoryFixture(_ name: String) throws -> Data {
   let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-    .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(
-      "packages/contracts/fixtures")
+    .deletingLastPathComponent().deletingLastPathComponent()
+    .appendingPathComponent(
+      "packages/contracts/fixtures"
+    )
   return try Data(contentsOf: root.appendingPathComponent(name))
 }
 
 @discardableResult
-func seedRepositoryCall(root: URL, archiveID: String = repositoryArchiveID, finalized: Bool = false)
+func seedRepositoryCall(
+  root: URL,
+  archiveID: String = repositoryArchiveID,
+  finalized: Bool = false
+)
   async throws -> LocalRepository
 {
   let repository = try LocalRepository(root: root, archiveID: archiveID)
-  var call = try Contract.decode(
-    CallDocument.self, bytes: repositoryFixture(finalized ? "call.json" : "valid-recording.json")
-  ).value
+  var call =
+    try Contract.decode(
+      CallDocument.self,
+      bytes: repositoryFixture(finalized ? "call.json" : "valid-recording.json")
+    )
+    .value
   call.archiveId = archiveID
   call.documentVersion = 1
   call.audioManifest = nil
@@ -38,24 +47,40 @@ func repositoryRoot(_ label: String = "") -> URL {
   )
 }
 
-func repositorySession(_ root: URL, archiveID: String = repositoryArchiveID) throws
+func repositorySession(
+  _ root: URL,
+  archiveID: String = repositoryArchiveID
+) throws
   -> CaptureArchiveSession
 {
   try .allocate(
-    root: root, archiveID: archiveID,
+    root: root,
+    archiveID: archiveID,
     source: .init(
-      applicationName: "Fixture", bundleID: "fixture.sqlite", processID: 123,
-      windowID: 456, windowTitle: nil, processLaunchDate: Date(timeIntervalSince1970: 100)),
+      applicationName: "Fixture",
+      bundleID: "fixture.sqlite",
+      processID: 123,
+      windowID: 456,
+      windowTitle: nil,
+      processLaunchDate: Date(timeIntervalSince1970: 100)
+    ),
     microphone: .init(id: "fixture-mic", name: "Fixture microphone"),
-    startedAt: Date(timeIntervalSince1970: 1000))
+    startedAt: Date(timeIntervalSince1970: 1000)
+  )
 }
 
 func repositoryIntent(
-  callID: String = repositoryCallID, kind: OperationKind = .importRevision, payload: Data = Data()
+  callID: String = repositoryCallID,
+  kind: OperationKind = .importRevision,
+  payload: Data = Data()
 ) -> OperationIntent {
   .init(
-    operationID: UUID().uuidString.lowercased(), archiveID: repositoryArchiveID, callID: callID,
-    kind: kind, payload: payload)
+    operationID: UUID().uuidString.lowercased(),
+    archiveID: repositoryArchiveID,
+    callID: callID,
+    kind: kind,
+    payload: payload
+  )
 }
 
 struct RepositoryInjectedFailure: Error {}

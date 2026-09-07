@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+
 import source from "../schema/capture-master-profile.v1.json";
 
 /** Permanent media, durable checkpoints, transport ranges and extracted inputs have independent bounds. */

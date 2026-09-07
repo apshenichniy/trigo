@@ -1,3 +1,5 @@
+import { Clock, DateTime, Effect, Schema } from "effect";
+
 import {
   AsrProbeLanguage,
   AsrProbeTranscriptionResponse,
@@ -8,7 +10,7 @@ import {
   type AsrProbeLanguageCode,
   type AudioManifest,
 } from "@trigo/contracts";
-import { Clock, DateTime, Effect, Schema } from "effect";
+
 import { nova3Asr } from "./asr.ts";
 
 type ProbeLanguage = AsrProbeLanguageCode;
@@ -94,8 +96,9 @@ function keysFor(fixture: string, language: ProbeLanguage) {
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += 16_384)
+  for (let offset = 0; offset < bytes.length; offset += 16_384) {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + 16_384));
+  }
   return btoa(binary);
 }
 
@@ -116,27 +119,30 @@ const upload = Effect.fn("AsrProbe.upload")(function* (
     catch: () =>
       probeError(503, "asr_probe_storage_failed", "retryable", "Private fixture lookup failed."),
   });
-  if (existing.some((object) => object !== null))
+  if (existing.some((object) => object !== null)) {
     return yield* probeError(
       409,
       "asr_probe_attempt_exists",
       "after_correction",
       "Delete this exact task-owned fixture before deliberately creating another attempt.",
     );
-  if (request.headers.get("content-type") !== selectedMediaProfile.contentType)
+  }
+  if (request.headers.get("content-type") !== selectedMediaProfile.contentType) {
     return yield* probeError(
       415,
       "asr_probe_media_type_invalid",
       "after_correction",
       `Use ${selectedMediaProfile.contentType} for the selected media profile.`,
     );
-  if (request.headers.get("x-trigo-media-profile") !== selectedMediaProfile.id)
+  }
+  if (request.headers.get("x-trigo-media-profile") !== selectedMediaProfile.id) {
     return yield* probeError(
       409,
       "asr_probe_profile_mismatch",
       "after_correction",
       `Use the selected media profile ${selectedMediaProfile.id}.`,
     );
+  }
 
   const bytes = yield* Effect.tryPromise({
     try: () => request.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
@@ -186,32 +192,35 @@ const transcribe = Effect.fn("AsrProbe.transcribe")(function* (
     catch: () =>
       probeError(503, "asr_probe_storage_failed", "retryable", "Private attempt lookup failed."),
   });
-  if (completedAttempt.some((object) => object !== null))
+  if (completedAttempt.some((object) => object !== null)) {
     return yield* probeError(
       409,
       "asr_probe_attempt_exists",
       "after_correction",
       "The bounded provider attempt already has retained evidence and will not be repeated.",
     );
+  }
   const object = yield* Effect.tryPromise({
     try: () => env.ARCHIVE.get(keys.input),
     catch: () =>
       probeError(503, "asr_probe_storage_failed", "retryable", "Private fixture read failed."),
   });
-  if (object === null)
+  if (object === null) {
     return yield* probeError(
       404,
       "asr_probe_fixture_missing",
       "after_correction",
       "Upload the controlled fixture before running inference.",
     );
-  if (object.customMetadata?.mediaProfileId !== selectedMediaProfile.id)
+  }
+  if (object.customMetadata?.mediaProfileId !== selectedMediaProfile.id) {
     return yield* probeError(
       409,
       "asr_probe_profile_mismatch",
       "after_correction",
       "The stored fixture does not declare the selected media profile.",
     );
+  }
   const bytes = yield* Effect.tryPromise({
     try: () => object.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
     catch: () =>
@@ -445,15 +454,22 @@ export const asrProbeResponse = Effect.fn("AsrProbe.response")(function* (
         ? cause
         : probeError(400, "asr_probe_language_invalid", "after_correction", "Invalid language."),
   });
-  if (fixture !== `two-source-${language}`)
+  if (fixture !== `two-source-${language}`) {
     return yield* probeError(
       400,
       "asr_probe_fixture_invalid",
       "after_correction",
       "The controlled fixture name must match its explicit language.",
     );
-  if (request.method === "PUT") return yield* upload(request, env, fixture, language);
-  if (request.method === "POST") return yield* transcribe(env, fixture, language);
-  if (request.method === "DELETE") return yield* cleanup(env, fixture, language);
+  }
+  if (request.method === "PUT") {
+    return yield* upload(request, env, fixture, language);
+  }
+  if (request.method === "POST") {
+    return yield* transcribe(env, fixture, language);
+  }
+  if (request.method === "DELETE") {
+    return yield* cleanup(env, fixture, language);
+  }
   return new Response(null, { status: 405 });
 });

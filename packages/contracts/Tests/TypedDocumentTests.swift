@@ -33,9 +33,11 @@ func typedRoundTrip(_ kind: String, bytes: Data) throws -> Data {
 }
 
 @Test func sharedStructuralCorpusUsesGeneratedTypedViews() throws {
-  let fixtures = try JSONDecoder().decode(
-    [StructuralFixture].self,
-    from: Data(contentsOf: fixtureRoot.appendingPathComponent("structure-cases.json")))
+  let fixtures = try JSONDecoder()
+    .decode(
+      [StructuralFixture].self,
+      from: Data(contentsOf: fixtureRoot.appendingPathComponent("structure-cases.json"))
+    )
   for fixture in fixtures {
     let bytes = Data(fixture.json.utf8)
     do {

@@ -9,7 +9,9 @@ import Testing
   var suspend = false
   var isRunning = false
   func addCaptureOutput(
-    _ output: any SCStreamOutput, type: SCStreamOutputType, queue: DispatchQueue
+    _ output: any SCStreamOutput,
+    type: SCStreamOutputType,
+    queue: DispatchQueue
   ) throws {}
   func startCapture() async throws {
     if suspend {
@@ -21,7 +23,10 @@ import Testing
 }
 
 @Test(arguments: [false, true], [false, true]) @MainActor
-func stoppedPendingStartCannotAffectTheNextRecording(lateFailure: Bool, microphoneStart: Bool)
+func stoppedPendingStartCannotAffectTheNextRecording(
+  lateFailure: Bool,
+  microphoneStart: Bool
+)
   async throws
 {
   struct Failure: Error {}
@@ -41,10 +46,17 @@ func stoppedPendingStartCannotAffectTheNextRecording(lateFailure: Bool, micropho
           return ControlledCaptureTransport()
         }
         return transport
-      }))
+      }
+    )
+  )
   let source = CaptureSource(
-    applicationName: "Fixture", bundleID: "test.fixture", processID: 123,
-    windowID: 456, windowTitle: nil, processLaunchDate: Date())
+    applicationName: "Fixture",
+    bundleID: "test.fixture",
+    processID: 123,
+    windowID: 456,
+    windowTitle: nil,
+    processLaunchDate: Date()
+  )
   let archiveID = UUID().uuidString.lowercased()
   let attempt = Task { try await recorder.start(root: root, archiveID: archiveID, source: source) }
   for _ in 0..<10_000 {
@@ -74,20 +86,29 @@ func stoppedPendingStartCannotAffectTheNextRecording(lateFailure: Bool, micropho
 
 @Test @MainActor func facadeRetainsRecoveryBeforeItsFirstDurablePreparationWrite() async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "trigo-prepare-\(UUID())")
+    "trigo-prepare-\(UUID())"
+  )
   defer { try? FileManager.default.removeItem(at: root) }
   try Data().write(to: root)
   let recorder = ScreenCaptureRecording(
     system: .init(
       permissions: { .init(screenAudio: true, microphone: true) },
-      filter: { _ in SCContentFilter() }, microphone: { nil },
+      filter: { _ in SCContentFilter() },
+      microphone: { nil },
       stream: { _, _, _ in
         Issue.record("Preparation failure must not open a capture stream")
         return ControlledCaptureTransport()
-      }))
+      }
+    )
+  )
   let source = CaptureSource(
-    applicationName: "Fixture", bundleID: "test.fixture", processID: 123,
-    windowID: 456, windowTitle: nil, processLaunchDate: Date())
+    applicationName: "Fixture",
+    bundleID: "test.fixture",
+    processID: 123,
+    windowID: 456,
+    windowTitle: nil,
+    processLaunchDate: Date()
+  )
   let archiveID = UUID().uuidString.lowercased()
   await #expect(throws: (any Error).self) {
     try await recorder.start(root: root, archiveID: archiveID, source: source)
