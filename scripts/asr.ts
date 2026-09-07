@@ -16,6 +16,7 @@ import {
 } from "../packages/contracts/src/index.ts";
 import { cloudTargetFor, parseCloudStage, readCloudConfiguration } from "./cloud.ts";
 import { readProbeCredential } from "./asr-credential.ts";
+import { commandOptions } from "./arguments.ts";
 
 type ProbeLanguage = AsrProbeLanguageCode;
 
@@ -237,31 +238,36 @@ const main = Effect.gen(function* () {
     catch: (cause) => probeCliError("Cannot resolve the Trigo worktree", cause),
   });
   const [action, ...args] = process.argv.slice(2);
+  if (action !== "generate" && action !== "probe")
+    return yield* probeCliError("Expected asr action: generate or probe");
+  const options = yield* Effect.try({
+    try: () =>
+      commandOptions(
+        `asr ${action}`,
+        args,
+        action === "generate"
+          ? { "--language": "value", "--output": "value" }
+          : { "--stage": "value", "--language": "value", "--handoff": "value" },
+      ),
+    catch: (cause) =>
+      probeCliError(cause instanceof Error ? cause.message : "Invalid ASR arguments", cause),
+  });
   if (action === "generate") {
-    const languageIndex = args.indexOf("--language");
-    const outputIndex = args.indexOf("--output");
-    const language = languageIndex < 0 ? undefined : args[languageIndex + 1];
-    const output = outputIndex < 0 ? undefined : args[outputIndex + 1];
-    if ((language !== "en" && language !== "ru" && language !== "uk") || output === undefined)
+    const language = options.get("--language");
+    const output = options.get("--output");
+    if ((language !== "en" && language !== "ru" && language !== "uk") || typeof output !== "string")
       return yield* probeCliError("generate requires --language en|ru|uk and --output <path>");
     return yield* Effect.try({
       try: () => generateProbeFixture(language, resolve(output)),
       catch: (cause) => probeCliError("Fixture generation failed", cause),
     });
   }
-  if (action !== "probe") return yield* probeCliError("Expected asr action: generate or probe");
   const stage = yield* Effect.try({
     try: () => parseCloudStage(args),
     catch: (cause) => probeCliError("Invalid cloud stage", cause),
   });
   if (stage !== "dev") return yield* probeCliError("Nova-3 probes may target only --stage dev");
-  const languageIndexes = args.flatMap((value: string, index: number) =>
-    value === "--language" ? [index] : [],
-  );
-  if (languageIndexes.length > 1)
-    return yield* probeCliError("Pass at most one --language selector");
-  const selectedLanguage =
-    languageIndexes[0] === undefined ? undefined : args[languageIndexes[0] + 1];
+  const selectedLanguage = options.get("--language");
   if (
     selectedLanguage !== undefined &&
     selectedLanguage !== "en" &&
@@ -271,6 +277,11 @@ const main = Effect.gen(function* () {
     return yield* probeCliError("Use --language en, --language ru, or --language uk");
   const languages: ReadonlyArray<ProbeLanguage> =
     selectedLanguage === undefined ? ["en", "ru", "uk"] : [selectedLanguage];
+  const handoff = options.get("--handoff");
+  if (typeof handoff !== "string")
+    return yield* probeCliError(
+      "Pass --handoff <private dev owner handoff>; probes do not read app Keychain items",
+    );
   const target = cloudTargetFor(stage);
   const configuration = yield* Effect.try({
     try: () => readCloudConfiguration(resolve(root, target.configPath), target),
@@ -278,16 +289,6 @@ const main = Effect.gen(function* () {
   });
   if (configuration.apiUrl === undefined)
     return yield* probeCliError("The dev Cloud API URL is missing");
-  const handoffIndexes = args.flatMap((value: string, index: number) =>
-    value === "--handoff" ? [index] : [],
-  );
-  const handoffIndex = handoffIndexes[0];
-  const handoff =
-    handoffIndexes.length === 1 && handoffIndex !== undefined ? args[handoffIndex + 1] : undefined;
-  if (!handoff || handoff.startsWith("--"))
-    return yield* probeCliError(
-      "Pass --handoff <private dev owner handoff>; probes do not read app Keychain items",
-    );
   const token = yield* readProbeCredential(resolve(handoff), configuration).pipe(
     Effect.mapError(() => probeCliError("Cannot read a matching dev owner token handoff")),
   );

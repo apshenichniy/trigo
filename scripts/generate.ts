@@ -5,7 +5,11 @@ import { format } from "oxfmt";
 import { documentSchemas } from "../packages/contracts/src/document-schema.ts";
 import { assertExchangeSchema } from "./contract-schema.ts";
 import { generateSwift } from "./generate-swift.ts";
+import { commandOptions } from "./arguments.ts";
 
+const checking = commandOptions("contract generation", process.argv.slice(2), {
+  "--check": "flag",
+}).has("--check");
 const rootPackage = await Bun.file("package.json").json();
 const installed = await Bun.file("node_modules/effect/package.json").json();
 const reference = await Bun.file("repos/effect/packages/effect/package.json").json();
@@ -53,7 +57,7 @@ const files: Record<string, string> = {
 };
 for (const [relative, content] of Object.entries(files)) {
   const target = `packages/contracts/${relative}`;
-  if (process.argv.includes("--check")) {
+  if (checking) {
     if ((await readFile(target, "utf8").catch(() => "")) !== content)
       throw new Error(`Generated artifact is stale: ${target}; run bun run contracts:generate`);
   } else {

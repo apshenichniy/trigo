@@ -23,16 +23,31 @@ import {
   installationDestination,
   nativeSigning,
 } from "./macos-install.ts";
+import { commandOptions } from "./arguments.ts";
+const action = process.argv[2] ?? "build";
+if (!["build", "archive", "run", "install", "dependencies", "setup", "prepare"].includes(action))
+  throw new Error(`Unknown native action: ${action}`);
+const options = commandOptions(`native ${action}`, process.argv.slice(3), {
+  "--variant": "value",
+  ...(["build", "archive", "install", "run"].includes(action)
+    ? { "--ad-hoc": "flag" as const }
+    : {}),
+  ...(["build", "install", "run"].includes(action) ? { "--local-config": "value" as const } : {}),
+  ...(["install", "run"].includes(action) ? { "--replace-worktree": "flag" as const } : {}),
+});
+const variant = options.get("--variant") ?? "dev";
+if (variant !== "dev" && variant !== "personal")
+  throw new Error("--variant must be dev or personal");
+const localConfigPath = options.get("--local-config");
+if (localConfigPath !== undefined && (variant !== "dev" || typeof localConfigPath !== "string"))
+  throw new Error(
+    "--local-config requires dev build/install/run and a private local configuration path",
+  );
+const adHoc = options.has("--ad-hoc");
+const signing = nativeSigning(action, process.env.TRIGO_SIGNING_TEAM, adHoc);
 requireNativeTools();
 const root = realpathSync(new URL("..", import.meta.url).pathname);
 process.chdir(root);
-const action = process.argv[2] ?? "build";
-const variantIndex = process.argv.indexOf("--variant");
-const variant = variantIndex < 0 ? "dev" : process.argv[variantIndex + 1];
-if (variant !== "dev" && variant !== "personal")
-  throw new Error("--variant must be dev or personal");
-if (!["build", "archive", "run", "install", "dependencies", "setup", "prepare"].includes(action))
-  throw new Error(`Unknown native action: ${action}`);
 const scheme = variant === "dev" ? "Trigo Dev" : "Trigo";
 const project = "apps/macos/Trigo.xcodeproj";
 const canonical = "apps/macos/Locks/Package.resolved";
@@ -40,22 +55,9 @@ const nested = `${project}/project.xcworkspace/xcshareddata/swiftpm/Package.reso
 const before = action === "dependencies" ? new Map<string, string>() : snapshotLocks();
 const derived = resolve(root, ".local/DerivedData");
 const worktree = createHash("sha256").update(root).digest("hex").slice(0, 12);
-const localConfigIndex = process.argv.indexOf("--local-config");
-const localConfigPath = localConfigIndex < 0 ? undefined : process.argv[localConfigIndex + 1];
-if (localConfigIndex >= 0) {
-  if (
-    !["build", "install", "run"].includes(action) ||
-    variant !== "dev" ||
-    !localConfigPath ||
-    localConfigPath.startsWith("--")
-  )
-    throw new Error(
-      "--local-config requires dev build/install/run and a private local configuration path",
-    );
+if (localConfigPath !== undefined) {
   readLocalConfiguration(resolve(localConfigPath), worktree);
 }
-const adHoc = process.argv.includes("--ad-hoc");
-const signing = nativeSigning(action, process.env.TRIGO_SIGNING_TEAM, adHoc);
 if (adHoc)
   console.log(
     "Explicit ad-hoc mode: permission and Keychain continuity after rebuilds is not established.",
@@ -221,7 +223,7 @@ if (action === "dependencies") {
           assertSupportedReplacement(
             identity(destination),
             identity(bundle),
-            process.argv.includes("--replace-worktree"),
+            options.has("--replace-worktree"),
             adHoc,
           );
         }

@@ -1,0 +1,3 @@
+# Keep normal ripgrep navigation on application sources. Inspect the reference explicitly
+# with rg --no-ignore repos/effect/<path> when working on Effect code.
+/repos/

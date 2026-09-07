@@ -7,13 +7,19 @@ import { createServer } from "node:net";
 import { validateDocument } from "../packages/contracts/src/index.ts";
 import { localConfiguration, localWorkerEnvironment } from "./local-configuration.ts";
 import { lockedSwiftArguments } from "./native-check.ts";
+import { commandOptions } from "./arguments.ts";
+const options = commandOptions(
+  "local dev (cloud stages and resource configuration are unavailable)",
+  process.argv.slice(2),
+  {
+    "--test": "flag",
+    "--native-client": "flag",
+  },
+);
 const root = realpathSync(new URL("..", import.meta.url).pathname);
-const testing = process.argv.includes("--test");
-const nativeClient = process.argv.includes("--native-client");
-if (
-  process.argv.slice(2).some((arg: string) => !["--test", "--native-client"].includes(arg)) ||
-  (nativeClient && !testing)
-)
+const testing = options.has("--test");
+const nativeClient = options.has("--native-client");
+if (nativeClient && !testing)
   throw new Error(
     "Local dev accepts only --test [--native-client]; cloud stages and resource configuration are unavailable.",
   );

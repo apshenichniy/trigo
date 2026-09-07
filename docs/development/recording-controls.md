@@ -14,10 +14,11 @@ while remote health is checking, unavailable, unauthorized or incompatible.
 Server operations remain separately blocked. The retained binding supplies the
 archive ID; the app namespace supplies the local archive root.
 
-When either capture permission is missing, an explicit Start/shortcut action
-only requests permissions. Even a successful grant does not select a source or
-record: focus the target and press the shortcut again. With permissions already
-granted, an idle shortcut snapshots the frontmost eligible application before
+Start/shortcut checks the current OS readiness and never requests permissions.
+Before a call, use **Capture readiness** to explicitly enable screen/system-audio
+and microphone access separately; Settings/retry guidance distinguishes unavailable
+access and credential failures. After granting access, focus the target and press
+the shortcut. With readiness satisfied, an idle shortcut snapshots the frontmost eligible application before
 asynchronous capture validation. The application instance and selected window
 remain pinned. Start in the panel only reuses a still-valid prior pin; it never
 selects Trigo or falls back to display-wide recording. Application audio can
@@ -35,7 +36,9 @@ Every new call starts with microphone recording enabled. The persistent on/off
 text and icon change only after the awaited capture operation acknowledges the
 change. A second toggle while one is pending is ignored. Device unavailable is
 a separate state from muted; application audio continues while Trigo retries
-the default input. Trigo mute is independent of the calling application's mute.
+the default input while permission allows it. Revoked microphone permission retires
+only its stream and prevents repeated starts until access returns; loss of screen
+access interrupts the call. Trigo mute is independent of the calling application's mute.
 The #15 capture engine suppresses microphone frames before persistence and
 preserves application audio and timeline alignment.
 
@@ -107,9 +110,13 @@ local media writer and archive with OS/network adapters. They do not request TCC
 open actual capture streams or use physical microphone/network inputs. Both
 Trigo Dev and Trigo builds preserve the existing identities and privacy keys.
 
-The integration coordinator owns installed-app/Chrome acceptance, actual global
+The #57 integration coordinator owns installed-app/Chrome acceptance, actual global
 shortcut and nonactivating-panel button interaction, physical known-phrase
 mute/silence inspection, device loss/return and retained-media checks. No real
 call, personal deployment, upload/ASR/transcript/archive product UI or public
 release is included in this slice. A passing automated check does not substitute
 for those installed-app gates.
+
+The future double-Left-Option shortcut/Input Monitoring flow and compact measured
+recording feedback remain #10 product work. The current shortcut and unmeasured
+stream-state labels do not fulfill those requirements.

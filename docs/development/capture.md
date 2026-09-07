@@ -19,7 +19,8 @@ instance is running, because a replacement inode would defeat exclusion. Separat
 dev worktree namespaces remain independent.
 
 `ScreenCaptureRecording` is a main-actor facade. From an explicit user action,
-request permissions through `SystemCaptureSource.requestPermissions()`. Resolve
+enable one permission through `SystemCaptureSource.requestPermission(_:)`;
+Start only checks readiness. Resolve
 the chosen frontmost application window with `SystemCaptureSource.frontmost()`
 before the panel takes focus, and pass that immutable source to `start(root:
 archiveID:source:)`. An explicit application selection can supply the same source
@@ -58,7 +59,7 @@ the policy. It does not change microphone controls in the calling application.
 `stop()` is independent of current focus. Call `stop(reason: "application_termination")`
 from the application's coordinated termination path before allowing quit. Sleep
 and source-process loss are observed by the facade itself. The library contains
-no global shortcuts or panels; those remain #16 responsibilities.
+no global shortcuts or panels; those are composed by `RecordingCoordinator`; see [recording controls](recording-controls.md).
 
 ## Audio and interruption behavior
 
@@ -145,5 +146,5 @@ controlled PCM/CMSampleBuffers, independent AVAudioFile decoding, filesystem fau
 injection, a SIGKILL child fixture, a three-hour writer fixture and a one-hour
 48/44.1 kHz common-clock replay. These prove local production-library behavior, not
 physical-device capture or real-call quality. The installed Trigo Dev/Chrome/mic
-exercise, focus changes and actual TCC prompts remain the explicitly deferred #16
-integration acceptance. No real call, private audio, upload or paid ASR is used.
+exercise, focus changes, actual TCC prompts and app-owned credential continuity
+remain the human-assisted #57 foundation acceptance. No real call, private audio, upload or paid ASR is used.

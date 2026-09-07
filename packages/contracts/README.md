@@ -11,10 +11,12 @@ capabilities. Generated types are outputs, never additional authoring sources. `
 and owning feature issues; it does not claim those endpoints are implemented.
 
 `schemaVersion` selects compatible structure. `documentVersion` is a positive,
-monotonic mutable-manifest version (the synchronization layer enforces progression).
+monotonic mutable-manifest version (the local repository enforces progression;
+the future synchronization layer must preserve it).
 `revisionId` identifies an immutable transcript; `operationId` identifies a command.
 They are never substitutes for each other. Reusing an operation ID with different
-content is a conflict enforced by the later durable command layer.
+content is a conflict enforced by the local durable operation owner. Remote
+execution and synchronization retain their separate downstream delivery gates.
 
 `validateStructure` checks closed v1 shapes, required nulls, canonical UUIDs,
 UTC timestamps and safe integer constraints. `validateDocument` additionally checks
@@ -36,14 +38,19 @@ Native archive/capture/recovery/status code consumes the generated models; dynam
 JSON stays inside the generic schema/semantic validator and real platform adapters.
 Retain original UTF-8 bytes for immutable publication. Parsing and lossless field
 round-tripping do not promise identical JSON formatting. Object-media bytes are
-validated by the later media finalization adapter; this package validates their
+validated by the native media finalization adapter; this package validates their
 identity/size/hash descriptors and logical mappings, not codec/decoding internals.
-The selected #13 media profile is the checked
-`schema/media-profile.v1.json` artifact. It fixes two interleaved logical sources
-in independently decodable 60-second WAVE objects: microphone on channel 0 and
-application audio on channel 1. TypeScript and Swift consumers load the same
-generated resource, including the exact upload, playback, ASR assembly, timing,
-and speaker-scope rules.
+The permanent recording profile is `schema/capture-master-profile.v1.json`:
+one recoverable stereo CAF master, microphone on channel 0 and application on
+channel 1. Its integrity commits, upload byte ranges and ASR extraction intervals
+are independent. Both languages load the same checked resource. The
+[capture master interface](../../docs/development/capture-master-interface.md)
+defines final identity, byte limits, extraction provenance and retention.
+
+The independent `schema/media-profile.v1.json` WAVE profile remains the #13
+provider-probe input, including its 60-second object and provider-assembly rules.
+It is not the production capture file layout. Hosted acceptance of inputs derived
+from the permanent master remains #13; neither profile alone establishes it.
 
 Exchange UUIDs retain the broader lowercase format, while request and generated
 identity schemas use canonical UUID v4. Both share definitions without conflating

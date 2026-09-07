@@ -1,5 +1,9 @@
 # Development setup
 
+For ownership and the current product boundary, start with the
+[architecture map](architecture.md). Historical acceptance documents record the
+source tested at that time; this setup describes the supported current path.
+
 ## Supported toolchain
 
 The implementation gate for #11 ran on macOS with Xcode 26.6 (17F113), Swift 6.3.3,
@@ -29,21 +33,21 @@ its SwiftPM invocation disables only nested manifest sandboxing. Other SwiftPM
 and Xcode commands retain their own sandbox behavior.
 Use `mise exec --` in a shell without mise activation.
 
-| Tool/package                                       | Exact version           |
-| -------------------------------------------------- | ----------------------- |
-| mise bootstrap                                     | 2026.9.1                |
-| Bun / Node                                         | 1.3.13 / 24.14.1        |
-| XcodeGen (macOS only)                              | 2.46.0                  |
-| Effect, platform-node, platform-bun, effect/vitest | 4.0.0-rc.112            |
-| Effect TSGO / Oxlint TSGO bridge                   | 0.41.0 / 7.0.2001       |
-| Alchemy                                            | 2.0.0-beta.76           |
-| Vitest / Vite / TypeScript                         | 4.1.11 / 8.0.7 / 7.0.2  |
-| Workers pool / Wrangler                            | 0.22.0 / 4.124.0        |
-| Workers pool workerd                               | 1.20260815.1            |
-| Alchemy runtime workerd                            | 1.20260704.1            |
-| Oxlint / Oxfmt                                     | 1.81.0 / 0.66.0         |
-| Ajv / ajv-formats / json-schema-to-typescript      | 8.20.0 / 3.0.1 / 16.0.0 |
-| Swift JSON Schema                                  | 0.13.1                  |
+| Tool/package                                       | Exact version          |
+| -------------------------------------------------- | ---------------------- |
+| mise bootstrap                                     | 2026.9.1               |
+| Bun / Node                                         | 1.3.13 / 24.14.1       |
+| XcodeGen (macOS only)                              | 2.46.0                 |
+| Effect, platform-node, platform-bun, effect/vitest | 4.0.0-rc.112           |
+| Effect TSGO / Oxlint TSGO bridge                   | 0.41.0 / 7.0.2001      |
+| Alchemy                                            | 2.0.0-beta.76          |
+| Vitest / Vite / TypeScript                         | 4.1.11 / 8.0.7 / 7.0.2 |
+| Workers pool / Wrangler                            | 0.22.0 / 4.124.0       |
+| Workers pool workerd                               | 1.20260815.1           |
+| Alchemy runtime workerd                            | 1.20260704.1           |
+| Oxlint / Oxfmt                                     | 1.81.0 / 0.66.0        |
+| Ajv / ajv-formats                                  | 8.20.0 / 3.0.1         |
+| Swift JSON Schema                                  | 0.13.1                 |
 
 All other direct dependencies are exact in package manifests; transitive versions
 are in `bun.lock` and the three Swift resolution files. Effect's platform packages
@@ -98,12 +102,19 @@ git subtree pull --prefix=repos/effect \
 
 Do not track Effect `main` independently: source newer than the installed package
 can teach agents APIs that the application cannot compile. Editor search, file
-watching and auto-imports exclude `repos/`, and repository formatting ignores both
+watching, auto-imports and ordinary ripgrep searches exclude `repos/`. Inspect the
+reference explicitly with `rg --no-ignore <pattern> repos/effect/<path>`; it remains
+tracked and read-only. Repository formatting ignores both
 vendored source and imported agent skills.
 
 ## Command interface
 
-All commands use `bun run <command>` and propagate errors.
+All commands use `bun run <command>` from the checkout root and propagate errors.
+Root doctor/format/lint/typecheck/test/build/check commands take no arguments.
+Wrappers reject unknown options, duplicate selectors and missing values rather
+than silently ignoring them. Use separate `--option value` arguments; options
+are not forwarded to Xcode or Alchemy. Vitest component commands (`test:unit` and
+`test:workers`) retain Vitest's own filtering options.
 
 | Command                                                                              | Behavior                                                                             |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
@@ -112,17 +123,18 @@ All commands use `bun run <command>` and propagate errors.
 | `lint`                                                                               | Oxlint and strict Swift formatting checks                                            |
 | `typecheck`                                                                          | Strict TypeScript and locked native Swift compilation                                |
 | `test`                                                                               | Node/Effect, Workers, shared Swift fixtures, native logic, Alchemy local smoke       |
-| `build`                                                                              | Local Worker bundle and both app variants                                            |
+| `build`                                                                              | Local and cloud Worker bundles and both app variants                                 |
 | `check`                                                                              | Complete macOS gate: format, lint, types, generation, tests and builds               |
 | `check:server`                                                                       | Portable Linux/macOS TS/contracts/Workers checks and bundle                          |
 | `check:macos`                                                                        | Native style/conformance/tests, both apps and Alchemy local smoke                    |
-| `contracts:generate` / `contracts:check`                                             | Explicit regeneration / temporary regeneration and comparison                        |
+| `contracts:generate` / `contracts:check`                                             | Explicit regeneration / in-memory generation and comparison                          |
 | `dev`                                                                                | Shared product API, local D1/R2/workflow and fake ASR                                |
 | `test:local`                                                                         | Disposable composition, authenticated API and persistent restart                     |
 | `macos:build --variant dev`                                                          | Locked build (`personal` also supported)                                             |
 | `macos:install --variant dev`                                                        | Build/install without launching; requires stable signing or explicit `--ad-hoc`      |
 | `macos:run --variant dev`                                                            | Build, install and open stable development app                                       |
 | `macos:archive --variant dev`                                                        | Reproducible unsigned archive unless a signing team is selected                      |
+| `macos:setup`                                                                        | Resolve the pinned native dependency graphs and restore the generated project lock   |
 | `macos:dependencies`                                                                 | Explicit Swift dependency update and app lock refresh                                |
 | `cloud:preflight --stage dev`                                                        | Read-only validation of the stage configuration and dedicated Alchemy profile        |
 | `cloud:bootstrap --stage dev`                                                        | Explicit-profile Cloudflare remote-state bootstrap; see [cloud operations](cloud.md) |
@@ -131,7 +143,7 @@ All commands use `bun run <command>` and propagate errors.
 | `cloud:owner:rotate --stage dev --handoff <absolute-path> --expected-generation <n>` | Atomically replace the owner verifier through a private handoff                      |
 | `cloud:owner:revoke --stage dev --handoff <absolute-path> --expected-generation <n>` | Atomically revoke the owner verifier; the handoff contains no token                  |
 | `test:cloud --stage dev`                                                             | Read-only infrastructure checks, fixture seed/verify and owner-status modes          |
-| `test:asr --stage dev [--language en\|ru\|uk]`                                       | Explicit live Nova-3 probe; controlled synthetic audio, no automatic retries         |
+| `test:asr --stage dev --handoff <absolute-path> [--language en\|ru\|uk]`             | Explicit live Nova-3 probe; controlled synthetic audio, no automatic retries         |
 
 The full check fails on Linux rather than silently skipping macOS. Verification
 may create ignored build outputs/caches; it must not rewrite tracked sources or
@@ -144,13 +156,27 @@ in [Cloud operations](cloud.md).
 
 `test:asr` is a live, potentially billable acceptance command and is never part of
 the default verification graph. It targets only the isolated dev stage, requires
-the paired Trigo Dev owner credential, and creates a fresh controlled synthetic
+a private dev owner handoff matching the selected deployment, and creates a fresh controlled synthetic
 fixture for each selected language. Without `--language` it attempts `en`, `ru`,
 and `uk` once each; the selector narrows the set to one language. Before running
 it, reserve the bounded request set in the active Goal ledger and confirm that
 actual plus reserved spend remains within the approved ceiling. Afterward, record
 the conservative actual result and release unused reservation. The command never
 retries automatically, and the deployed fixture marker rejects a sequential repeat.
+
+## Clean test archive
+
+Use a fresh worktree for the refactored development archive, then follow the local
+runtime sequence below. Its generated bridge selects a fresh disposable local
+namespace; `dev` preserves that namespace across restarts. Do not move an old
+`Archive` directory or copy ordinary Dev/personal connection metadata into it.
+
+The current repository stores `Archive/archive.sqlite3` at schema version 2, with
+media under `Archive/<call-id>/media/`. An old file archive, older/unknown SQL
+schema, foreign identity or corrupt store fails explicitly without resetting or
+migrating it. A failed open is not permission to delete data. Keep the prior test
+namespace intact and choose a new worktree/bridge instead. No private/personal
+archive cutover is authorized by this development workflow.
 
 ## Local runtime
 
@@ -262,11 +288,13 @@ file to retain them; GitHub Actions also includes them in the job summary.
 | Personal    | `io.github.apshenichniy.trigo` / `Trigo`         | `~/Applications/Trigo.app`     |
 | Development | `io.github.apshenichniy.trigo.dev` / `Trigo Dev` | `~/Applications/Trigo Dev.app` |
 
-`AppNamespace` defines `Archive`, `Journal` and `connection.json` under
-`~/Library/Application Support/<namespace>/`. Preferences use the namespace as
+`AppNamespace` places `Archive` and `connection.json` under
+`~/Library/Application Support/<namespace>/`. Its reserved `Journal` path is no
+longer the operation store: archive metadata, lifecycle and durable work all live
+in `Archive/archive.sqlite3`. Preferences use the namespace as
 suite name; Keychain uses `<namespace>.connection-token`. Personal uses its bundle
 ID; development appends the build's worktree identifier. Test namespaces are
-UUID-based disposable locations. The shell requests no capture permissions.
+UUID-based disposable locations. Checks and builds request no capture permissions.
 
 The app's ordinary Archive connection screen accepts an HTTPS origin and owner token.
 The explicit local bridge above has its own bounded origin policy. A
@@ -307,8 +335,11 @@ the signature, requires the destination app to be quit, and refuses another bund
 identity or changed designated requirement on a normal signed update. Switching a
 shared ordinary Dev installation between worktrees requires `--replace-worktree`;
 it changes the selected development namespace and does not migrate any data.
-A failed or interrupted installation retains staging/backup paths for review. Ordinary builds, tests and CI need no owner signing
-credentials. Public Developer ID signing, notarization, Amore/Sparkle and release
+A failed or interrupted installation retains staging/backup paths for review.
+`--replace-worktree` applies only to `macos:install`/`macos:run`; `--local-config`
+applies only to dev build/install/run; `--ad-hoc` applies only to build/archive/
+install/run. `--variant dev|personal` is accepted by all native actions.
+Ordinary builds, tests and CI need no owner signing credentials. Public Developer ID signing, notarization, Amore/Sparkle and release
 publication remain #4. Archives live under `.local/archives/`.
 
 Use **Capture readiness** in the connection window or recording panel before a call.
@@ -319,7 +350,11 @@ input-device absence and effective recording mute are separate states. Screen
 preflight false means access is required; it does not identify denial versus revocation.
 The supported capture adapter remains ScreenCaptureKit. See the controlled
 [installed acceptance procedure](acceptance-55.md#installed-acceptance-procedure) for
-observations that require the owner's Mac.
+observations that require the owner's Mac. The reported Allow/Always Allow dialog
+requester and cause remain unconfirmed until observed. Normal unchanged app/item
+relaunch and a supported signed rebuild must be observed separately in #57, using
+the same worktree, bridge, app path and signing identity. A local CLI smoke or
+mocked permission test does not establish OS or app-owned Keychain continuity.
 
 ## Generation and dependency updates
 

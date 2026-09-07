@@ -101,7 +101,8 @@ export function cloudConfigPath(args: readonly string[], target: CloudTarget): s
   if (configIndexes.length > 1) throw new Error("Pass at most one --config selector");
   const configIndex = configIndexes[0];
   const configured = configIndex === undefined ? target.configPath : args[configIndex + 1];
-  if (!configured) throw new Error("Pass a configuration path after --config");
+  if (!configured || configured.startsWith("-"))
+    throw new Error("Pass a configuration path after --config");
   return resolve(configured);
 }
 
@@ -348,7 +349,7 @@ if (import.meta.main) {
     const parsedAction = parseAction(action);
     const target = cloudTargetFor(parseCloudStage(args));
     const actionArgs = cloudActionArguments(args);
-    if (parsedAction === "preflight") rejectUnexpectedCloudActionArgument(parsedAction, actionArgs);
+    rejectUnexpectedCloudActionArgument(parsedAction, actionArgs);
     const config = cloudConfigPath(args, target);
     const configuration =
       parsedAction === "test"

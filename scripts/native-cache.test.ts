@@ -17,6 +17,7 @@ it("invalidates restored native products on any lock, toolchain, or build config
     "apps/macos/project.yml",
     "scripts/toolchain.ts",
     "scripts/commands.ts",
+    "scripts/arguments.ts",
     "scripts/macos.ts",
     "scripts/native-check.ts",
     "scripts/native-cache.ts",

@@ -3,7 +3,9 @@ import { snapshotLocks, assertLocksUnchanged } from "./locks.ts";
 import { run } from "./process.ts";
 import { lockedSwiftArguments, swiftTests } from "./native-check.ts";
 import { timedRun } from "./timing.ts";
+import { commandOptions } from "./arguments.ts";
 const command = process.argv[2] ?? "doctor";
+commandOptions(command, process.argv.slice(3), {});
 function native() {
   if (process.platform !== "darwin")
     throw new Error(
