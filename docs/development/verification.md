@@ -33,7 +33,8 @@ quick pass reports only its selected scope.
 
 Set `TRIGO_TIMINGS_FILE` to an ignored JSONL path, for example
 `.local/check-timings.jsonl`. Each record carries the command invocation, shared
-run ID, source revision and dirty-content fingerprint, configuration, timestamps,
+run ID, source revision and dirty-content fingerprint, selected scope/suite or
+variant, configuration, timestamps,
 duration, result and parent span. Nested command durations overlap their parent:
 use the outer command for feedback latency, phase intervals for attribution, and
 GitHub job intervals for runner minutes. Do not sum parent and child spans.

@@ -27,7 +27,7 @@ if (nativeClient && !testing)
   );
 if (nativeClient && process.platform !== "darwin")
   throw new Error("Native local acceptance requires macOS");
-beginTiming(testing ? "test:local" : "dev");
+beginTiming(testing ? "test:local" : "dev", { nativeClient });
 const id = createHash("sha256").update(root).digest("hex").slice(0, 12);
 const requestedPort = Number(process.env.TRIGO_LOCAL_PORT ?? (testing ? 0 : 19371));
 if (

@@ -9,7 +9,7 @@ it("retains failed nested command timings with source identity and a shared run 
   try {
     const modulePath = JSON.stringify(resolve("scripts/timing.ts"));
     const child = `import { beginTiming } from ${modulePath}; beginTiming('child'); process.exitCode = 7;`;
-    const parent = `import { beginTiming, timedRun } from ${modulePath}; beginTiming('parent'); timedRun('child command', ['bun', '-e', ${JSON.stringify(child)}]);`;
+    const parent = `import { beginTiming, timedRun } from ${modulePath}; beginTiming('parent', { scope: 'native' }); timedRun('child command', ['bun', '-e', ${JSON.stringify(child)}]);`;
     const file = join(directory, "timings.jsonl");
     const result = spawnSync("bun", ["-e", parent], {
       encoding: "utf8",
@@ -34,6 +34,9 @@ it("retains failed nested command timings with source identity and a shared run 
       expect(record.endedAtMs).toBeGreaterThanOrEqual(record.startedAtMs);
     }
     expect(nested.invocationId).not.toBe(root.invocationId);
+    expect(root.selection).toEqual({ scope: "native" });
+    expect(phase.selection).toEqual(root.selection);
+    expect(nested.selection).toEqual({});
     expect(nested.parentSpanId).toBe(phase.spanId);
     expect(phase.parentSpanId).toBe(root.spanId);
     expect(root.seconds).toBeGreaterThanOrEqual(phase.seconds);

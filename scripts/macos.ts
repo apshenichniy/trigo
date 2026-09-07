@@ -49,7 +49,7 @@ const signing = nativeSigning(action, process.env.TRIGO_SIGNING_TEAM, adHoc);
 requireNativeTools();
 const root = realpathSync(new URL("..", import.meta.url).pathname);
 process.chdir(root);
-beginTiming(`macos:${action}`);
+beginTiming(`macos:${action}`, { variant, adHoc });
 const scheme = variant === "dev" ? "Trigo Dev" : "Trigo";
 const project = "apps/macos/Trigo.xcodeproj";
 const canonical = "apps/macos/Locks/Package.resolved";

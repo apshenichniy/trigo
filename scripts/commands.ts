@@ -26,7 +26,14 @@ const suite = nativeSuites.find((value) => value === (options.get("--suite") ?? 
 if (!suite) throw new Error("--suite must be fast, contention, resource or all");
 const filter = options.get("--filter");
 if (typeof filter === "string") new RegExp(filter);
-beginTiming(command);
+beginTiming(
+  command,
+  command === "check:quick"
+    ? { scope }
+    : command === "test:native"
+      ? { suite, ...(typeof filter === "string" ? { filter } : {}) }
+      : {},
+);
 function native() {
   if (process.platform !== "darwin")
     throw new Error(
@@ -108,7 +115,7 @@ const swiftBuild = () => {
 const macosBuild = () => {
   native();
   for (const variant of ["dev", "personal"])
-    timedRun(`${variant} app build`, ["bun", "run", "macos:build", "--variant", variant]);
+    timedRun(`${variant} app build`, ["bun", "scripts/macos.ts", "build", "--variant", variant]);
 };
 async function serverBuild() {
   await timedAsync("Worker bundles", async () => {
@@ -124,12 +131,18 @@ async function serverBuild() {
   console.log("Local and cloud Worker bundles built.");
 }
 const nativeSmoke = () =>
-  timedRun("Local Worker and native client", ["bun", "run", "test:local", "--native-client"], {
-    env: {
-      ...process.env,
-      ...(nativeReceipt ? { TRIGO_NATIVE_BUILD_RECEIPT: nativeReceipt } : {}),
+  // Execute the same entrypoint directly so nested `bun run` does not rewrite
+  // PATH or npm bookkeeping and invalidate the verified parent build environment.
+  timedRun(
+    "Local Worker and native client",
+    ["bun", "scripts/local.ts", "--test", "--native-client"],
+    {
+      env: {
+        ...process.env,
+        ...(nativeReceipt ? { TRIGO_NATIVE_BUILD_RECEIPT: nativeReceipt } : {}),
+      },
     },
-  });
+  );
 const snapshot = snapshotLocks();
 try {
   switch (command) {

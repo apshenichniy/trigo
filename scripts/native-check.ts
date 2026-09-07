@@ -66,7 +66,7 @@ const nativeArtifact = () => resolve("apps/macos/.build/release/TrigoNativePacka
 const nativeIdentity = () =>
   nativeBuildIdentity("native-tests-release", ["--build-tests", "-Xswiftc", "-enable-testing"]);
 
-function buildNativeTests(): string {
+function buildNativeTests(build: () => void): string {
   const receipt = resolve(`.local/build-receipts/native-${randomUUID()}.json`);
   buildCurrentArtifact(
     {
@@ -76,7 +76,7 @@ function buildNativeTests(): string {
       reuse: false,
       owner: timingRunId(),
     },
-    () => swiftTestBuild("apps/macos", "release"),
+    build,
     () => {
       if (!existsSync(nativeArtifact())) throw new Error("Current native test bundle is missing");
     },
@@ -113,7 +113,7 @@ function runNativeGroup(phase: string, command: string[], resourceTest?: string)
 
 const nativeOperations = {
   execute: timedRun,
-  buildNative: buildNativeTests,
+  prepareNative: buildNativeTests,
   discover: toolOutput,
   test: runNativeGroup,
 };
@@ -122,7 +122,9 @@ export function nativeTests(
   options: { suite?: NativeSuite; filter?: string } = {},
   operations = nativeOperations,
 ): string {
-  const receipt = operations.buildNative();
+  const receipt = operations.prepareNative(() =>
+    swiftTestBuild("apps/macos", "release", operations.execute),
+  );
   const args = [...lockedSwiftArguments("apps/macos"), "--configuration", "release"];
   const tests = parseNativeTests(
     operations.discover(["swift", "test", ...args, "list", "--skip-build"]),

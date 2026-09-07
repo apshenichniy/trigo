@@ -14,17 +14,8 @@ function operations(failedBuild?: string) {
       events.push({ kind: "command", phase, command });
       if (phase === failedBuild) throw new Error("compiler failed");
     },
-    buildNative() {
-      this.execute("apps/macos release build tests", [
-        "swift",
-        "build",
-        "--configuration",
-        "release",
-        "--build-tests",
-        "-enable-testing",
-        "--force-resolved-versions",
-        "--skip-update",
-      ]);
+    prepareNative(build: () => void) {
+      build();
       return "/unused/unit-test-receipt.json";
     },
     discover(command: string[]) {
@@ -44,6 +35,7 @@ it("builds current sources once before discovery and all native groups on every 
   expect(builds).toHaveLength(4);
   for (const event of builds) {
     expect(event.command).toContain("-enable-testing");
+    expect(event.command[event.command.indexOf("-enable-testing") - 1]).toBe("-Xswiftc");
     expect(event.command).toContain("--force-resolved-versions");
     expect(event.command).toContain("--skip-update");
   }

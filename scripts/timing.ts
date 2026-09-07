@@ -9,6 +9,7 @@ type TimingContext = {
   runId: string;
   rootSpanId: string;
   source: ReturnType<typeof sourceState>;
+  selection: Record<string, string | boolean>;
 };
 let context: TimingContext | undefined;
 let activeSpan: string | undefined;
@@ -21,6 +22,7 @@ function timingContext(): TimingContext {
       runId: process.env.TRIGO_CHECK_RUN_ID ?? invocationId,
       rootSpanId: randomUUID(),
       source: sourceState(),
+      selection: {},
     };
   }
   return context;
@@ -67,7 +69,8 @@ function startSpan(phase: string, configuration: string | null, root = false) {
 }
 
 /** Call after validating arguments, so rejected commands never start tools or timing. */
-export function beginTiming(command: string): void {
+export function beginTiming(command: string, selection: TimingContext["selection"] = {}): void {
+  timingContext().selection = selection;
   const span = startSpan(command, null, true);
   process.once("exit", (code: number) => span.finish(code === 0));
 }
