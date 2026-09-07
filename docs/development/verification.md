@@ -65,7 +65,9 @@ job validates selection/formatting and every assigned component result. Failed,
 cancelled, missing and unexpectedly skipped work cannot satisfy it. Selection
 and timing artifacts are kept for 14 days; CI run logs retain test output.
 
-Bootstrap uses full checks regardless of the proposed selection. After `All
+Bootstrap uses full checks regardless of the proposed selection. Component jobs
+explicitly fail when planning fails, preserving the existing required statuses
+during migration. Selected normal work remains cancellable. After `All
 checks` succeeds on the migration PR, add it to the existing required
 `Server checks` and `macOS checks`, preserving their GitHub App restriction and
 strict up-to-date policy. Then set the repository Actions variable
