@@ -39,7 +39,7 @@ struct RecordingPanel: View {
 
         HStack {
           Button("Start") { Task { await coordinator.startPinnedSource() } }
-            .disabled(!coordinator.canStart)
+            .disabled(!coordinator.canStart || !coordinator.capturePermissions.ready)
             .accessibilityIdentifier("recording-start")
           Button("Stop") { Task { await coordinator.stop() } }
             .disabled(!coordinator.canStop)
@@ -50,6 +50,7 @@ struct RecordingPanel: View {
             .accessibilityIdentifier("recording-shortcut")
         }
         Divider()
+        CaptureReadinessView(coordinator: coordinator)
         Label(applicationState, systemImage: "app.dashed")
           .font(.callout).accessibilityIdentifier("application-audio-state")
         VStack(alignment: .leading, spacing: 6) {
@@ -163,7 +164,7 @@ struct RecordingPanel: View {
   private var stateTitle: String {
     switch coordinator.phase {
     case .setupRequired: "Setup required"
-    case .idle: "Ready to record"
+    case .idle: coordinator.capturePermissions.ready ? "Ready to record" : "Capture access required"
     case .starting: "Starting…"
     case .recording: "Recording"
     case .stopping: "Stopping / cancelling…"

@@ -1,10 +1,9 @@
+import { CanonicalUUIDv4, SHA256 } from "@trigo/contracts";
 import { D1Client } from "@effect/sql-d1";
 import { Effect, Option, Schema } from "effect";
 import * as Reactivity from "effect/unstable/reactivity/Reactivity";
 
-export const OwnerVerifierSha256 = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/)).pipe(
-  Schema.brand("OwnerVerifierSha256"),
-);
+export const OwnerVerifierSha256 = SHA256.pipe(Schema.brand("OwnerVerifierSha256"));
 export type OwnerVerifierSha256 = Schema.Schema.Type<typeof OwnerVerifierSha256>;
 
 export const OwnerToken = Schema.String.check(Schema.isPattern(/^trigo_v1_[0-9a-f]{64}$/)).pipe(
@@ -13,13 +12,10 @@ export const OwnerToken = Schema.String.check(Schema.isPattern(/^trigo_v1_[0-9a-
 export type OwnerToken = Schema.Schema.Type<typeof OwnerToken>;
 
 const AuthorizationHeader = Schema.String.check(Schema.isPattern(/^Bearer trigo_v1_[0-9a-f]{64}$/));
-const CanonicalUuidV4 = Schema.String.check(
-  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
-);
-export const ArchiveId = CanonicalUuidV4.pipe(Schema.brand("ArchiveId"));
+export const ArchiveId = CanonicalUUIDv4.pipe(Schema.brand("ArchiveId"));
 export type ArchiveId = Schema.Schema.Type<typeof ArchiveId>;
 
-export const OwnerOperationId = CanonicalUuidV4.pipe(Schema.brand("OwnerOperationId"));
+export const OwnerOperationId = CanonicalUUIDv4.pipe(Schema.brand("OwnerOperationId"));
 export type OwnerOperationId = Schema.Schema.Type<typeof OwnerOperationId>;
 
 const PositiveGeneration = Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1));

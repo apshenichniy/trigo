@@ -17,10 +17,8 @@ public struct CaptureInterval: Codable, Equatable, Sendable {
 /// completion on that queue, never merely enqueueing a mute request.
 public final class CaptureTimeline {
   private let writer: CaptureMediaWriter
-  private var profile: MediaProfile { writer.profile }
   private var samples: [[Int16?]] = [[], []]
   private var committedFrame = 0
-  private var spans: [[CaptureInterval]] = [[], []]
   private var microphonePolicy: [(frame: Int, enabled: Bool)] = [(0, true)]
   private var microphoneAvailability: [(frame: Int, available: Bool)] = [(0, true)]
   private var lastControlMs = 0
@@ -28,13 +26,11 @@ public final class CaptureTimeline {
 
   public init(writer: CaptureMediaWriter) { self.writer = writer }
 
-  public func intervals(for role: MediaSourceRole) -> [CaptureInterval] { spans[channel(role)] }
-
   public func append(role: MediaSourceRole, startFrame: Int, samples incoming: [Int16]) throws {
-    guard startFrame >= -(profile.sampleRateHz * 2),
-      startFrame <= committedFrame + (profile.sampleRateHz * 2),
-      incoming.count <= (profile.sampleRateHz * 2),
-      startFrame + incoming.count <= committedFrame + (profile.sampleRateHz * 2)
+    guard startFrame >= -(MediaMasterProfile.sampleRate * 2),
+      startFrame <= committedFrame + (MediaMasterProfile.sampleRate * 2),
+      incoming.count <= (MediaMasterProfile.sampleRate * 2),
+      startFrame + incoming.count <= committedFrame + (MediaMasterProfile.sampleRate * 2)
     else { throw CaptureError.invalidAudio }
     let end = startFrame + incoming.count
     guard end > committedFrame else { return }  // Late input cannot rewrite durable media.
@@ -51,55 +47,60 @@ public final class CaptureTimeline {
   }
 
   public func setMicrophoneEnabled(_ enabled: Bool, atMs: Int) throws {
-    guard atMs >= lastControlMs, atMs >= committedFrame / profile.captureFramesPerMs,
-      atMs <= profile.maxCallDurationMs
+    guard atMs >= lastControlMs, atMs >= committedFrame / MediaMasterProfile.framesPerMs,
+      atMs <= MediaMasterProfile.maximumDurationMs
     else {
       throw CaptureError.invalidAudio
     }
     lastControlMs = atMs
     microphoneEnabled = enabled
-    microphonePolicy.append((atMs * profile.captureFramesPerMs, enabled))
+    microphonePolicy.append((atMs * MediaMasterProfile.framesPerMs, enabled))
     if !enabled { try discardMicrophone(fromMs: atMs) }
   }
 
   public func discardMicrophone(fromMs: Int) throws {
-    guard fromMs >= committedFrame / profile.captureFramesPerMs, fromMs <= profile.maxCallDurationMs
+    guard fromMs >= committedFrame / MediaMasterProfile.framesPerMs,
+      fromMs <= MediaMasterProfile.maximumDurationMs
     else { throw CaptureError.invalidAudio }
-    let start = max(0, fromMs * profile.captureFramesPerMs - committedFrame)
+    let start = max(0, fromMs * MediaMasterProfile.framesPerMs - committedFrame)
     if start < samples[0].count {
       for index in start..<samples[0].count { samples[0][index] = nil }
     }
   }
 
   public func setMicrophoneAvailable(_ available: Bool, atMs: Int) throws {
-    guard atMs >= committedFrame / profile.captureFramesPerMs, atMs <= profile.maxCallDurationMs,
-      atMs * profile.captureFramesPerMs >= (microphoneAvailability.last?.frame ?? 0)
+    guard atMs >= committedFrame / MediaMasterProfile.framesPerMs,
+      atMs <= MediaMasterProfile.maximumDurationMs,
+      atMs * MediaMasterProfile.framesPerMs >= (microphoneAvailability.last?.frame ?? 0)
     else { throw CaptureError.invalidAudio }
-    microphoneAvailability.append((atMs * profile.captureFramesPerMs, available))
+    microphoneAvailability.append((atMs * MediaMasterProfile.framesPerMs, available))
     if !available { try discardMicrophone(fromMs: atMs) }
   }
 
   public func flush(throughMs: Int) throws {
-    guard throughMs >= committedFrame / profile.captureFramesPerMs,
-      throughMs <= profile.maxCallDurationMs
+    guard throughMs >= committedFrame / MediaMasterProfile.framesPerMs,
+      throughMs <= MediaMasterProfile.maximumDurationMs
     else {
       throw CaptureError.durationLimit
     }
-    while committedFrame < throughMs * profile.captureFramesPerMs {
-      let count = min(profile.sampleRateHz, throughMs * profile.captureFramesPerMs - committedFrame)
+    while committedFrame < throughMs * MediaMasterProfile.framesPerMs {
+      let count = min(
+        MediaMasterProfile.sampleRate, throughMs * MediaMasterProfile.framesPerMs - committedFrame)
       ensureCapacity(count)
       var interleaved = [Int16]()
       interleaved.reserveCapacity(count * 2)
       var nextSpans: [[CaptureInterval]] = [[], []]
-      for millisecond in stride(from: 0, to: count, by: profile.captureFramesPerMs) {
-        let absoluteMs = (committedFrame + millisecond) / profile.captureFramesPerMs
+      for millisecond in stride(from: 0, to: count, by: MediaMasterProfile.framesPerMs) {
+        let absoluteMs = (committedFrame + millisecond) / MediaMasterProfile.framesPerMs
         let microphonePresent =
           microphoneAvailability.last(where: { $0.frame <= committedFrame + millisecond })?
           .available ?? true
         for track in 0...1 {
           let muted = track == 0 && !microphoneAllowed(at: committedFrame + millisecond)
-          let available = samples[track][millisecond..<(millisecond + profile.captureFramesPerMs)]
-            .allSatisfy { $0 != nil }
+          let available = samples[track][
+            millisecond..<(millisecond + MediaMasterProfile.framesPerMs)
+          ]
+          .allSatisfy { $0 != nil }
           mergeCaptureInterval(
             .init(
               startMs: absoluteMs, endMs: absoluteMs + 1,
@@ -108,7 +109,7 @@ public final class CaptureTimeline {
             into: &nextSpans[track]
           )
         }
-        for index in millisecond..<(millisecond + profile.captureFramesPerMs) {
+        for index in millisecond..<(millisecond + MediaMasterProfile.framesPerMs) {
           interleaved.append(
             microphonePresent && microphoneAllowed(at: committedFrame + index)
               ? samples[0][index] ?? 0 : 0)
@@ -119,7 +120,6 @@ public final class CaptureTimeline {
         interleaved: interleaved,
         microphoneIntervals: nextSpans[0], applicationIntervals: nextSpans[1])
       for track in 0...1 {
-        for span in nextSpans[track] { mergeCaptureInterval(span, into: &spans[track]) }
         samples[track].removeFirst(count)
       }
       committedFrame += count

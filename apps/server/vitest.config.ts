@@ -10,7 +10,12 @@ export default defineConfig({
         compatibilityFlags: ["nodejs_compat"],
         r2Buckets: ["LOCAL_ARCHIVE"],
         d1Databases: ["CATALOG"],
-        bindings: { LOCAL_RUN_ID: "worker-suite" },
+        workflows: { ARCHIVE_WORKFLOW: { name: "offline-probe", className: "LocalProbeWorkflow" } },
+        bindings: {
+          LOCAL_RUN_ID: "00000000-0000-4000-8000-000000000054",
+          LOCAL_ARCHIVE_ID: "00000000-0000-4000-8000-000000000054",
+          LOCAL_OWNER_VERIFIER: "f".repeat(64),
+        },
         outboundService: () => new Response("External service access denied", { status: 403 }),
       },
     }),

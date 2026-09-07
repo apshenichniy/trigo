@@ -4,12 +4,14 @@ import Testing
 
 @testable import TrigoNative
 
-@Test func nativeRoutingRejectsForeignAndReplacedStreamsAndIsolatesMicrophoneFailure() throws {
+@Test func nativeRoutingRejectsForeignAndReplacedStreamsAndIsolatesMicrophoneFailure() async throws
+{
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
     "trigo-routing-\(UUID())")
   defer { try? FileManager.default.removeItem(at: root) }
+  let writer = try await captureWriter(root: root)
   let engine = try CaptureRecordingEngine(
-    directory: root, origin: .zero, microphone: .init(id: "mic", name: "Mic"))
+    writer: writer, origin: .zero, microphone: .init(id: "mic", name: "Mic"))
   let routing = CaptureAudioRouting(engine: engine)
   let app = NSObject()
   let mic = NSObject()
@@ -34,6 +36,9 @@ import Testing
   #expect(
     routing.receive(valid, role: .application, streamID: ObjectIdentifier(app), at: .zero)
       == .accepted)
-  let media = try engine.stop(at: CMTime(seconds: 0.01, preferredTimescale: 16_000))
-  #expect(media.applicationIntervals == [.init(startMs: 0, endMs: 10, state: .recorded)])
+  _ = try engine.stop(at: CMTime(seconds: 0.01, preferredTimescale: 16_000))
+  #expect(
+    (try captureIntervals(writer, role: .application)) == [
+      .init(startMs: 0, endMs: 10, state: .recorded)
+    ])
 }

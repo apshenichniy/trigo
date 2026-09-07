@@ -7,12 +7,11 @@ import Testing
 struct LiveConnectionAcceptanceTests {
   @Test(
     .enabled(if: ProcessInfo.processInfo.environment["TRIGO_LIVE_HANDOFF_PATH"] != nil))
-  func pairAndRestoreThroughProductionPersistence() async throws {
+  func pairAndRestoreThroughFileMetadataAndInjectedCredentials() async throws {
     let environment = ProcessInfo.processInfo.environment
     let handoffPath = try #require(environment["TRIGO_LIVE_HANDOFF_PATH"])
     let serverURL = try #require(environment["TRIGO_LIVE_SERVER_URL"])
     let archiveId = try #require(environment["TRIGO_LIVE_ARCHIVE_ID"])
-    let worktree = try #require(environment["TRIGO_LIVE_WORKTREE_ID"])
     let expectedTarget = OwnerHandoffTarget(
       accountId: try #require(environment["TRIGO_LIVE_ACCOUNT_ID"]),
       databaseName: try #require(environment["TRIGO_LIVE_DATABASE_NAME"]),
@@ -30,11 +29,16 @@ struct LiveConnectionAcceptanceTests {
     guard status.stage == .dev, status.archiveId == archiveId else {
       throw LiveAcceptanceError.unexpectedServer
     }
-    let support = FileManager.default.urls(
-      for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    let namespace = try AppNamespace(variant: .dev, worktree: worktree, support: support)
-
-    let connection = ServerConnection.live(namespace: namespace, variant: .dev)
+    let support = FileManager.default.temporaryDirectory.appending(path: "trigo-live-\(UUID())")
+    defer { try? FileManager.default.removeItem(at: support) }
+    let namespace = try AppNamespace(variant: .dev, worktree: "fixture", support: support)
+    let lease = try AppInstanceLease(namespace: namespace)
+    defer { withExtendedLifetime(lease) {} }
+    let credentials = LiveAcceptanceCredentials()
+    let connection = ServerConnection(
+      expectedStage: .dev,
+      metadataStore: FileConnectionMetadataStore(url: namespace.connection),
+      credentialStore: credentials, statusClient: HTTPSStatusClient())
     let connected = await connection.connect(serverURL: serverURL, token: handoff.token)
     #expect(connected.binding?.archiveId == archiveId)
     #expect(connected.health.isConnected)
@@ -51,7 +55,10 @@ struct LiveConnectionAcceptanceTests {
     #expect(rejected.lastAttemptIssue == .unauthorized)
     #expect(rejected.recordingEligibility == .eligible(archiveId: archiveId))
 
-    let relaunched = ServerConnection.live(namespace: namespace, variant: .dev)
+    let relaunched = ServerConnection(
+      expectedStage: .dev,
+      metadataStore: FileConnectionMetadataStore(url: namespace.connection),
+      credentialStore: credentials, statusClient: HTTPSStatusClient())
     let restored = await relaunched.restore()
     #expect(restored.binding == replaced.binding)
     #expect(restored.health.isConnected)
@@ -235,4 +242,12 @@ extension ConnectionHealth {
     if case .connected = self { return true }
     return false
   }
+}
+
+/// Cloud protocol demonstration only; installed Keychain ownership is tested by the app itself.
+private actor LiveAcceptanceCredentials: CredentialStoring {
+  private var values: [String: String] = [:]
+  func load(account: String) -> String? { values[account] }
+  func save(token: String, account: String) { values[account] = token }
+  func delete(account: String) { values.removeValue(forKey: account) }
 }

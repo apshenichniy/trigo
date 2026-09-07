@@ -88,3 +88,39 @@ it("represents one- and three-hour calls without truncation or accumulated clock
   expect(frameCountForDuration(3_600_000) / selectedMediaProfile.sampleRateHz).toBe(3_600);
   expect(selectedMediaProfile.checkpointDurationMs).toBe(2_000);
 });
+
+it("separates the call master from bounded ranges and provider probe input", async () => {
+  const { selectedCaptureMasterProfile: master, validateDocument } =
+    await import("../src/index.ts");
+  expect(master.id).not.toBe(selectedMediaProfile.id);
+  expect(master.maxMasterBytes).toBe(68 + 10_800_000 * 64);
+  expect(master.maxMasterBytes).toBeGreaterThan(master.maxRangeBytes);
+  expect(master.maxCommitDurationMs).toBe(1000);
+  expect(master.maxRangeBytes).toBe(8 * 1024 * 1024);
+  expect(selectedMediaProfile.asr.requestContentType).toBe("audio/wav");
+  const object = validAudio.objects[0];
+  if (!object) throw new Error("fixture");
+  const audio = {
+    ...validAudio,
+    durationMs: 10_800_000,
+    mediaProfileId: master.id,
+    objects: [
+      {
+        ...object,
+        index: 0,
+        contentType: master.contentType,
+        startMs: 0,
+        endMs: 10_800_000,
+        byteLength: master.maxMasterBytes,
+      },
+    ],
+  };
+  expect(validateDocument("AudioManifest", audio)).toEqual(audio);
+  for (const mutation of [
+    { ...audio, objects: [audio.objects[0], audio.objects[0]] },
+    { ...audio, objects: [{ ...audio.objects[0], contentType: "audio/wav" }] },
+    { ...audio, objects: [{ ...audio.objects[0], byteLength: master.maxRangeBytes }] },
+    { ...audio, durationMs: 10_800_001 },
+  ])
+    expect(() => validateDocument("AudioManifest", mutation)).toThrow();
+});

@@ -14,10 +14,14 @@ while remote health is checking, unavailable, unauthorized or incompatible.
 Server operations remain separately blocked. The retained binding supplies the
 archive ID; the app namespace supplies the local archive root.
 
-When either capture permission is missing, an explicit Start/shortcut action
-only requests permissions. Even a successful grant does not select a source or
-record: focus the target and press the shortcut again. With permissions already
-granted, an idle shortcut snapshots the frontmost eligible application before
+Start/shortcut checks current OS readiness. Application readiness code makes
+explicit authorization requests only through Enable actions. Invoking
+ScreenCaptureKit may independently display macOS-controlled consent/reminder UI
+even when CoreGraphics preflight reports granted access.
+Before a call, use **Capture readiness** to explicitly enable screen/system-audio
+and microphone access separately; Settings/retry guidance distinguishes unavailable
+access and credential failures. After granting access, focus the target and press
+the shortcut. With readiness satisfied, an idle shortcut snapshots the frontmost eligible application before
 asynchronous capture validation. The application instance and selected window
 remain pinned. Start in the panel only reuses a still-valid prior pin; it never
 selects Trigo or falls back to display-wide recording. Application audio can
@@ -35,7 +39,9 @@ Every new call starts with microphone recording enabled. The persistent on/off
 text and icon change only after the awaited capture operation acknowledges the
 change. A second toggle while one is pending is ignored. Device unavailable is
 a separate state from muted; application audio continues while Trigo retries
-the default input. Trigo mute is independent of the calling application's mute.
+the default input while permission allows it. Revoked microphone permission retires
+only its stream and prevents repeated starts until access returns; loss of screen
+access interrupts the call. Trigo mute is independent of the calling application's mute.
 The #15 capture engine suppresses microphone frames before persistence and
 preserves application audio and timeline alignment.
 
@@ -54,20 +60,23 @@ per-track recorded-activity UI is follow-up work, not a blocker for this slice.
 
 ## Local recovery
 
-After restoring the retained archive binding, recovery discovers only direct
-call directories containing `capture-session.json`. Before invoking recovery it
-validates the canonical directory call ID, matching metadata call ID, exact
-standardized namespace root and retained archive ID. Linked entries/inputs,
-foreign identities and corrupt metadata are rejected visibly. Discovery does
-not recurse into unrelated directories, delete files or resume capture.
+After restoring the retained archive binding, recovery pages the namespace SQLite
+repository for admitted recording sessions. It validates direct call/media paths
+and their retained archive, call and root identity before reconciling the external
+master. Linked entries, foreign identities and corrupt committed evidence are
+rejected visibly. Discovery does not recurse into unrelated directories, delete
+media or resume capture.
 
-Incomplete publication/lifecycle state is recovered idempotently. Already
-finalized calls do not count as newly recovered calls on later launches. A
-rejected corrupt media tail is distinguished from full recovery: only the
-verified prefix is accepted and the original retained files remain available.
-Known persisted interruption reasons are shown without inferring new causes.
-Failures block new recording until corrected and retried. This is a recovery
-surface, not an archive browser or deletion interface.
+Incomplete final publication is recovered idempotently. Already finalized calls
+do not count as newly recovered calls on later launches. Bytes without a complete
+integrity record may be discarded. A terminal complete-sized torn record is also
+discardable only above the independently matched SQL witness, with at most one
+append of unindexed PCM. Corruption of witnessed media, an index record at/below
+the witness, a nonterminal record or a missing witness rejects recovery while
+retaining evidence. Known persisted stop
+reasons are shown without inferring new causes. Failures block new recording until
+corrected and retried. This is a recovery surface, not an archive browser or deletion
+interface.
 
 The local retry action is offered only for pending capture recovery or failed
 call recovery. Connection metadata recovery instead shows the connection issue
@@ -104,9 +113,13 @@ local media writer and archive with OS/network adapters. They do not request TCC
 open actual capture streams or use physical microphone/network inputs. Both
 Trigo Dev and Trigo builds preserve the existing identities and privacy keys.
 
-The integration coordinator owns installed-app/Chrome acceptance, actual global
+The #57 integration coordinator owns installed-app/Chrome acceptance, actual global
 shortcut and nonactivating-panel button interaction, physical known-phrase
 mute/silence inspection, device loss/return and retained-media checks. No real
 call, personal deployment, upload/ASR/transcript/archive product UI or public
 release is included in this slice. A passing automated check does not substitute
 for those installed-app gates.
+
+The future double-Left-Option shortcut/Input Monitoring flow and compact measured
+recording feedback remain #10 product work. The current shortcut and unmeasured
+stream-state labels do not fulfill those requirements.

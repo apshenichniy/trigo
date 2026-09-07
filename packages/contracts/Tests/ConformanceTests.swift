@@ -28,7 +28,8 @@ let fixtureRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         document = try Contract.validate(fixture.kind, bytes: bytes)
       }
       #expect(fixture.expected == nil, "Unexpected success: \(fixture.name)")
-      let roundTrip = try Contract.validate(fixture.kind, bytes: document.serialized())
+      let roundTrip = try Contract.validate(
+        fixture.kind, bytes: typedRoundTrip(fixture.kind, bytes: document.storedBytes))
       #expect(roundTrip.value == document.value)
     } catch let error as ContractError {
       #expect(error.rawValue == fixture.expected, "\(fixture.name): \(error.rawValue)")

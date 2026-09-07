@@ -31,3 +31,22 @@ import Testing
   #expect(profile.frameCount(durationMs: 3_600_000) / profile.sampleRateHz == 3_600)
   #expect(profile.checkpointDurationMs == 2_000)
 }
+
+@Test func selectedMasterProfileIsGeneratedAndIndependentOfProbeInput() throws {
+  let master = try CaptureMasterProfile.selected()
+  let probe = try MediaProfile.selected()
+  #expect(master.id == "caf-lpcm-s16le-16000-stereo-v1")
+  #expect(master.container == "caf")
+  #expect(master.contentType == "audio/x-caf")
+  #expect(master.microphoneChannel == 0 && master.applicationChannel == 1)
+  #expect(master.maxMasterBytes == 68 + 10_800_000 * 64)
+  #expect(master.maxMasterBytes > master.maxRangeBytes)
+  #expect(master.maxRangeBytes == probe.limits.uploadRequestBytes)
+  #expect(master.maxCommitDurationMs == 1000)
+  #expect(probe.asr.requestContentType == .wave)
+  var invalid = master
+  invalid.maxRangeBytes += 1
+  #expect(throws: ContractError.structure) {
+    try Contract.decode(CaptureMasterProfile.self, bytes: Contract.encode(invalid))
+  }
+}

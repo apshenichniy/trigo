@@ -9,11 +9,43 @@ enum ConnectionPersistenceError: Error {
   case invalidCredential
 }
 
+func credentialAccessFailure(_ error: any Error) -> CredentialAccessFailure {
+  guard let persistence = error as? ConnectionPersistenceError else {
+    return .unavailable(status: nil)
+  }
+  switch persistence {
+  case .invalidCredential: return .invalid
+  case .keychain(let status):
+    switch status {
+    case errSecInteractionNotAllowed: return .interactionRequired
+    case errSecAuthFailed: return .accessDenied
+    case errSecUserCanceled: return .cancelled
+    default: return .unavailable(status: status)
+    }
+  default: return .unavailable(status: nil)
+  }
+}
+
+func connectionPersistenceIssue(_ error: any Error) -> ConnectionIssue {
+  if let persistence = error as? ConnectionPersistenceError {
+    switch persistence {
+    case .keychain, .invalidCredential: return .credentialAccess(credentialAccessFailure(error))
+    default: break
+    }
+  }
+  return .persistence
+}
+
 actor FileConnectionMetadataStore: ConnectionMetadataStoring {
+  private let transportPolicy: ServerTransportPolicy
   private let url: URL
   private let fileManager: FileManager
 
-  init(url: URL, fileManager: FileManager = .default) {
+  init(
+    url: URL, fileManager: FileManager = .default,
+    transportPolicy: ServerTransportPolicy = .httpsOnly
+  ) {
+    self.transportPolicy = transportPolicy
     self.url = url
     self.fileManager = fileManager
   }
@@ -27,12 +59,12 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
       (values.fileSize ?? 0) <= 65_536
     else { throw ConnectionPersistenceError.unsafeMetadataFile }
     let metadata = try JSONDecoder().decode(ConnectionMetadata.self, from: Data(contentsOf: url))
-    try Self.validate(metadata)
+    try validate(metadata)
     return metadata
   }
 
   func save(_ metadata: ConnectionMetadata) throws {
-    try Self.validate(metadata)
+    try validate(metadata)
     let directory = url.deletingLastPathComponent()
     try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
     try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
@@ -63,13 +95,14 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
     }
   }
 
-  private static func validate(_ metadata: ConnectionMetadata) throws {
+  private func validate(_ metadata: ConnectionMetadata) throws {
     guard metadata.formatVersion == 1 else { throw ConnectionPersistenceError.invalidMetadata }
     for connection in [metadata.committed, metadata.pending].compactMap({ $0 }) {
       guard
-        ServerConnection.canonicalServerURL(connection.serverURL.absoluteString)
+        transportPolicy.canonicalURL(connection.serverURL.absoluteString)
           == connection.serverURL,
-        isCanonicalUUID(connection.archiveId), isCanonicalUUID(connection.credentialAccount)
+        Self.isCanonicalUUID(connection.archiveId),
+        Self.isCanonicalUUID(connection.credentialAccount)
       else { throw ConnectionPersistenceError.invalidMetadata }
     }
     let stored = [metadata.committed, metadata.pending].compactMap { $0 }
@@ -80,7 +113,7 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
     }
     let accounts = stored.map(\.credentialAccount) + metadata.retiredCredentialAccounts
     guard Set(accounts).count == accounts.count,
-      metadata.retiredCredentialAccounts.allSatisfy(isCanonicalUUID)
+      metadata.retiredCredentialAccounts.allSatisfy(Self.isCanonicalUUID)
     else { throw ConnectionPersistenceError.invalidMetadata }
   }
 
@@ -91,6 +124,9 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
   }
 }
 
+/// The installed app creates its own file-based generic-password items. Tests use
+/// disposable services or injected adapters; operator CLIs use explicit handoffs.
+/// Retain the OS default access policy and service+account identity on every operation.
 actor KeychainCredentialStore: CredentialStoring {
   private let service: String
 

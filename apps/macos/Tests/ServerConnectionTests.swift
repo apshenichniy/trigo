@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import Testing
 
 @testable import TrigoNative
@@ -35,6 +36,67 @@ struct ServerConnectionTests {
     #expect(await credentials.count == 1)
   }
 
+  @Test func unchangedValidatedCredentialRetainsItemAndMakesNoMetadataWritesAcrossRestore()
+    async throws
+  {
+    let metadata = MemoryConnectionMetadataStore()
+    let credentials = MemoryCredentialStore()
+    let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
+    let connection = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata,
+      credentialStore: credentials, statusClient: status)
+    _ = await connection.connect(serverURL: "https://dev.example.test", token: "first")
+    let committed = try #require(await metadata.value?.committed)
+    let writes = await metadata.successfulSaves
+    let relaunched = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata,
+      credentialStore: credentials, statusClient: status)
+    _ = await relaunched.restore()
+    let saved = await relaunched.connect(serverURL: "https://dev.example.test", token: "first")
+    #expect(saved.lastAttemptIssue == nil)
+    #expect(await metadata.value?.committed == committed)
+    #expect(await metadata.successfulSaves == writes)
+    #expect(await credentials.count == 1)
+  }
+
+  @Test(arguments: [
+    errSecInteractionNotAllowed, errSecAuthFailed, errSecUserCanceled, errSecNotAvailable,
+  ])
+  func accessFailuresAreActionableAndNeverPermitReplacingTheRetainedItem(statusCode: OSStatus) async
+  {
+    let old = StoredConnection.fixture(
+      archiveId: archiveA,
+      serverURL: "https://dev.example.test", credentialAccount: "saved")
+    let metadata = MemoryConnectionMetadataStore(value: ConnectionMetadata(committed: old))
+    let credentials = MemoryCredentialStore(values: ["saved": "first"])
+    let status = StubStatusClient(responses: ["first": .success(.fixture(archiveId: archiveA))])
+    let connection = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata,
+      credentialStore: credentials, statusClient: status)
+    let error = ConnectionPersistenceError.keychain(statusCode)
+    let expected: CredentialAccessFailure
+    switch statusCode {
+    case errSecInteractionNotAllowed: expected = .interactionRequired
+    case errSecAuthFailed: expected = .accessDenied
+    case errSecUserCanceled: expected = .cancelled
+    default: expected = .unavailable(status: statusCode)
+    }
+    await credentials.failNextLoad(error)
+    let restored = await connection.restore()
+    #expect(restored.health == .blocked(.credentialAccess(expected)))
+    #expect(restored.recordingEligibility == .eligible(archiveId: archiveA))
+    #expect(await status.requestCount == 0)
+    await credentials.failNextLoad(error)
+    let retry = await connection.connect(serverURL: "https://dev.example.test", token: "first")
+    #expect(retry.lastAttemptIssue == .credentialAccess(expected))
+    #expect(await metadata.value?.committed == old)
+    #expect(await metadata.value?.pending == nil)
+    #expect(await credentials.count == 1)
+    #expect(await metadata.successfulSaves == 0)
+    let recovered = await connection.restore()
+    #expect(recovered.health == .connected(.fixture(archiveId: archiveA)))
+  }
+
   @Test func sameArchiveReplacementCommitsNewSettingsAndRetiresTheOldCredential() async {
     let metadata = MemoryConnectionMetadataStore()
     let credentials = MemoryCredentialStore()
@@ -59,6 +121,37 @@ struct ServerConnectionTests {
       expectedStage: .dev, metadataStore: metadata, credentialStore: credentials,
       statusClient: status)
     #expect(await relaunched.restore().binding == replaced.binding)
+  }
+
+  @Test(arguments: [false, true])
+  func knownInvalidCredentialUsesTheRepairTransactionAndPreservesRollback(failCommit: Bool) async {
+    let old = StoredConnection.fixture(
+      archiveId: archiveA,
+      serverURL: "https://dev.example.test", credentialAccount: "damaged")
+    let metadata = MemoryConnectionMetadataStore(value: ConnectionMetadata(committed: old))
+    let credentials = MemoryCredentialStore(values: ["damaged": "unreadable-fixture"])
+    await credentials.markInvalid(account: "damaged")
+    let connection = ServerConnection(
+      expectedStage: .dev, metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: StubStatusClient(responses: ["repair": .success(.fixture(archiveId: archiveA))])
+    )
+    let restored = await connection.restore()
+    #expect(restored.health == .blocked(.credentialAccess(.invalid)))
+    #expect(restored.recordingEligibility == .eligible(archiveId: archiveA))
+    if failCommit { await metadata.failSave(afterSuccessfulSaves: 1) }
+    let repaired = await connection.connect(serverURL: "https://dev.example.test", token: "repair")
+    #expect(await metadata.value?.pending == nil)
+    if failCommit {
+      #expect(repaired.lastAttemptIssue == .persistence)
+      #expect(await metadata.value?.committed == old)
+      #expect(await credentials.values == ["unreadable-fixture"])
+    } else {
+      #expect(repaired.health == .connected(.fixture(archiveId: archiveA)))
+      #expect(repaired.lastAttemptIssue == nil)
+      #expect(await metadata.value?.committed?.credentialAccount != "damaged")
+      #expect(await credentials.values == ["repair"])
+    }
   }
 
   @Test(
@@ -312,7 +405,7 @@ struct ServerConnectionTests {
     let restored = await connection.restore()
 
     #expect(restored.binding?.archiveId == archiveA)
-    #expect(restored.health == .blocked(.credentialMissing))
+    #expect(restored.health == .blocked(.credentialAccess(.unavailable(status: nil))))
     #expect(restored.recordingEligibility == .eligible(archiveId: archiveA))
     #expect(await status.requestCount == 0)
   }
@@ -351,12 +444,21 @@ struct ServerConnectionTests {
   @Test func keychainAdapterPersistsAndDeletesARealGenericPassword() async throws {
     let store = KeychainCredentialStore(service: "io.github.apshenichniy.trigo.tests.\(UUID())")
     let account = UUID().uuidString.lowercased()
-    defer { Task { try? await store.delete(account: account) } }
-
-    try await store.save(token: "keychain-token", account: account)
-    #expect(try await store.load(account: account) == "keychain-token")
-    try await store.delete(account: account)
-    #expect(try await store.load(account: account) == nil)
+    let other = UUID().uuidString.lowercased()
+    do {
+      try await store.save(token: "keychain-token", account: account)
+      try await store.save(token: "uncommitted-fixture", account: other)
+      #expect(try await store.load(account: account) == "keychain-token")
+      #expect(try await store.load(account: other) == "uncommitted-fixture")
+      try await store.delete(account: account)
+      #expect(try await store.load(account: account) == nil)
+      #expect(try await store.load(account: other) == "uncommitted-fixture")
+      try await store.delete(account: other)
+    } catch {
+      try? await store.delete(account: account)
+      try? await store.delete(account: other)
+      throw error
+    }
   }
 
   @Test func fileMetadataStorePersistsAtomicallyWithPrivatePermissions() async throws {
@@ -411,7 +513,7 @@ struct ServerConnectionTests {
 
 private actor MemoryConnectionMetadataStore: ConnectionMetadataStoring {
   var value: ConnectionMetadata?
-  private var successfulSaves = 0
+  private(set) var successfulSaves = 0
   private var savesUntilFailure: Int?
 
   init(value: ConnectionMetadata? = nil) { self.value = value }
@@ -433,7 +535,8 @@ private actor MemoryConnectionMetadataStore: ConnectionMetadataStoring {
 
 private actor MemoryCredentialStore: CredentialStoring {
   private var storage: [String: String]
-  private var shouldFailNextLoad = false
+  private var invalidAccounts: Set<String> = []
+  private var nextLoadFailure: (any Error)?
   private var shouldFailNextSave = false
   private var shouldFailNextDelete = false
 
@@ -443,10 +546,11 @@ private actor MemoryCredentialStore: CredentialStoring {
   var count: Int { storage.count }
 
   func load(account: String) throws -> String? {
-    if shouldFailNextLoad {
-      shouldFailNextLoad = false
-      throw TestFailure.injected
+    if let error = nextLoadFailure {
+      nextLoadFailure = nil
+      throw error
     }
+    if invalidAccounts.contains(account) { throw ConnectionPersistenceError.invalidCredential }
     return storage[account]
   }
   func save(token: String, account: String) throws {
@@ -463,7 +567,8 @@ private actor MemoryCredentialStore: CredentialStoring {
     }
     storage.removeValue(forKey: account)
   }
-  func failNextLoad() { shouldFailNextLoad = true }
+  func failNextLoad(_ error: any Error = TestFailure.injected) { nextLoadFailure = error }
+  func markInvalid(account: String) { invalidAccounts.insert(account) }
   func failNextSave() { shouldFailNextSave = true }
   func failNextDelete() { shouldFailNextDelete = true }
 }

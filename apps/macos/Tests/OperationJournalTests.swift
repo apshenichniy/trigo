@@ -46,8 +46,9 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
 
 @Test func everyLifecycleOwnsAnIndependentDurableStateAcrossRelaunch() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let journal = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let journal = try LocalRepository(root: root, archiveID: journalArchiveID)
   let kinds = OperationKind.allCases
 
   for (index, kind) in kinds.enumerated() {
@@ -66,7 +67,7 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     }
   }
 
-  let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let relaunched = try LocalRepository(root: root, archiveID: journalArchiveID)
   let operations = try await relaunched.pendingOperations()
   #expect(Set(operations.map(\.kind)) == Set(kinds))
   #expect(
@@ -81,8 +82,9 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
 
 @Test func sideEffectsRunOnlyAfterIntentIsDurableAndFailuresRemainRecoverable() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let journal = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let journal = try LocalRepository(root: root, archiveID: journalArchiveID)
   let operationIntent = intent(.deletion, suffix: 20)
   let stableFailure = try LifecycleFailure(code: "side_effect_failed", retry: .retryable)
 
@@ -94,7 +96,7 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     }
   }
 
-  let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let relaunched = try LocalRepository(root: root, archiveID: journalArchiveID)
   let retained = try #require(try await relaunched.operation(operationIntent.operationID))
   #expect(retained.phase == .failed)
   #expect(retained.lastFailure == stableFailure)
@@ -102,9 +104,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
 
 @Test func interruptionBeforeAcknowledgementLeavesReplayableWork() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
   let failOnce = JournalFailOnce(at: .beforeJournalAcknowledgement)
-  let interrupted = try OperationJournal(
+  let interrupted = try LocalRepository(
     root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
   let operationIntent = intent(.replica, suffix: 21)
   let stableFailure = try LifecycleFailure(code: "replica_failed", retry: .retryable)
@@ -115,7 +118,7 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     }
   }
 
-  let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let relaunched = try LocalRepository(root: root, archiveID: journalArchiveID)
   #expect(try await relaunched.operation(operationIntent.operationID)?.phase == .running)
   let result = try await relaunched.perform(operationIntent, failureOnError: stableFailure) {
     operation in
@@ -128,9 +131,10 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
 
 @Test func interruptionAfterIntentPersistencePreventsTheSideEffect() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
   let failOnce = JournalFailOnce(at: .afterJournalIntentPersisted)
-  let journal = try OperationJournal(
+  let journal = try LocalRepository(
     root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
   let operationIntent = intent(.upload, suffix: 22)
   let sideEffectRan = LockedFlag()
@@ -144,32 +148,33 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
   }
 
   #expect(!sideEffectRan.value)
-  let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let relaunched = try LocalRepository(root: root, archiveID: journalArchiveID)
   #expect(try await relaunched.operation(operationIntent.operationID)?.phase == .pending)
 }
 
-@Test func relaunchDiscardsAnIncompleteJournalFileBeforeIntentPublication() async throws {
+@Test func relaunchDoesNotPublishAnInterruptedOperationTransaction() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let failOnce = JournalFailOnce(at: .afterJournalTemporaryFileSynced)
-  let interrupted = try OperationJournal(
+  let failOnce = JournalFailOnce(at: .beforeRepositoryCommit)
+  let interrupted = try LocalRepository(
     root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
 
   await #expect(throws: JournalInjectedInterruption.self) {
     try await interrupted.recordIntent(intent(.capture, suffix: 23))
   }
 
-  let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
-  let report = try await relaunched.reconcile()
-  #expect(report.removedTemporaryFiles == 1)
+  let relaunched = try LocalRepository(root: root, archiveID: journalArchiveID)
+  let report = try await relaunched.inspectOperations()
   #expect(report.recoverableOperations.isEmpty)
 }
 
 @Test func interruptionAfterAcknowledgementDoesNotCreatePhantomPendingWork() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
   let failOnce = JournalFailOnce(at: .afterJournalAcknowledgement)
-  let interrupted = try OperationJournal(
+  let interrupted = try LocalRepository(
     root: root, archiveID: journalArchiveID, interruption: failOnce.callAsFunction)
   let operationIntent = intent(.importRevision, suffix: 24)
   let stableFailure = try LifecycleFailure(code: "import_failed", retry: .afterCorrection)
@@ -178,55 +183,65 @@ private func intent(_ kind: OperationKind, suffix: Int) -> OperationIntent {
     try await interrupted.perform(operationIntent, failureOnError: stableFailure) { _ in () }
   }
 
-  let relaunched = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let relaunched = try LocalRepository(root: root, archiveID: journalArchiveID)
   #expect(try await relaunched.operation(operationIntent.operationID) == nil)
 }
 
 @Test func corruptJournalEntryIsRejectedWithoutHidingOtherPendingWork() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let journal = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let journal = try LocalRepository(root: root, archiveID: journalArchiveID)
   let valid = intent(.asr, suffix: 25)
   let corrupted = intent(.upload, suffix: 26)
   _ = try await journal.recordIntent(valid)
   _ = try await journal.recordIntent(corrupted)
 
-  let corruptedURL = root.appendingPathComponent("operations", isDirectory: true)
-    .appendingPathComponent(corrupted.operationID).appendingPathExtension("json")
-  var object = try #require(
-    JSONSerialization.jsonObject(with: Data(contentsOf: corruptedURL)) as? [String: Any])
-  object["payloadSHA256"] = String(repeating: "0", count: 64)
-  try JSONSerialization.data(withJSONObject: object).write(to: corruptedURL)
+  try journal.database.access {
+    try journal.database.execute(
+      "UPDATE document_chunks SET bytes=? WHERE hash=(SELECT payload_hash FROM operations WHERE operation_id=?)",
+      [.blob(Data("damaged".utf8)), .text(corrupted.operationID)])
+  }
 
   await #expect(throws: LocalPersistenceError.self) {
     try await journal.pendingOperations()
   }
-  let report = try await journal.reconcile()
+  let report = try await journal.inspectOperations()
   #expect(report.recoverableOperations.map(\.operationID) == [valid.operationID])
   #expect(report.rejectedOperationIDs == [corrupted.operationID])
-  #expect(try Data(contentsOf: corruptedURL).isEmpty == false)
+  #expect(
+    FileManager.default.fileExists(
+      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path))
 }
 
-@Test func malformedOperationFilenameIsReportedInsteadOfSilentlyIgnored() async throws {
+@Test func malformedOperationIdentityIsReportedInsteadOfSilentlyIgnored() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let journal = try OperationJournal(root: root, archiveID: journalArchiveID)
-  let malformedURL = root.appendingPathComponent("operations", isDirectory: true)
-    .appendingPathComponent("unknown.json")
-  try Data("{}".utf8).write(to: malformedURL)
+  let journal = try LocalRepository(root: root, archiveID: journalArchiveID)
+  let valid = intent(.asr, suffix: 99)
+  _ = try await journal.recordIntent(valid)
+  try journal.database.access {
+    try journal.database.execute(
+      "UPDATE operations SET operation_id='unknown' WHERE operation_id=?",
+      [.text(valid.operationID)])
+  }
 
   await #expect(throws: LocalPersistenceError.self) {
     try await journal.pendingOperations()
   }
-  let report = try await journal.reconcile()
+  let report = try await journal.inspectOperations()
   #expect(report.rejectedOperationIDs == ["unknown"])
-  #expect(FileManager.default.fileExists(atPath: malformedURL.path))
+  #expect(
+    FileManager.default.fileExists(
+      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path))
 }
 
 @Test func operationIdentityIsIdempotentButCannotBeReusedForAnotherIntent() async throws {
   let root = try journalRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: journalArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let journal = try OperationJournal(root: root, archiveID: journalArchiveID)
+  let journal = try LocalRepository(root: root, archiveID: journalArchiveID)
   let original = intent(.upload, suffix: 27)
   let first = try await journal.recordIntent(original)
   let duplicate = try await journal.recordIntent(original)

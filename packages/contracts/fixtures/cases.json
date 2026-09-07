@@ -434,5 +434,19 @@
     "document": "bad-status-readiness.json",
     "references": {},
     "expected": "structure"
+  },
+  {
+    "name": "valid-master-maximum",
+    "kind": "AudioManifest",
+    "document": "valid-master-maximum.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "invalid-master-range-sized-object",
+    "kind": "AudioManifest",
+    "document": "invalid-master-range-sized-object.json",
+    "references": {},
+    "expected": "semantics"
   }
 ]

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "callId": "00000000-0000-4000-8000-000000000001",
+  "manifestId": "00000000-0000-4000-8000-000000000004",
+  "durationMs": 10800000,
+  "mediaProfileId": "caf-lpcm-s16le-16000-stereo-v1",
+  "objects": [
+    {
+      "objectId": "00000000-0000-4000-8000-000000000005",
+      "index": 0,
+      "contentType": "audio/x-caf",
+      "byteLength": 8388608,
+      "sha256": "ee1cb0c155d7c174f1f9b1d0bb4f10edd3f5aa06f0fe58bf698161e6cb784727",
+      "startMs": 0,
+      "endMs": 10800000,
+      "channelMap": [
+        {
+          "channelIndex": 0,
+          "trackId": "00000000-0000-4000-8000-000000000002"
+        },
+        {
+          "channelIndex": 1,
+          "trackId": "00000000-0000-4000-8000-000000000003"
+        }
+      ]
+    }
+  ]
+}

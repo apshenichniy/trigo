@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { closeSync, lstatSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import { Config, Console, DateTime, Effect, Redacted, Schema } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
@@ -401,14 +401,27 @@ function assertHandoffMatches(
 const decodeOwnerHandoff = Schema.decodeUnknownSync(Schema.fromJsonString(OwnerHandoffSchema));
 
 function loadOwnerHandoff(handoffPath: string): OwnerHandoff {
-  const status = lstatSync(handoffPath);
-  if (!status.isFile()) throw new Error("Owner handoff must be a regular file");
-  const mode = status.mode & 0o777;
-  if (mode !== 0o600)
-    throw new Error(
-      `Owner handoff permissions must be 0600, found ${mode.toString(8).padStart(4, "0")}`,
-    );
-  return decodeOwnerHandoff(readFileSync(handoffPath, "utf8"));
+  const fd = openSync(
+    handoffPath,
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
+  try {
+    const status = fstatSync(fd);
+    if (
+      !status.isFile() ||
+      status.size > 65_536 ||
+      (process.getuid && status.uid !== process.getuid())
+    )
+      throw new Error("Owner handoff must be a bounded, owned regular file");
+    const mode = status.mode & 0o777;
+    if (mode !== 0o600)
+      throw new Error(
+        `Owner handoff permissions must be 0600, found ${mode.toString(8).padStart(4, "0")}`,
+      );
+    return decodeOwnerHandoff(readFileSync(fd, "utf8"));
+  } finally {
+    closeSync(fd);
+  }
 }
 
 export const readOwnerHandoff = Effect.fn("CloudOwner.readHandoff")(

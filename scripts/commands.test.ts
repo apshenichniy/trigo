@@ -3,6 +3,56 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { expect, it } from "vitest";
+it.each([
+  "doctor",
+  "format",
+  "format:check",
+  "lint",
+  "typecheck",
+  "test",
+  "build",
+  "check",
+  "check:server",
+  "check:macos",
+])("%s rejects ignored target arguments before executing its operations", (command) => {
+  const result = spawnSync("bun", ["run", command, "--stage", "dev"], { encoding: "utf8" });
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain(`Unexpected ${command} argument: --stage`);
+  expect(result.stdout).not.toContain("Target: local");
+  expect(result.stdout).not.toContain("[timing]");
+});
+
+it.each([
+  ["macos:build", ["--variant", "dev", "--variant", "personal"], "Pass --variant at most once"],
+  ["macos:build", ["--variant"], "Pass a value after --variant"],
+  ["macos:build", ["--local-config", "--ad-hoc"], "Pass a value after --local-config"],
+  ["macos:build", ["--replace-worktree"], "Unexpected native build argument"],
+  ["macos:install", ["--ad-hoc", "--ad-hoc"], "Pass --ad-hoc at most once"],
+  ["macos:setup", ["--ad-hoc"], "Unexpected native setup argument"],
+  ["macos:archive", ["--local-config", "/tmp/unused"], "Unexpected native archive argument"],
+  ["macos:run", ["--bogus"], "Unexpected native run argument"],
+  ["contracts:generate", ["--chek"], "Unexpected contract generation argument"],
+  ["contracts:check", ["--check"], "Pass --check at most once"],
+  ["test:local", ["--test"], "Pass --test at most once"],
+  ["test:asr", ["--stage", "dev", "--language"], "Pass a value after --language"],
+  [
+    "test:asr",
+    ["--stage", "dev", "--language", "en", "--language", "ru"],
+    "Pass --language at most once",
+  ],
+  ["test:asr", ["--stage", "dev", "--bogus"], "Unexpected asr probe argument"],
+  ["test:asr", ["--stage", "dev"], "Pass --handoff <private dev owner handoff>"],
+] as const)(
+  "%s rejects malformed options before build, write or credential access: %j",
+  (command, args, message) => {
+    const result = spawnSync("bun", ["run", command, ...args], { encoding: "utf8" });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(message);
+    expect(result.stdout).not.toContain("[timing]");
+    expect(result.stderr).not.toContain("Cannot read the dev cloud configuration");
+  },
+);
+
 it.each(["cloud:preflight", "cloud:bootstrap", "cloud:deploy", "test:cloud"])(
   "%s runs the explicit cloud preflight instead of an ownership placeholder",
   (command) => {
@@ -15,18 +65,21 @@ it.each(["cloud:preflight", "cloud:bootstrap", "cloud:deploy", "test:cloud"])(
     expect(result.stderr).not.toContain("#12");
   },
 );
-it("cloud:preflight rejects forwarded arguments before local profile validation", () => {
-  const missing = resolve(tmpdir(), `trigo-cloud-${randomUUID()}.json`);
-  const result = spawnSync(
-    "bun",
-    ["run", "cloud:preflight", "--stage", "dev", "--config", missing, "--bogus"],
-    { encoding: "utf8" },
-  );
+it.each(["preflight", "bootstrap", "deploy"])(
+  "cloud:%s rejects forwarded arguments before local profile validation",
+  (action) => {
+    const missing = resolve(tmpdir(), `trigo-cloud-${randomUUID()}.json`);
+    const result = spawnSync(
+      "bun",
+      ["run", `cloud:${action}`, "--stage", "dev", "--config", missing, "--bogus"],
+      { encoding: "utf8" },
+    );
 
-  expect(result.status).toBe(1);
-  expect(result.stderr).toContain("Unexpected preflight argument: --bogus");
-  expect(result.stdout).not.toContain("Cloud preflight passed");
-});
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`Unexpected ${action} argument: --bogus`);
+    expect(result.stdout).not.toContain("Cloud preflight passed");
+  },
+);
 it("test:asr refuses the personal stage before generating a fixture", () => {
   const result = spawnSync("bun", ["run", "test:asr", "--stage", "personal"], {
     encoding: "utf8",

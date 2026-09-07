@@ -1,4 +1,5 @@
-import type { CallDocument } from "./generated/documents.d.ts";
+import { selectedCaptureMasterProfile } from "./capture-master-profile.ts";
+import type { CallDocument } from "./document-schema.ts";
 import { frameCountForDuration, selectedMediaProfile, waveByteLength } from "./media-profile.ts";
 export function requireValid(condition: unknown): asserts condition {
   if (!condition) throw new Error("semantics");
@@ -37,7 +38,7 @@ export function validateCall(call: CallDocument): void {
   );
 }
 export function validateRevision(
-  revision: import("./generated/documents.d.ts").TranscriptRevision,
+  revision: import("./document-schema.ts").TranscriptRevision,
 ): void {
   unique(revision.speakers.map((s) => s.speakerId));
   unique(revision.turns.map((t) => t.turnId));
@@ -58,8 +59,14 @@ export function validateRevision(
     }
   }
 }
-export function validateAudio(audio: import("./generated/documents.d.ts").AudioManifest): void {
-  requireValid(audio.mediaProfileId === selectedMediaProfile.id);
+export function validateAudio(audio: import("./document-schema.ts").AudioManifest): void {
+  const master = audio.mediaProfileId === selectedCaptureMasterProfile.id;
+  requireValid(master || audio.mediaProfileId === selectedMediaProfile.id);
+  if (master)
+    requireValid(
+      audio.durationMs <= selectedCaptureMasterProfile.maxCallDurationMs &&
+        audio.objects.length === (audio.durationMs === 0 ? 0 : 1),
+    );
   unique(audio.objects.map((o) => o.objectId));
   unique(audio.objects.map((o) => o.index));
   let index = -1;
@@ -77,11 +84,17 @@ export function validateAudio(audio: import("./generated/documents.d.ts").AudioM
     unique(object.channelMap.map((c) => c.trackId));
     const durationMs = object.endMs - object.startMs;
     requireValid(
-      object.contentType === selectedMediaProfile.contentType &&
-        durationMs <= selectedMediaProfile.objectDurationMs &&
-        object.byteLength === waveByteLength(frameCountForDuration(durationMs)) &&
-        object.byteLength <= selectedMediaProfile.maxObjectBytes &&
-        object.byteLength <= selectedMediaProfile.limits.uploadRequestBytes &&
+      (master
+        ? object.contentType === selectedCaptureMasterProfile.contentType &&
+          object.index === 0 &&
+          object.startMs === 0 &&
+          object.endMs === audio.durationMs &&
+          object.byteLength === selectedCaptureMasterProfile.headerBytes + durationMs * 64
+        : object.contentType === selectedMediaProfile.contentType &&
+          durationMs <= selectedMediaProfile.objectDurationMs &&
+          object.byteLength === waveByteLength(frameCountForDuration(durationMs)) &&
+          object.byteLength <= selectedMediaProfile.maxObjectBytes &&
+          object.byteLength <= selectedMediaProfile.limits.uploadRequestBytes) &&
         object.channelMap.length === selectedMediaProfile.channels.length &&
         selectedMediaProfile.channels.every((expected) =>
           object.channelMap.some((channel) => channel.channelIndex === expected.index),

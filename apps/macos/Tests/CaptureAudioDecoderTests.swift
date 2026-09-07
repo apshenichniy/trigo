@@ -5,14 +5,19 @@ import Testing
 
 @testable import TrigoNative
 
-func controlledAudioBuffer(sampleRate: Double, frames: Int, time: CMTime, value: Float) throws
+func controlledAudioBuffer(
+  sampleRate: Double, frames: Int, time: CMTime, value: Float, channels: AVAudioChannelCount = 1
+) throws
   -> CMSampleBuffer
 {
-  let format = try #require(AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1))
+  let format = try #require(
+    AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels))
   let pcm = try #require(
     AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)))
   pcm.frameLength = AVAudioFrameCount(frames)
-  for frame in 0..<frames { pcm.floatChannelData![0][frame] = value }
+  for channel in 0..<Int(channels) {
+    for frame in 0..<frames { pcm.floatChannelData![channel][frame] = value }
+  }
   var description: CMAudioFormatDescription?
   #expect(
     CMAudioFormatDescriptionCreate(
@@ -53,12 +58,13 @@ func controlledAudioBuffer(sampleRate: Double, frames: Int, time: CMTime, value:
 @Test(arguments: [48_000.0, 44_100.0], [0.0, 0.00003, 0.00005])
 func hardwareMicrophonePacketsDoNotCreatePeriodicHolesInPersistedPCM(
   sampleRate: Double, startOffset: Double
-) throws {
+) async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
     "trigo-hardware-cadence-\(UUID())")
   defer { try? FileManager.default.removeItem(at: root) }
+  let writer = try await captureWriter(root: root)
   let engine = try CaptureRecordingEngine(
-    directory: root, origin: .zero,
+    writer: writer, origin: .zero,
     microphone: .init(id: "fixture", name: "Hardware packet cadence"))
   // Hardware callbacks need not contain an integral number of output frames:
   // 512 frames at 48 kHz span 170 2/3 frames at the persisted 16 kHz rate.
@@ -73,7 +79,7 @@ func hardwareMicrophonePacketsDoNotCreatePeriodicHolesInPersistedPCM(
   }
   let media = try engine.stop(at: CMTime(value: 8 * 512, timescale: Int32(sampleRate)))
   let file = try AVAudioFile(
-    forReading: root.appendingPathComponent(#require(media.objects.first).filename))
+    forReading: writer.master.mediaURL)
   let buffer = try #require(
     AVAudioPCMBuffer(
       pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
@@ -82,7 +88,7 @@ func hardwareMicrophonePacketsDoNotCreatePeriodicHolesInPersistedPCM(
   // Exclude converter startup/tail; every interior sample of this constant source exists.
   let holes = (512..<(Int(buffer.frameLength) - 512)).filter { mic[$0] == 0 }
   #expect(holes.isEmpty, "Periodic PCM holes at output frames \(Array(holes.prefix(12)))")
-  let interiorGaps = media.microphoneIntervals.filter {
+  let interiorGaps = (try captureIntervals(writer, role: .microphone)).filter {
     $0.state == .unavailable && $0.startMs > 32 && $0.endMs < media.durationMs - 32
   }
   #expect(interiorGaps.isEmpty, "Unexpected interior microphone gaps: \(interiorGaps.count)")

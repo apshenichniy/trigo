@@ -2,6 +2,49 @@ import Testing
 
 @testable import TrigoNative
 
+@Test @MainActor func revokedMicrophoneAccessRetiresInputWithoutRepeatedNativeStarts() async throws
+{
+  let fixture = try RecordingControlFixture()
+  defer { fixture.cleanup() }
+  await fixture.bind()
+  await fixture.coordinator.shortcutPressed()
+  let starts = fixture.os.microphone.startCalls
+  fixture.os.permissions = .init(
+    screenAudio: true, microphoneAuthorization: .denied,
+    microphoneAvailable: true)
+  for _ in 0..<3 { await fixture.capture.checkSourceAndMicrophone() }
+  #expect(fixture.coordinator.phase == .recording)
+  #expect(fixture.os.application.running)
+  #expect(!fixture.os.microphone.running)
+  #expect(fixture.coordinator.microphoneState == .unavailable)
+  #expect(fixture.coordinator.capturePermissions.microphoneAuthorization == .denied)
+  #expect(fixture.coordinator.capturePermissions.microphoneAvailable)
+  #expect(fixture.coordinator.notice?.message.contains("Microphone settings") == true)
+  #expect(fixture.os.microphone.startCalls == starts)
+  #expect(fixture.os.permissionRequests == 0)
+  fixture.os.permissions = .init(screenAudio: true, microphone: true)
+  await fixture.capture.checkSourceAndMicrophone()
+  #expect(fixture.coordinator.microphoneState == .recording)
+  #expect(fixture.os.microphone.startCalls == starts + 1)
+  await fixture.coordinator.stop()
+}
+
+@Test @MainActor func revokedScreenAudioAccessInterruptsWithSettingsRecovery() async throws {
+  let fixture = try RecordingControlFixture()
+  defer { fixture.cleanup() }
+  await fixture.bind()
+  await fixture.coordinator.shortcutPressed()
+  fixture.os.permissions = .init(screenAudio: false, microphone: true)
+  await fixture.capture.checkSourceAndMicrophone()
+  #expect(fixture.coordinator.phase == .interrupted)
+  #expect(fixture.coordinator.recordingSnapshot?.interruptionReason == "screen_audio_permission")
+  #expect(fixture.coordinator.notice?.message.contains("System Settings") == true)
+  #expect(!fixture.coordinator.capturePermissions.screenAudio)
+  #expect(!fixture.os.application.running)
+  #expect(fixture.os.permissionRequests == 0)
+  await fixture.coordinator.stop()
+}
+
 @Test(arguments: [false, true]) @MainActor
 func microphoneStartIsNotPublishedBeforeNativeAcknowledgement(failsAfterStart: Bool) async throws {
   let fixture = try RecordingControlFixture()

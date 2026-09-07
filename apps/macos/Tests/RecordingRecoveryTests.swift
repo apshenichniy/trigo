@@ -25,16 +25,16 @@ import Testing
     archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
   await #expect(throws: Crash.self) {
     try await session.finish(
-      media: .init(objects: [], durationMs: 0), interruptionReason: "system_sleep"
+      media: nil, interruptionReason: "system_sleep"
     ) { point in
-      if point == .afterAudioManifest { throw Crash() }
+      if point == .beforeCommit { throw Crash() }
     }
   }
   await fixture.bind()
   let recovered = try #require(fixture.coordinator.recoveryReport.recoveredCalls.first)
   #expect(recovered.interruptionReason == "system_sleep")
   #expect(recovered.explanation.contains("System sleep"))
-  let archive = try LocalArchive(
+  let archive = try LocalRepository(
     root: fixture.namespace.archive, archiveID: fixture.status.archiveID)
   let before = try await archive.loadCall(callID: session.callID)
   let fresh = RecordingCoordinator(
@@ -42,7 +42,7 @@ import Testing
     capture: fixture.capture,
     sources: .init(
       permissions: { fixture.os.permissions },
-      frontmost: fixture.os.frontmost, requestPermissions: { fixture.os.permissions }))
+      frontmost: fixture.os.frontmost, requestPermission: { _ in fixture.os.permissions }))
   await fresh.restore()
   #expect(fresh.recoveryReport.recoveredCallIDs.isEmpty)
   #expect(fresh.recoveryReport.warnings.isEmpty)
@@ -61,13 +61,13 @@ import Testing
     archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
   await fixture.bind()
   #expect(fixture.coordinator.recoveryReport.recoveredCalls.isEmpty)
-  #expect(fixture.coordinator.recoveryReport.failures.isEmpty)
-  let archive = try LocalArchive(root: root, archiveID: fixture.status.archiveID)
+  #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == ["archive"])
+  let archive = try LocalRepository(root: root, archiveID: fixture.status.archiveID)
   let call = try await archive.loadCall(callID: session.callID)
   #expect(try jsonObject(call.manifest.storedBytes)["captureState"] as? String == "recording")
 }
 
-@Test @MainActor func launchRecoveryReportsCorruptMediaTailInsteadOfClaimingCompleteRecovery()
+@Test @MainActor func launchRecoveryRejectsCommittedCorruptionWithoutChangingEvidence()
   async throws
 {
   let fixture = try RecordingControlFixture()
@@ -75,24 +75,22 @@ import Testing
   let session = try await CaptureArchiveSession.begin(
     root: fixture.namespace.archive,
     archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
-  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
-  try writer.append(interleaved: Array(repeating: Int16(123), count: 64_000))
-  let media = try FileManager.default.contentsOfDirectory(
-    at: session.mediaDirectory, includingPropertiesForKeys: nil)
-  let pcm = try #require(media.first { $0.pathExtension == "pcm" })
-  let file = try FileHandle(forWritingTo: pcm)
-  try file.seek(toOffset: 64_000)
+  let writer = try CaptureMediaWriter(session: session)
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
+  let file = try FileHandle(forWritingTo: writer.master.mediaURL)
+  try file.seek(toOffset: 68)
   try file.write(contentsOf: Data([0xff]))
   try file.close()
+  let damagedBytes = try Data(contentsOf: writer.master.mediaURL)
   await fixture.bind()
-  #expect(fixture.coordinator.recoveryReport.warnings.map(\.callID) == [session.callID])
-  #expect(fixture.coordinator.phase == .interrupted)
-  #expect(!fixture.coordinator.canRetryLocalRecovery)
-  #expect(FileManager.default.fileExists(atPath: pcm.path))
+  #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == [session.callID])
+  #expect(fixture.coordinator.recoveryReport.recoveredCalls.isEmpty)
+  #expect(fixture.coordinator.phase == .recoveryRequired)
+  #expect(fixture.coordinator.canRetryLocalRecovery)
+  #expect(try Data(contentsOf: writer.master.mediaURL) == damagedBytes)
   await fixture.coordinator.retryRecovery()
-  #expect(fixture.coordinator.recoveryReport.warnings.isEmpty)
-  #expect(fixture.coordinator.recoveryReport.recoveredCallIDs.isEmpty)
-  #expect(fixture.coordinator.phase == .idle)
+  #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == [session.callID])
+  #expect(try Data(contentsOf: writer.master.mediaURL) == damagedBytes)
 }
 
 @Test @MainActor func launchRecoveryFinalizesOnlyBoundDirectCallsAndIsIdempotent() async throws {
@@ -105,7 +103,7 @@ import Testing
   #expect(fixture.coordinator.recoveryReport.recoveredCallIDs == [session.callID])
   #expect(fixture.coordinator.phase == .interrupted)
   #expect(!fixture.os.application.running)
-  let archive = try LocalArchive(root: fixture.namespace.archive, archiveID: session.archiveID)
+  let archive = try LocalRepository(root: fixture.namespace.archive, archiveID: session.archiveID)
   let first = try await archive.loadCall(callID: session.callID)
   await fixture.coordinator.retryRecovery()
   let second = try await archive.loadCall(callID: session.callID)
@@ -115,40 +113,29 @@ import Testing
   #expect(fixture.coordinator.phase == .idle)
 }
 
-@Test(arguments: ["archive", "root", "call", "corrupt", "symlink"])
-@MainActor func launchRecoveryRejectsForeignOrCorruptMetadataWithoutMutation(kind: String)
-  async throws
-{
+@Test(arguments: ["legacy", "corrupt", "symlink"])
+@MainActor func launchRecoveryRejectsUnsupportedStoresWithoutMutation(kind: String) async throws {
   let fixture = try RecordingControlFixture()
   defer { fixture.cleanup() }
-  let session = try CaptureArchiveSession.allocate(
-    root: fixture.namespace.archive, archiveID: fixture.status.archiveID,
-    source: fixture.os.source, microphone: nil)
-  let directory = fixture.namespace.archive.appendingPathComponent(session.callID)
-  try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-  let metadataURL = directory.appendingPathComponent("capture-session.json")
-  var object = try jsonObject(JSONEncoder().encode(session))
-  if kind == "archive" { object["archiveID"] = "00000000-0000-4000-8000-000000000099" }
-  if kind == "root" {
-    object["root"] = fixture.support.appendingPathComponent("foreign").absoluteString
-  }
-  if kind == "call" { object["callID"] = "00000000-0000-4000-8000-000000000098" }
-  let bytes =
-    kind == "corrupt" ? Data("broken".utf8) : try JSONSerialization.data(withJSONObject: object)
+  let root = fixture.namespace.archive
+  try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+  let artifact = root.appendingPathComponent(
+    kind == "legacy" ? "capture-session.json" : SQLiteDatabase.filename)
+  let bytes = Data("unfamiliar retained evidence".utf8)
   if kind == "symlink" {
-    let foreign = fixture.support.appendingPathComponent("foreign-session.json")
+    let foreign = fixture.support.appendingPathComponent("foreign.sqlite3")
     try bytes.write(to: foreign)
-    try FileManager.default.createSymbolicLink(at: metadataURL, withDestinationURL: foreign)
+    try FileManager.default.createSymbolicLink(at: artifact, withDestinationURL: foreign)
   } else {
-    try bytes.write(to: metadataURL)
+    try bytes.write(to: artifact)
   }
   await fixture.bind()
   #expect(fixture.coordinator.phase == .recoveryRequired)
   #expect(fixture.coordinator.canRetryLocalRecovery)
-  #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == [session.callID])
-  #expect(try Data(contentsOf: metadataURL) == bytes)
+  #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == ["archive"])
+  #expect(try Data(contentsOf: artifact) == bytes)
   #expect(
-    try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["capture-session.json"])
+    try FileManager.default.contentsOfDirectory(atPath: root.path) == [artifact.lastPathComponent])
   await fixture.coordinator.shortcutPressed()
   #expect(fixture.os.frontmostReads == 0)
   #expect(!fixture.os.application.running)

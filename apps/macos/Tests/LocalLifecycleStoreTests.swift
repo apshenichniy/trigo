@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import TrigoContracts
 
 @testable import TrigoNative
 
@@ -55,14 +56,13 @@ private func lifecycleRoot() throws -> URL {
 
 @Test func independentLifecycleDimensionsAndStructuredFailuresSurviveRelaunch() async throws {
   let root = try lifecycleRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: lifecycleArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let store = try LocalLifecycleStore(root: root, archiveID: lifecycleArchiveID)
-  _ = try await store.publish(.initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID))
+  let store = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
+  _ = try await store.publishLifecycle(
+    .initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID))
 
-  let updated = try await store.update(callID: lifecycleCallID) { snapshot in
-    snapshot.capture = LifecycleValue(
-      state: .interrupted,
-      failure: try LifecycleFailure(code: "capture_interrupted", retry: .never))
+  let updated = try await store.updateLifecycle(callID: lifecycleCallID) { snapshot in
     snapshot.upload = LifecycleValue(
       state: .failed,
       failure: try LifecycleFailure(code: "upload_unavailable", retry: .retryable))
@@ -76,10 +76,10 @@ private func lifecycleRoot() throws -> URL {
     snapshot.deletion = LifecycleValue(state: .draining)
   }
 
-  let relaunched = try LocalLifecycleStore(root: root, archiveID: lifecycleArchiveID)
-  let loaded = try #require(try await relaunched.load(callID: lifecycleCallID))
+  let relaunched = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
+  let loaded = try #require(try await relaunched.lifecycle(callID: lifecycleCallID))
   #expect(loaded == updated)
-  #expect(loaded.capture.state == .interrupted)
+  #expect(loaded.capture.state == .recording)
   #expect(loaded.upload.failure?.retry == .retryable)
   #expect(loaded.transcription.state == .queued)
   #expect(loaded.importState.failure?.code == "invalid_result")
@@ -89,87 +89,86 @@ private func lifecycleRoot() throws -> URL {
 
 @Test func lifecycleAtomicInterruptionLeavesPriorOrCommittedSnapshot() async throws {
   let root = try lifecycleRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: lifecycleArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let baseline = try LocalLifecycleStore(root: root, archiveID: lifecycleArchiveID)
-  _ = try await baseline.publish(.initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID))
+  let baseline = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
+  _ = try await baseline.publishLifecycle(
+    .initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID))
 
-  let beforeReplacement = LifecycleFailOnce(at: .afterLifecycleTemporaryFileSynced)
-  let interruptedBefore = try LocalLifecycleStore(
+  let beforeReplacement = LifecycleFailOnce(at: .beforeRepositoryCommit)
+  let interruptedBefore = try LocalRepository(
     root: root, archiveID: lifecycleArchiveID,
     interruption: beforeReplacement.callAsFunction)
   await #expect(throws: LifecycleInjectedInterruption.self) {
-    try await interruptedBefore.update(callID: lifecycleCallID) {
+    try await interruptedBefore.updateLifecycle(callID: lifecycleCallID) {
       $0.upload = LifecycleValue(state: .uploading)
     }
   }
 
-  let relaunchedPrior = try LocalLifecycleStore(root: root, archiveID: lifecycleArchiveID)
-  let priorReport = try await relaunchedPrior.reconcile()
-  #expect(priorReport.removedTemporaryFiles == 1)
-  #expect(try await relaunchedPrior.load(callID: lifecycleCallID)?.stateVersion == 1)
+  let relaunchedPrior = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
+  let priorReport = try await relaunchedPrior.inspectArchive()
+  #expect(priorReport.validCallIDs == [lifecycleCallID])
+  #expect(try await relaunchedPrior.lifecycle(callID: lifecycleCallID)?.stateVersion == 1)
 
-  let afterReplacement = LifecycleFailOnce(at: .afterLifecycleAtomicReplacement)
-  let interruptedAfter = try LocalLifecycleStore(
+  let afterReplacement = LifecycleFailOnce(at: .afterRepositoryCommit)
+  let interruptedAfter = try LocalRepository(
     root: root, archiveID: lifecycleArchiveID,
     interruption: afterReplacement.callAsFunction)
   await #expect(throws: LifecycleInjectedInterruption.self) {
-    try await interruptedAfter.update(callID: lifecycleCallID) {
+    try await interruptedAfter.updateLifecycle(callID: lifecycleCallID) {
       $0.upload = LifecycleValue(state: .uploading)
     }
   }
 
-  let relaunchedCommitted = try LocalLifecycleStore(root: root, archiveID: lifecycleArchiveID)
-  #expect(try await relaunchedCommitted.load(callID: lifecycleCallID)?.stateVersion == 2)
-  #expect(try await relaunchedCommitted.load(callID: lifecycleCallID)?.upload.state == .uploading)
+  let relaunchedCommitted = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
+  #expect(try await relaunchedCommitted.lifecycle(callID: lifecycleCallID)?.stateVersion == 2)
+  #expect(
+    try await relaunchedCommitted.lifecycle(callID: lifecycleCallID)?.upload.state == .uploading)
 }
 
 @Test func lifecycleCorruptionAndForeignIdentityAreRejectedWithoutDeletion() async throws {
   let root = try lifecycleRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: lifecycleArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let store = try LocalLifecycleStore(root: root, archiveID: lifecycleArchiveID)
+  let store = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
   let initial = CallLifecycleSnapshot.initial(
     archiveID: lifecycleArchiveID, callID: lifecycleCallID)
-  _ = try await store.publish(initial)
+  _ = try await store.publishLifecycle(initial)
   let foreign = CallLifecycleSnapshot.initial(
     archiveID: "00000000-0000-4000-8000-000000000099", callID: lifecycleCallID)
   await #expect(throws: LocalPersistenceError.self) {
-    try await store.publish(foreign)
+    try await store.publishLifecycle(foreign)
   }
-  #expect(try await store.load(callID: lifecycleCallID) == initial)
+  #expect(try await store.lifecycle(callID: lifecycleCallID) == initial)
 
-  let snapshotURL = root.appendingPathComponent("lifecycle", isDirectory: true)
-    .appendingPathComponent(lifecycleCallID).appendingPathExtension("json")
-  var object = try #require(
-    JSONSerialization.jsonObject(with: Data(contentsOf: snapshotURL)) as? [String: Any])
-  var upload = try #require(object["upload"] as? [String: Any])
-  upload["failure"] = ["code": "Unstable Code", "retry": "retryable"]
-  object["upload"] = upload
-  try JSONSerialization.data(withJSONObject: object).write(to: snapshotURL)
+  try store.database.access {
+    try store.database.execute(
+      "UPDATE lifecycle SET upload_failure='Unstable Code',upload_retry='retryable' WHERE call_id=?",
+      [.text(lifecycleCallID)])
+  }
 
   await #expect(throws: LocalPersistenceError.self) {
-    try await store.load(callID: lifecycleCallID)
+    try await store.lifecycle(callID: lifecycleCallID)
   }
-  let report = try await store.reconcile()
+  let report = try await store.inspectArchive()
   #expect(report.rejectedCallIDs == [lifecycleCallID])
-  #expect(FileManager.default.fileExists(atPath: snapshotURL.path))
+  #expect(
+    FileManager.default.fileExists(
+      atPath: root.appendingPathComponent(SQLiteDatabase.filename).path))
 }
 
-@Test func lifecycleStoredCallIdentityMustMatchItsFilename() async throws {
+@Test func lifecycleStoredCallIdentityMustReferenceACanonicalCall() async throws {
   let root = try lifecycleRoot()
+  _ = try await seedRepositoryCall(root: root, archiveID: lifecycleArchiveID)
   defer { try? FileManager.default.removeItem(at: root) }
-  let store = try LocalLifecycleStore(root: root, archiveID: lifecycleArchiveID)
-  _ = try await store.publish(.initial(archiveID: lifecycleArchiveID, callID: lifecycleCallID))
-  let snapshotURL = root.appendingPathComponent("lifecycle", isDirectory: true)
-    .appendingPathComponent(lifecycleCallID).appendingPathExtension("json")
-  var object = try #require(
-    JSONSerialization.jsonObject(with: Data(contentsOf: snapshotURL)) as? [String: Any])
-  object["callId"] = "00000000-0000-4000-8000-000000000099"
-  try JSONSerialization.data(withJSONObject: object).write(to: snapshotURL)
-
-  await #expect(throws: LocalPersistenceError.self) {
-    try await store.load(callID: lifecycleCallID)
+  let store = try LocalRepository(root: root, archiveID: lifecycleArchiveID)
+  #expect(throws: LocalPersistenceError.self) {
+    try store.database.access {
+      try store.database.execute(
+        "UPDATE lifecycle SET call_id=? WHERE call_id=?",
+        [.text("00000000-0000-4000-8000-000000000099"), .text(lifecycleCallID)])
+    }
   }
-  let report = try await store.reconcile()
-  #expect(report.rejectedCallIDs == [lifecycleCallID])
-  #expect(FileManager.default.fileExists(atPath: snapshotURL.path))
+  #expect(try await store.lifecycle(callID: lifecycleCallID)?.capture.state == .recording)
+  #expect(try await store.inspectArchive().validCallIDs == [lifecycleCallID])
 }

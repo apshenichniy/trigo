@@ -16,24 +16,27 @@ import TrigoContracts
   let session = try await CaptureArchiveSession.begin(
     root: root, archiveID: archiveID, source: source,
     microphone: .init(id: "fixture-mic", name: "Fixture microphone"))
-  let archive = try LocalArchive(root: root, archiveID: archiveID)
+  let archive = try LocalRepository(root: root, archiveID: archiveID)
   let initial = try await archive.loadCall(callID: session.callID)
-  #expect(initial.manifest.value.object?["captureState"]?.string == "recording")
-  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
-  try writer.append(interleaved: Array(repeating: Int16(123), count: 64_000))
-  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
-  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 2_000)
-  #expect(recovered.manifest.value.object?["interruptionReason"]?.string == "process_terminated")
+  #expect(initial.manifest.value.captureState == "recording")
+  let writer = try CaptureMediaWriter(session: session)
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
+  let recovered = try await CaptureArchiveSession.recover(
+    root: root, archiveID: session.archiveID, callID: session.callID)
+  #expect(recovered.manifest.value.captureState == "interrupted")
+  #expect(recovered.manifest.value.durationMs == 2_000)
+  #expect(recovered.manifest.value.interruptionReason == "process_terminated")
   let media = try Contract.validate("AudioManifest", bytes: #require(recovered.audioManifest))
   #expect(media.value.object?["objects"]?.array?.count == 1)
   let object = try #require(media.value.object?["objects"]?.array?.first)
   let channels = try #require(object.object?["channelMap"]?.array)
   #expect(channels.first?.object?["trackId"]?.string == session.microphoneTrackID)
-  let repeated = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
+  let repeated = try await CaptureArchiveSession.recover(
+    root: root, archiveID: session.archiveID, callID: session.callID)
   #expect(repeated.manifest.storedBytes == recovered.manifest.storedBytes)
-  let lifecycle = try LocalLifecycleStore(root: root, archiveID: archiveID)
-  #expect(try await lifecycle.load(callID: session.callID)?.capture.state == .interrupted)
+  let lifecycle = try LocalRepository(root: root, archiveID: archiveID)
+  #expect(try await lifecycle.lifecycle(callID: session.callID)?.capture.state == .interrupted)
 }
 
 @Test func crashBetweenMediaSealAndCanonicalPublicationKeepsInterruptionReason() async throws {
@@ -46,14 +49,15 @@ import TrigoContracts
     root: root, archiveID: UUID().uuidString.lowercased(),
     source: source, microphone: nil)
   let engine = try CaptureRecordingEngine(
-    directory: session.mediaDirectory, origin: .zero, microphone: nil)
+    writer: CaptureMediaWriter(session: session), origin: .zero, microphone: nil)
   _ = try engine.stop(at: CMTime(seconds: 0.1, preferredTimescale: 16_000), reason: "system_sleep")
-  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
-  #expect(recovered.manifest.value.object?["interruptionReason"]?.string == "system_sleep")
+  let recovered = try await CaptureArchiveSession.recover(
+    root: root, archiveID: session.archiveID, callID: session.callID)
+  #expect(recovered.manifest.value.captureState == "interrupted")
+  #expect(recovered.manifest.value.interruptionReason == "system_sleep")
 }
 
-@Test func recoveryAfterImmutableAudioPublicationReusesTheSameFinalization() async throws {
+@Test func recoveryBeforeJointPublicationReusesTheSameFinalization() async throws {
   struct Crash: Error {}
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
     "trigo-finalize-\(UUID())")
@@ -64,19 +68,21 @@ import TrigoContracts
   let session = try await CaptureArchiveSession.begin(
     root: root, archiveID: UUID().uuidString.lowercased(),
     source: source, microphone: nil)
-  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
+  let writer = try CaptureMediaWriter(session: session)
   try writer.append(interleaved: Array(repeating: 123, count: 3_200))
-  let firstRecovery = try CaptureMediaWriter.recover(directory: session.mediaDirectory)
+  let firstRecovery = try CaptureMediaWriter.recover(session: session)
+  let firstMaster = try finishCapture(firstRecovery, reason: "process_terminated")
   await #expect(throws: Crash.self) {
-    try await session.finish(media: firstRecovery.media, interruptionReason: "process_terminated") {
+    try await session.finish(media: firstMaster, interruptionReason: "process_terminated") {
       point in
-      if point == .afterAudioManifest { throw Crash() }
+      if point == .beforeCommit { throw Crash() }
     }
   }
-  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
+  let recovered = try await CaptureArchiveSession.recover(
+    root: root, archiveID: session.archiveID, callID: session.callID)
   let audio = try jsonObject(#require(recovered.audioManifest))
   let objects = try #require(audio["objects"] as? [[String: Any]])
-  #expect(objects.first?["objectId"] as? String == firstRecovery.media.objects.first?.objectID)
+  #expect(objects.first?["objectId"] as? String == session.masterID)
 }
 
 @Test func durableSessionWithoutAnOpenedWriterRecoversAsZeroDurationInterrupted() async throws {
@@ -92,15 +98,17 @@ import TrigoContracts
   // A filesystem failure between durable session creation and stream/writer setup.
   try Data().write(to: session.mediaDirectory)
   #expect(throws: (any Error).self) {
-    try CaptureRecordingEngine(directory: session.mediaDirectory, origin: .zero, microphone: nil)
+    try CaptureRecordingEngine(
+      writer: CaptureMediaWriter(session: session), origin: .zero, microphone: nil)
   }
-  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+  let recovered = try await CaptureArchiveSession.recover(
+    root: root, archiveID: session.archiveID, callID: session.callID)
+  #expect(recovered.manifest.value.durationMs == 0)
+  #expect(recovered.manifest.value.captureState == "interrupted")
 }
 
 @Test(arguments: [
-  CapturePreparationPoint.afterSessionMetadata, .afterCallManifest, .afterLifecycle,
+  CapturePreparationPoint.beforeCommit, .afterCommit,
 ])
 func partiallyPreparedCaptureRecoversWithItsAllocatedIdentity(_ boundary: CapturePreparationPoint)
   async throws
@@ -117,13 +125,18 @@ func partiallyPreparedCaptureRecoversWithItsAllocatedIdentity(_ boundary: Captur
   await #expect(throws: Crash.self) {
     try await session.prepare { if $0 == boundary { throw Crash() } }
   }
-  // A relaunch has only the session metadata, not the caller's in-memory handle.
-  let recovered = try await CaptureArchiveSession.recover(root: root, callID: session.callID)
-  #expect(recovered.manifest.value.object?["callId"]?.string == session.callID)
-  #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
-  #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
-  let lifecycle = try LocalLifecycleStore(root: root, archiveID: session.archiveID)
-  #expect(try await lifecycle.load(callID: session.callID)?.capture.state == .interrupted)
+  // Before commit no identity is published; the caller retries its retained allocation.
+  // After commit a fresh process can discover the same durable session.
+  let recovered =
+    boundary == .beforeCommit
+    ? try await session.recover()
+    : try await CaptureArchiveSession.recover(
+      root: root, archiveID: session.archiveID, callID: session.callID)
+  #expect(recovered.manifest.value.callId == session.callID)
+  #expect(recovered.manifest.value.durationMs == 0)
+  #expect(recovered.manifest.value.captureState == "interrupted")
+  let lifecycle = try LocalRepository(root: root, archiveID: session.archiveID)
+  #expect(try await lifecycle.lifecycle(callID: session.callID)?.capture.state == .interrupted)
   let repeated = try await session.recover()
   #expect(repeated.manifest.storedBytes == recovered.manifest.storedBytes)
 }
@@ -143,8 +156,8 @@ func partiallyPreparedCaptureRecoversWithItsAllocatedIdentity(_ boundary: Captur
   } catch let failure as CapturePreparationFailure {
     try FileManager.default.removeItem(at: root)
     let recovered = try await failure.session.recover()
-    #expect(recovered.manifest.value.object?["callId"]?.string == failure.session.callID)
-    #expect(recovered.manifest.value.object?["durationMs"]?.integer == 0)
-    #expect(recovered.manifest.value.object?["captureState"]?.string == "interrupted")
+    #expect(recovered.manifest.value.callId == failure.session.callID)
+    #expect(recovered.manifest.value.durationMs == 0)
+    #expect(recovered.manifest.value.captureState == "interrupted")
   }
 }

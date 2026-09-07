@@ -1,3 +1,5 @@
+import { Result, Schema } from "effect";
+import { documentSchemas, type Documents, type DocumentKind } from "./document-schema.ts";
 import { validateCall, validateRevision, validateAudio } from "./semantics.ts";
 import { selectedMediaProfile } from "./media-profile.ts";
 export {
@@ -25,29 +27,29 @@ export type {
   MediaProfile as MediaProfileDocument,
   WaveObjectInspection,
 } from "./media-profile.ts";
-import type {
-  CallDocument,
-  TranscriptRevision,
-  AudioManifest,
-  StatusResponse,
-  CommandIdentity,
-  ErrorEnvelope,
-} from "./generated/documents.d.ts";
-import * as validators from "./generated/validators.mjs";
-export type * from "./generated/documents.d.ts";
-export interface Documents {
-  CallDocument: CallDocument;
-  TranscriptRevision: TranscriptRevision;
-  AudioManifest: AudioManifest;
-  StatusResponse: StatusResponse;
-  CommandIdentity: CommandIdentity;
-  ErrorEnvelope: ErrorEnvelope;
+import type { CallDocument, TranscriptRevision, AudioManifest } from "./document-schema.ts";
+export * from "./document-schema.ts";
+function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
+  const decode = Schema.decodeUnknownResult(schema, { onExcessProperty: "error" });
+  return (value: unknown): S["Type"] => {
+    const result = decode(value);
+    if (Result.isFailure(result)) throw new Error("structure");
+    return result.success;
+  };
 }
-export type DocumentKind = keyof Documents;
+const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
+  LocalDevelopmentBridge: decoder(documentSchemas.LocalDevelopmentBridge),
+  CaptureMasterProfile: decoder(documentSchemas.CaptureMasterProfile),
+  CallDocument: decoder(documentSchemas.CallDocument),
+  TranscriptRevision: decoder(documentSchemas.TranscriptRevision),
+  AudioManifest: decoder(documentSchemas.AudioManifest),
+  StatusResponse: decoder(documentSchemas.StatusResponse),
+  CommandIdentity: decoder(documentSchemas.CommandIdentity),
+  ErrorEnvelope: decoder(documentSchemas.ErrorEnvelope),
+};
 /** Structural validation only; referenced documents must be supplied to validateArchive. */
 export function validateStructure<K extends DocumentKind>(kind: K, value: unknown): Documents[K] {
-  if (!validators[kind](value)) throw new Error("structure");
-  return value as Documents[K];
+  return decoders[kind](value);
 }
 export function validateDocument<K extends DocumentKind>(kind: K, value: unknown): Documents[K] {
   const document = validateStructure(kind, value);
@@ -184,3 +186,5 @@ export async function readStoredDocument<K extends DocumentKind>(kind: K, input:
     },
   };
 }
+
+export { CaptureMasterProfile, selectedCaptureMasterProfile } from "./capture-master-profile.ts";

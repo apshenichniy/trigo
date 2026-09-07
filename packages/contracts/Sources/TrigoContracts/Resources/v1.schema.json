@@ -2,37 +2,376 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://trigo.local/contracts/v1.schema.json",
   "title": "TrigoV1",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/LocalDevelopmentBridge"
+    },
+    {
+      "$ref": "#/$defs/CaptureMasterProfile"
+    },
+    {
+      "$ref": "#/$defs/CallDocument"
+    },
+    {
+      "$ref": "#/$defs/TranscriptRevision"
+    },
+    {
+      "$ref": "#/$defs/AudioManifest"
+    },
+    {
+      "$ref": "#/$defs/StatusResponse"
+    },
+    {
+      "$ref": "#/$defs/CommandIdentity"
+    },
+    {
+      "$ref": "#/$defs/ErrorEnvelope"
+    }
+  ],
   "$defs": {
+    "CanonicalUUIDv4": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "LocalDevelopmentBridge": {
+      "type": "object",
+      "properties": {
+        "formatVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "worktreeId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{12}$"
+        },
+        "namespaceId": {
+          "$ref": "#/$defs/CanonicalUUIDv4"
+        },
+        "serverURL": {
+          "type": "string",
+          "pattern": "^http:\\/\\/127\\.0\\.0\\.1:[0-9]+$"
+        },
+        "ownerToken": {
+          "type": "string",
+          "pattern": "^trigo_v1_[0-9a-f]{64}$"
+        }
+      },
+      "required": ["formatVersion", "worktreeId", "namespaceId", "serverURL", "ownerToken"],
+      "additionalProperties": false
+    },
+    "CaptureMasterProfile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "id": {
+          "type": "string",
+          "enum": ["caf-lpcm-s16le-16000-stereo-v1"]
+        },
+        "container": {
+          "type": "string",
+          "enum": ["caf"]
+        },
+        "contentType": {
+          "type": "string",
+          "enum": ["audio/x-caf"]
+        },
+        "codec": {
+          "type": "string",
+          "enum": ["pcm_s16le"]
+        },
+        "sampleRateHz": {
+          "type": "number",
+          "enum": [16000]
+        },
+        "bitsPerSample": {
+          "type": "number",
+          "enum": [16]
+        },
+        "interleaved": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "microphoneChannel": {
+          "type": "number",
+          "enum": [0]
+        },
+        "applicationChannel": {
+          "type": "number",
+          "enum": [1]
+        },
+        "headerBytes": {
+          "type": "number",
+          "enum": [68]
+        },
+        "headerPolicy": {
+          "type": "string",
+          "enum": ["immutable-indefinite-final-data-chunk"]
+        },
+        "maxCallDurationMs": {
+          "type": "number",
+          "enum": [10800000]
+        },
+        "maxMasterBytes": {
+          "type": "number",
+          "enum": [691200068]
+        },
+        "maxCommitDurationMs": {
+          "type": "number",
+          "enum": [1000]
+        },
+        "maxUncommittedTailMs": {
+          "type": "number",
+          "enum": [2000]
+        },
+        "indexHeaderBytes": {
+          "type": "number",
+          "enum": [128]
+        },
+        "indexRecordBytes": {
+          "type": "number",
+          "enum": [2120]
+        },
+        "maxRangeBytes": {
+          "type": "number",
+          "enum": [8388608]
+        },
+        "minimumMultipartPartBytes": {
+          "type": "number",
+          "enum": [5242880]
+        },
+        "timeline": {
+          "type": "string",
+          "enum": ["call-relative-integer-milliseconds"]
+        },
+        "nonRecordedSamples": {
+          "type": "string",
+          "enum": ["whole-millisecond-silence-before-persistence"]
+        },
+        "extractionTransform": {
+          "type": "string",
+          "enum": ["identity-stereo-pcm-frame-slice-v1"]
+        },
+        "cleanupAuthority": {
+          "type": "string",
+          "enum": ["durably-committed-complete-verified-server-receipt"]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "container",
+        "contentType",
+        "codec",
+        "sampleRateHz",
+        "bitsPerSample",
+        "interleaved",
+        "microphoneChannel",
+        "applicationChannel",
+        "headerBytes",
+        "headerPolicy",
+        "maxCallDurationMs",
+        "maxMasterBytes",
+        "maxCommitDurationMs",
+        "maxUncommittedTailMs",
+        "indexHeaderBytes",
+        "indexRecordBytes",
+        "maxRangeBytes",
+        "minimumMultipartPartBytes",
+        "timeline",
+        "nonRecordedSamples",
+        "extractionTransform",
+        "cleanupAuthority"
+      ],
+      "additionalProperties": false
+    },
+    "ExchangeUUID": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "PositiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "UTCDateTime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$",
+      "format": "date-time"
+    },
+    "NonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "CaptureSourceDocument": {
+      "type": "object",
+      "properties": {
+        "applicationName": {
+          "type": "string"
+        },
+        "bundleId": {
+          "type": "string"
+        },
+        "processId": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "windowId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NonNegativeInteger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "windowTitle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["applicationName", "bundleId", "processId", "windowId", "windowTitle"],
+      "additionalProperties": false
+    },
+    "InputDevice": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "name"],
+      "additionalProperties": false
+    },
+    "TrackInterval": {
+      "type": "object",
+      "properties": {
+        "startMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "endMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["recorded", "muted", "unavailable"]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["startMs", "endMs", "state", "reason"],
+      "additionalProperties": false
+    },
+    "AudioTrack": {
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["microphone", "application"]
+        },
+        "inputDevice": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InputDevice"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mediaProfileId": {
+          "type": "string",
+          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1", "caf-lpcm-s16le-16000-stereo-v1"]
+        },
+        "intervals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrackInterval"
+          }
+        }
+      },
+      "required": ["trackId", "role", "inputDevice", "mediaProfileId", "intervals"],
+      "additionalProperties": false
+    },
+    "SHA256Digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "AudioManifestReference": {
+      "type": "object",
+      "properties": {
+        "manifestId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        }
+      },
+      "required": ["manifestId", "sha256"],
+      "additionalProperties": false
+    },
+    "RevisionReference": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        }
+      },
+      "required": ["revisionId", "createdAt", "sha256"],
+      "additionalProperties": false
+    },
     "CallDocument": {
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "archiveId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         },
         "callId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         },
         "documentVersion": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
+          "$ref": "#/$defs/PositiveInteger"
         },
         "startedAt": {
-          "type": "string",
-          "format": "date-time",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+          "$ref": "#/$defs/UTCDateTime"
         },
         "endedAt": {
           "anyOf": [
             {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+              "$ref": "#/$defs/UTCDateTime"
             },
             {
               "type": "null"
@@ -42,9 +381,7 @@
         "durationMs": {
           "anyOf": [
             {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
+              "$ref": "#/$defs/NonNegativeInteger"
             },
             {
               "type": "null"
@@ -66,118 +403,12 @@
           ]
         },
         "source": {
-          "type": "object",
-          "properties": {
-            "applicationName": {
-              "type": "string"
-            },
-            "bundleId": {
-              "type": "string"
-            },
-            "processId": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
-            },
-            "windowId": {
-              "anyOf": [
-                {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "windowTitle": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "required": ["applicationName", "bundleId", "processId", "windowId", "windowTitle"],
-          "additionalProperties": false
+          "$ref": "#/$defs/CaptureSourceDocument"
         },
         "tracks": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "trackId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "role": {
-                "type": "string",
-                "enum": ["microphone", "application"]
-              },
-              "inputDevice": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string"
-                      },
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "required": ["id", "name"],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "mediaProfileId": {
-                "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
-              },
-              "intervals": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "startMs": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "endMs": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "state": {
-                      "type": "string",
-                      "enum": ["recorded", "muted", "unavailable"]
-                    },
-                    "reason": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": ["startMs", "endMs", "state", "reason"],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": ["trackId", "role", "inputDevice", "mediaProfileId", "intervals"],
-            "additionalProperties": false
+            "$ref": "#/$defs/AudioTrack"
           },
           "minItems": 2,
           "maxItems": 2
@@ -185,19 +416,7 @@
         "audioManifest": {
           "anyOf": [
             {
-              "type": "object",
-              "properties": {
-                "manifestId": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-                },
-                "sha256": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
-                }
-              },
-              "required": ["manifestId", "sha256"],
-              "additionalProperties": false
+              "$ref": "#/$defs/AudioManifestReference"
             },
             {
               "type": "null"
@@ -207,31 +426,13 @@
         "revisions": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "revisionId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
-              },
-              "sha256": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{64}$"
-              }
-            },
-            "required": ["revisionId", "createdAt", "sha256"],
-            "additionalProperties": false
+            "$ref": "#/$defs/RevisionReference"
           }
         },
         "activeRevisionId": {
           "anyOf": [
             {
-              "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "$ref": "#/$defs/ExchangeUUID"
             },
             {
               "type": "null"
@@ -240,19 +441,17 @@
         },
         "speakerNames": {
           "type": "object",
-          "propertyNames": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-          },
           "additionalProperties": {
             "type": "object",
-            "propertyNames": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-            },
             "additionalProperties": {
               "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/$defs/ExchangeUUID"
             }
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/ExchangeUUID"
           }
         }
       },
@@ -275,206 +474,207 @@
       ],
       "additionalProperties": false
     },
+    "ProviderOption": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ASRMetadata": {
+      "type": "object",
+      "properties": {
+        "adapter": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "profileId": {
+          "type": "string",
+          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1"]
+        },
+        "requestedLanguage": {
+          "type": "string"
+        },
+        "detectedLanguages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "effectiveOptions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ProviderOption"
+          }
+        },
+        "returnedModelVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "providerRequestIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "adapter",
+        "model",
+        "profileId",
+        "requestedLanguage",
+        "detectedLanguages",
+        "effectiveOptions",
+        "returnedModelVersion",
+        "providerRequestIds"
+      ],
+      "additionalProperties": false
+    },
+    "Speaker": {
+      "type": "object",
+      "properties": {
+        "speakerId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "trackId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "diarizationScopeId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "providerLabel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["speakerId", "trackId", "diarizationScopeId", "providerLabel"],
+      "additionalProperties": false
+    },
+    "Word": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "startMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "endMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["text", "startMs", "endMs", "confidence"],
+      "additionalProperties": false
+    },
+    "Turn": {
+      "type": "object",
+      "properties": {
+        "turnId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "trackId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "speakerId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExchangeUUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "endMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "text": {
+          "type": "string"
+        },
+        "words": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Word"
+          }
+        }
+      },
+      "required": ["turnId", "trackId", "speakerId", "startMs", "endMs", "text", "words"],
+      "additionalProperties": false
+    },
     "TranscriptRevision": {
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "callId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         },
         "revisionId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         },
         "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+          "$ref": "#/$defs/UTCDateTime"
         },
         "audioManifest": {
-          "type": "object",
-          "properties": {
-            "manifestId": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-            },
-            "sha256": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{64}$"
-            }
-          },
-          "required": ["manifestId", "sha256"],
-          "additionalProperties": false
+          "$ref": "#/$defs/AudioManifestReference"
         },
         "normalizationVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "asr": {
-          "type": "object",
-          "properties": {
-            "adapter": {
-              "type": "string"
-            },
-            "model": {
-              "type": "string"
-            },
-            "profileId": {
-              "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
-            },
-            "requestedLanguage": {
-              "type": "string"
-            },
-            "detectedLanguages": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "effectiveOptions": {
-              "type": "object",
-              "additionalProperties": {
-                "type": ["string", "number", "boolean", "null"]
-              }
-            },
-            "returnedModelVersion": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "providerRequestIds": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          "required": [
-            "adapter",
-            "model",
-            "profileId",
-            "requestedLanguage",
-            "detectedLanguages",
-            "effectiveOptions",
-            "returnedModelVersion",
-            "providerRequestIds"
-          ],
-          "additionalProperties": false
+          "$ref": "#/$defs/ASRMetadata"
         },
         "speakers": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "speakerId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "trackId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "diarizationScopeId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "providerLabel": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": ["speakerId", "trackId", "diarizationScopeId", "providerLabel"],
-            "additionalProperties": false
+            "$ref": "#/$defs/Speaker"
           }
         },
         "turns": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "turnId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "trackId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "speakerId": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "startMs": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "endMs": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "text": {
-                "type": "string"
-              },
-              "words": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "text": {
-                      "type": "string"
-                    },
-                    "startMs": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "endMs": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "confidence": {
-                      "anyOf": [
-                        {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": ["text", "startMs", "endMs", "confidence"],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": ["turnId", "trackId", "speakerId", "startMs", "endMs", "text", "words"],
-            "additionalProperties": false
+            "$ref": "#/$defs/Turn"
           }
         }
       },
@@ -491,96 +691,88 @@
       ],
       "additionalProperties": false
     },
+    "ChannelMapping": {
+      "type": "object",
+      "properties": {
+        "channelIndex": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "trackId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        }
+      },
+      "required": ["channelIndex", "trackId"],
+      "additionalProperties": false
+    },
+    "AudioObject": {
+      "type": "object",
+      "properties": {
+        "objectId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "index": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "contentType": {
+          "type": "string",
+          "enum": ["audio/wav", "audio/x-caf"]
+        },
+        "byteLength": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "startMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "endMs": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "channelMap": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChannelMapping"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "objectId",
+        "index",
+        "contentType",
+        "byteLength",
+        "sha256",
+        "startMs",
+        "endMs",
+        "channelMap"
+      ],
+      "additionalProperties": false
+    },
     "AudioManifest": {
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "callId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         },
         "manifestId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         },
         "durationMs": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
+          "$ref": "#/$defs/NonNegativeInteger"
         },
         "mediaProfileId": {
-          "const": "trigo-call-wav-s16le-16khz-stereo-60s-v1"
+          "type": "string",
+          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1", "caf-lpcm-s16le-16000-stereo-v1"]
         },
         "objects": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "objectId": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-              },
-              "index": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "contentType": {
-                "const": "audio/wav"
-              },
-              "byteLength": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 9007199254740991
-              },
-              "sha256": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{64}$"
-              },
-              "startMs": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "endMs": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 9007199254740991
-              },
-              "channelMap": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "channelIndex": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "trackId": {
-                      "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-                    }
-                  },
-                  "required": ["channelIndex", "trackId"],
-                  "additionalProperties": false
-                },
-                "minItems": 1
-              }
-            },
-            "required": [
-              "objectId",
-              "index",
-              "contentType",
-              "byteLength",
-              "sha256",
-              "startMs",
-              "endMs",
-              "channelMap"
-            ],
-            "additionalProperties": false
+            "$ref": "#/$defs/AudioObject"
           }
         }
       },
@@ -594,64 +786,73 @@
       ],
       "additionalProperties": false
     },
+    "StatusReadiness": {
+      "type": "object",
+      "properties": {
+        "archive": {
+          "type": "string",
+          "enum": ["ready"]
+        },
+        "ownerAuthentication": {
+          "type": "string",
+          "enum": ["ready"]
+        },
+        "transcription": {
+          "type": "string",
+          "enum": ["ready", "not_verified", "unavailable"]
+        },
+        "callOperations": {
+          "type": "string",
+          "enum": ["ready", "unavailable"]
+        }
+      },
+      "required": ["archive", "ownerAuthentication", "transcription", "callOperations"],
+      "additionalProperties": false
+    },
+    "StatusNotice": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "retry": {
+          "type": "string",
+          "enum": ["never", "after_correction", "retryable"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["code", "retry", "message"],
+      "additionalProperties": false
+    },
     "StatusResponse": {
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "apiVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "archiveId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         },
         "stage": {
           "type": "string",
           "enum": ["dev", "personal"]
         },
         "readiness": {
-          "type": "object",
-          "properties": {
-            "archive": {
-              "const": "ready"
-            },
-            "ownerAuthentication": {
-              "const": "ready"
-            },
-            "transcription": {
-              "type": "string",
-              "enum": ["ready", "not_verified", "unavailable"]
-            },
-            "callOperations": {
-              "type": "string",
-              "enum": ["ready", "unavailable"]
-            }
-          },
-          "required": ["archive", "ownerAuthentication", "transcription", "callOperations"],
-          "additionalProperties": false
+          "$ref": "#/$defs/StatusReadiness"
         },
         "errors": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string",
-                "pattern": "^[a-z][a-z0-9_]*$"
-              },
-              "retry": {
-                "type": "string",
-                "enum": ["never", "after_correction", "retryable"]
-              },
-              "message": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "required": ["code", "retry", "message"],
-            "additionalProperties": false
+            "$ref": "#/$defs/StatusNotice"
           }
         }
       },
@@ -662,67 +863,50 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "operationId": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "$ref": "#/$defs/ExchangeUUID"
         }
       },
       "required": ["schemaVersion", "operationId"],
+      "additionalProperties": false
+    },
+    "ErrorDetail": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "retry": {
+          "type": "string",
+          "enum": ["never", "after_correction", "retryable"]
+        },
+        "message": {
+          "type": "string"
+        },
+        "requestId": {
+          "$ref": "#/$defs/CanonicalUUIDv4"
+        }
+      },
+      "required": ["code", "retry", "message", "requestId"],
       "additionalProperties": false
     },
     "ErrorEnvelope": {
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "const": 1
+          "type": "number",
+          "enum": [1]
         },
         "error": {
-          "type": "object",
-          "properties": {
-            "code": {
-              "type": "string",
-              "pattern": "^[a-z][a-z0-9_]*$"
-            },
-            "retry": {
-              "type": "string",
-              "enum": ["never", "after_correction", "retryable"]
-            },
-            "message": {
-              "type": "string"
-            },
-            "requestId": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-            }
-          },
-          "required": ["code", "retry", "message", "requestId"],
-          "additionalProperties": false
+          "$ref": "#/$defs/ErrorDetail"
         }
       },
       "required": ["schemaVersion", "error"],
       "additionalProperties": false
     }
-  },
-  "oneOf": [
-    {
-      "$ref": "#/$defs/CallDocument"
-    },
-    {
-      "$ref": "#/$defs/TranscriptRevision"
-    },
-    {
-      "$ref": "#/$defs/AudioManifest"
-    },
-    {
-      "$ref": "#/$defs/StatusResponse"
-    },
-    {
-      "$ref": "#/$defs/CommandIdentity"
-    },
-    {
-      "$ref": "#/$defs/ErrorEnvelope"
-    }
-  ]
+  }
 }

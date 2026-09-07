@@ -1,31 +1,42 @@
-import { exports } from "cloudflare:workers";
-import { expect, it, beforeAll } from "vitest";
-beforeAll(async () => {
-  expect((await exports.default.fetch("http://localhost/__local/health")).status).toBe(200);
-});
-it("persists fake transcription through the local Worker and R2 binding", async () => {
-  const response = await exports.default.fetch(
-    "http://localhost/__local/transcriptions/no-speech",
-    { method: "POST" },
-  );
-  expect(response.status).toBe(201);
-  const stored = await exports.default.fetch("http://localhost/__local/transcriptions/no-speech");
-  expect(await stored.json()).toEqual({ fixture: "no-speech", turns: [], provider: "fake" });
+import { env } from "cloudflare:workers";
+import { expect, it } from "vitest";
+import { Effect } from "effect";
+import { fakeAsr } from "../src/asr.ts";
+import { noSpeechInput } from "../src/local-fixture.ts";
+import localWorker from "../src/local-worker.ts";
+import { validateDocument } from "@trigo/contracts";
+
+it("persists exact canonical fake adapter bytes in the real local R2 binding", async () => {
+  const revision = await Effect.runPromise(fakeAsr.normalize(noSpeechInput));
+  const bytes = new TextEncoder().encode(JSON.stringify(revision));
+  await env.LOCAL_ARCHIVE.put("offline-adapter.json", bytes);
+  const object = await env.LOCAL_ARCHIVE.get("offline-adapter.json");
+  expect(new Uint8Array(await object!.arrayBuffer())).toEqual(bytes);
+  expect(
+    validateDocument("TranscriptRevision", JSON.parse(new TextDecoder().decode(bytes))),
+  ).toEqual(revision);
 });
 it("denies external service access in the Workers runtime", async () => {
   expect((await fetch("https://api.cloudflare.com")).status).toBe(403);
 });
-it("rejects arbitrary model requests", async () => {
+it("does not ship the old fixture API or cloud-only acceptance route locally", async () => {
+  for (const path of ["/__local/transcriptions/no-speech", "/__trigo/asr-probe/live-model"])
+    expect(
+      (await localWorker.fetch(new Request(`http://localhost${path}`, { method: "POST" }), env))
+        .status,
+    ).toBe(405);
+});
+it("rejects infrastructure probes without the local-run capability", async () => {
   expect(
     (
-      await exports.default.fetch("http://localhost/__local/transcriptions/live-model", {
-        method: "POST",
-      })
+      await localWorker.fetch(
+        new Request("http://localhost/__local/probe", { method: "POST" }),
+        env,
+      )
     ).status,
-  ).toBe(400);
+  ).toBe(401);
 });
-it("validates shared generated schemas inside workerd", async () => {
-  const { validateDocument } = await import("@trigo/contracts");
+it("validates shared schemas inside workerd", () => {
   expect(() => validateDocument("CallDocument", { schemaVersion: 2 })).toThrow("structure");
   expect(
     validateDocument("CommandIdentity", {

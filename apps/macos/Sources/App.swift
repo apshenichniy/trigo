@@ -22,17 +22,20 @@ import TrigoNative
   var body: some Scene {
     Window("Archive connection", id: "connection") {
       if let coordinator = application.coordinator {
-        ConnectionView(appName: variant.appName, model: coordinator)
-          .defaultAppStorage(UserDefaults(suiteName: namespace.preferences)!)
-          .task {
-            appDelegate.configure(coordinator: coordinator, appName: variant.appName) {
-              openWindow(id: "connection")
-              NSApp.activate(ignoringOtherApps: true)
-            }
-            guard !didRestore else { return }
-            didRestore = true
-            await coordinator.restore()
+        ConnectionView(
+          appName: variant.appName, model: coordinator,
+          localConfiguration: namespace.localDevelopment
+        )
+        .defaultAppStorage(UserDefaults(suiteName: namespace.preferences)!)
+        .task {
+          appDelegate.configure(coordinator: coordinator, appName: variant.appName) {
+            openWindow(id: "connection")
+            NSApp.activate(ignoringOtherApps: true)
           }
+          guard !didRestore else { return }
+          didRestore = true
+          await coordinator.restore()
+        }
       } else if let failure = application.startupFailure {
         VStack(alignment: .leading, spacing: 16) {
           Text(failure.title).font(.headline)

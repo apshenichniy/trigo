@@ -2,12 +2,42 @@ import AVFoundation
 import AppKit
 import ScreenCaptureKit
 
+public enum CapturePermission: String, Sendable {
+  case screenAudio, microphone
+
+  public var settingsURL: URL {
+    URL(
+      string: "x-apple.systempreferences:com.apple.preference.security?"
+        + (self == .screenAudio ? "Privacy_ScreenCapture" : "Privacy_Microphone"))!
+  }
+}
+
+public enum MicrophoneAuthorization: Equatable, Sendable {
+  case notDetermined, authorized, denied, restricted, unknown
+}
+
 public struct CapturePermissions: Equatable, Sendable {
+  /// CoreGraphics supplies only a Boolean: false does not distinguish denial from revocation.
   public let screenAudio: Bool
-  public let microphone: Bool
+  public let microphoneAuthorization: MicrophoneAuthorization
+  public let microphoneAvailable: Bool
+  public var microphone: Bool { microphoneAuthorization == .authorized }
+  public var ready: Bool { screenAudio && microphone }
+
   public init(screenAudio: Bool, microphone: Bool) {
+    self.init(
+      screenAudio: screenAudio,
+      microphoneAuthorization: microphone ? .authorized : .notDetermined,
+      microphoneAvailable: true)
+  }
+
+  public init(
+    screenAudio: Bool, microphoneAuthorization: MicrophoneAuthorization,
+    microphoneAvailable: Bool
+  ) {
     self.screenAudio = screenAudio
-    self.microphone = microphone
+    self.microphoneAuthorization = microphoneAuthorization
+    self.microphoneAvailable = microphoneAvailable
   }
 }
 
@@ -74,16 +104,30 @@ public enum CaptureSourceResolver {
 
 @MainActor public enum SystemCaptureSource {
   public static func permissions() -> CapturePermissions {
-    .init(
+    let authorization: MicrophoneAuthorization
+    switch AVCaptureDevice.authorizationStatus(for: .audio) {
+    case .notDetermined: authorization = .notDetermined
+    case .authorized: authorization = .authorized
+    case .denied: authorization = .denied
+    case .restricted: authorization = .restricted
+    @unknown default: authorization = .unknown
+    }
+    return .init(
       screenAudio: CGPreflightScreenCaptureAccess(),
-      microphone: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized)
+      microphoneAuthorization: authorization,
+      microphoneAvailable: AVCaptureDevice.default(for: .audio)?.isConnected == true)
   }
 
-  /// Only an explicit Start/permission action in the UI should call this TCC boundary.
-  public static func requestPermissions() async -> CapturePermissions {
-    if !CGPreflightScreenCaptureAccess() { _ = CGRequestScreenCaptureAccess() }
-    if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-      _ = await AVCaptureDevice.requestAccess(for: .audio)
+  /// Only the explicit setup/enable action calls this OS consent boundary. Never Start.
+  public static func requestPermission(_ permission: CapturePermission) async -> CapturePermissions
+  {
+    switch permission {
+    case .screenAudio:
+      if !CGPreflightScreenCaptureAccess() { _ = CGRequestScreenCaptureAccess() }
+    case .microphone:
+      if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+        _ = await AVCaptureDevice.requestAccess(for: .audio)
+      }
     }
     return permissions()
   }

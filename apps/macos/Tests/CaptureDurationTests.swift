@@ -5,36 +5,36 @@ import Testing
 
 @testable import TrigoNative
 
-@Test func threeHourProfileWriterRetainsEverySecondWithoutTruncation() throws {
+@Test func threeHourProfileWriterRetainsEverySecondWithoutTruncation() async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
     "trigo-three-hour-\(UUID())")
   defer { try? FileManager.default.removeItem(at: root) }
-  let writer = try CaptureMediaWriter(directory: root)
+  let writer = try await captureWriter(root: root)
   let second = (0..<16_000).flatMap { _ in [Int16(2_048), Int16(-4_096)] }
   for _ in 0..<10_800 { try writer.append(interleaved: second) }
   #expect(throws: CaptureError.durationLimit) {
     try writer.append(interleaved: Array(repeating: 0, count: 32))
   }
-  let media = try writer.finish()
+  let media = try finishCapture(writer)
   #expect(media.durationMs == 10_800_000)
-  #expect(media.objects.count == 180)
-  #expect(media.objects.allSatisfy { $0.byteLength == 3_840_044 })
-  var frames: Int64 = 0
-  for object in media.objects {
-    frames += try AVAudioFile(forReading: root.appendingPathComponent(object.filename)).length
-  }
-  #expect(frames == 172_800_000)
-  let recovery = try CaptureMediaWriter.recover(directory: root)
-  #expect(recovery.media == media)
-  #expect(!recovery.wasInterrupted)
+  #expect(media.cursor.stableBytes == 691_200_068)
+  #expect(try AVAudioFile(forReading: writer.master.mediaURL).length == 172_800_000)
+  let recovery = try CaptureMediaWriter.recover(session: writer.session)
+  #expect(try recovery.finish() == media)
+  let final = try await writer.session.finish(media: media, interruptionReason: nil)
+  #expect(final.manifest.value.durationMs == 10_800_000)
+  #expect(final.manifest.value.tracks.allSatisfy { $0.intervals.count == 1 })
+  masterResources("production-constant-three-hour-final-projection")
+
 }
 
-@Test func oneHourCommonClockFixtureHasNoAccumulatingSourceRelativeDrift() throws {
+@Test func oneHourCommonClockFixtureHasNoAccumulatingSourceRelativeDrift() async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
     "trigo-one-hour-\(UUID())")
   defer { try? FileManager.default.removeItem(at: root) }
+  let writer = try await captureWriter(root: root)
   let engine = try CaptureRecordingEngine(
-    directory: root, origin: .zero,
+    writer: writer, origin: .zero,
     microphone: .init(id: "fixture", name: "Controlled 44.1 kHz microphone"))
   // Independent 48 kHz/44.1 kHz callbacks share host timestamps. A simultaneous
   // 100 ms pulse every second is an external synchronization marker, not implementation math.
@@ -55,21 +55,23 @@ import Testing
   }
   let media = try engine.stop(at: CMTime(value: 3_600, timescale: 1))
   #expect(media.durationMs == 3_600_000)
-  #expect(media.objects.count == 60)
+  #expect(media.cursor.stableBytes == 230_400_068)
   var worstDriftFrames = 0
-  for object in media.objects {
-    let file = try AVAudioFile(forReading: root.appendingPathComponent(object.filename))
-    let buffer = try #require(
-      AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 960_000))
+  let file = try AVAudioFile(forReading: writer.master.mediaURL)
+  let buffer = try #require(
+    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_000))
+  for _ in 0..<3_600 {
     try file.read(into: buffer)
     let channels = try #require(buffer.floatChannelData)
-    for second in 0..<60 {
-      let start = second * 16_000
-      let mic = try #require((start..<(start + 3_200)).first { abs(channels[0][$0]) > 0.1 })
-      let app = try #require((start..<(start + 3_200)).first { abs(channels[1][$0]) > 0.1 })
-      worstDriftFrames = max(worstDriftFrames, abs(mic - app))
-    }
+    let mic = try #require((0..<3_200).first { abs(channels[0][$0]) > 0.1 })
+    let app = try #require((0..<3_200).first { abs(channels[1][$0]) > 0.1 })
+    worstDriftFrames = max(worstDriftFrames, abs(mic - app))
   }
+  let final = try await writer.session.finish(media: media, interruptionReason: nil)
+  #expect(final.manifest.value.durationMs == 3_600_000)
+  let repository = try LocalRepository(root: root, archiveID: writer.session.archiveID)
+  #expect(try repository.finalizedMaster(callID: writer.session.callID) == media)
+  masterResources("production-common-clock-one-hour-final-projection")
   #expect(worstDriftFrames <= 3_200)  // 200 ms at the independently decoded profile rate.
   print("Controlled one-hour source-relative drift: \(Double(worstDriftFrames) / 16) ms")
 }

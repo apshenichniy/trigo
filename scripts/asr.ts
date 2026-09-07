@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -16,6 +15,8 @@ import {
   type AsrProbeLanguageCode,
 } from "../packages/contracts/src/index.ts";
 import { cloudTargetFor, parseCloudStage, readCloudConfiguration } from "./cloud.ts";
+import { readProbeCredential } from "./asr-credential.ts";
+import { commandOptions } from "./arguments.ts";
 
 type ProbeLanguage = AsrProbeLanguageCode;
 
@@ -124,17 +125,6 @@ export function generateProbeFixture(language: ProbeLanguage, output: string): v
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-}
-
-function readOwnerToken(root: string): Redacted.Redacted<string> {
-  const worktree = createHash("sha256").update(root).digest("hex").slice(0, 12);
-  const service = `io.github.apshenichniy.trigo.dev.${worktree}.connection-token`;
-  const result = spawnSync("security", ["find-generic-password", "-s", service, "-w"], {
-    encoding: "utf8",
-  });
-  if (result.status !== 0 || result.stdout.trim() === "")
-    throw new Error("The paired Trigo Dev owner token is unavailable in Keychain");
-  return Redacted.make(result.stdout.trim());
 }
 
 const request = Effect.fn("AsrProbeCli.request")(function* <Success>(
@@ -248,31 +238,36 @@ const main = Effect.gen(function* () {
     catch: (cause) => probeCliError("Cannot resolve the Trigo worktree", cause),
   });
   const [action, ...args] = process.argv.slice(2);
+  if (action !== "generate" && action !== "probe")
+    return yield* probeCliError("Expected asr action: generate or probe");
+  const options = yield* Effect.try({
+    try: () =>
+      commandOptions(
+        `asr ${action}`,
+        args,
+        action === "generate"
+          ? { "--language": "value", "--output": "value" }
+          : { "--stage": "value", "--language": "value", "--handoff": "value" },
+      ),
+    catch: (cause) =>
+      probeCliError(cause instanceof Error ? cause.message : "Invalid ASR arguments", cause),
+  });
   if (action === "generate") {
-    const languageIndex = args.indexOf("--language");
-    const outputIndex = args.indexOf("--output");
-    const language = languageIndex < 0 ? undefined : args[languageIndex + 1];
-    const output = outputIndex < 0 ? undefined : args[outputIndex + 1];
-    if ((language !== "en" && language !== "ru" && language !== "uk") || output === undefined)
+    const language = options.get("--language");
+    const output = options.get("--output");
+    if ((language !== "en" && language !== "ru" && language !== "uk") || typeof output !== "string")
       return yield* probeCliError("generate requires --language en|ru|uk and --output <path>");
     return yield* Effect.try({
       try: () => generateProbeFixture(language, resolve(output)),
       catch: (cause) => probeCliError("Fixture generation failed", cause),
     });
   }
-  if (action !== "probe") return yield* probeCliError("Expected asr action: generate or probe");
   const stage = yield* Effect.try({
     try: () => parseCloudStage(args),
     catch: (cause) => probeCliError("Invalid cloud stage", cause),
   });
   if (stage !== "dev") return yield* probeCliError("Nova-3 probes may target only --stage dev");
-  const languageIndexes = args.flatMap((value: string, index: number) =>
-    value === "--language" ? [index] : [],
-  );
-  if (languageIndexes.length > 1)
-    return yield* probeCliError("Pass at most one --language selector");
-  const selectedLanguage =
-    languageIndexes[0] === undefined ? undefined : args[languageIndexes[0] + 1];
+  const selectedLanguage = options.get("--language");
   if (
     selectedLanguage !== undefined &&
     selectedLanguage !== "en" &&
@@ -282,6 +277,11 @@ const main = Effect.gen(function* () {
     return yield* probeCliError("Use --language en, --language ru, or --language uk");
   const languages: ReadonlyArray<ProbeLanguage> =
     selectedLanguage === undefined ? ["en", "ru", "uk"] : [selectedLanguage];
+  const handoff = options.get("--handoff");
+  if (typeof handoff !== "string")
+    return yield* probeCliError(
+      "Pass --handoff <private dev owner handoff>; probes do not read app Keychain items",
+    );
   const target = cloudTargetFor(stage);
   const configuration = yield* Effect.try({
     try: () => readCloudConfiguration(resolve(root, target.configPath), target),
@@ -289,10 +289,9 @@ const main = Effect.gen(function* () {
   });
   if (configuration.apiUrl === undefined)
     return yield* probeCliError("The dev Cloud API URL is missing");
-  const token = yield* Effect.try({
-    try: () => readOwnerToken(root),
-    catch: (cause) => probeCliError("Cannot read the paired Trigo Dev owner token", cause),
-  });
+  const token = yield* readProbeCredential(resolve(handoff), configuration).pipe(
+    Effect.mapError(() => probeCliError("Cannot read a matching dev owner token handoff")),
+  );
   return yield* probe(configuration.apiUrl, token, languages);
 }).pipe(
   Effect.provide(FetchHttpClient.layer),
