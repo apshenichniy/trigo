@@ -11,13 +11,9 @@ private struct StartupAudioPayload: @unchecked Sendable {
   let sample: CMSampleBuffer
 }
 
-private final class StartupAudioSequence: @unchecked Sendable {
-  // Only the callback queue accesses this counter.
-  var next = 0
-}
-
 /// Native Start may emit audio before its acknowledgement. This transport exercises
-/// that real facade/sink boundary with paced synthetic PCM and no capture permissions.
+/// that real facade/sink boundary with finite synthetic PCM and no capture permissions.
+/// Test-driven batches isolate startup correctness from the full suite's CPU scheduling.
 @MainActor final class StartupAudioTransport: CaptureTransport {
   let role: MediaSourceRole
   var holdsStart: Bool
@@ -26,7 +22,7 @@ private final class StartupAudioSequence: @unchecked Sendable {
   private var pending: CheckedContinuation<Void, Never>?
   private var entered = false
   private var observers: [CheckedContinuation<Void, Never>] = []
-  private var producer: DispatchSourceTimer?
+  private var acceptsDelivery = false
   private let payload: StartupAudioPayload
 
   init(role: MediaSourceRole, holdsStart: Bool = false) throws {
@@ -34,7 +30,7 @@ private final class StartupAudioSequence: @unchecked Sendable {
     self.holdsStart = holdsStart
     payload = .init(
       sample: try controlledAudioBuffer(
-        sampleRate: 48_000, frames: 480, time: .zero, value: 0.25,
+        sampleRate: 48_000, frames: 4_800, time: .zero, value: 0.25,
         channels: role == .application ? 2 : 1))
   }
 
@@ -45,37 +41,8 @@ private final class StartupAudioSequence: @unchecked Sendable {
   }
 
   func startCapture() async throws {
-    let sink = try #require(sink)
-    let streamID = ObjectIdentifier(self)
-    let sequence = StartupAudioSequence()
-    let payload = payload
-    let role = role
-    let origin = CMClockGetTime(CMClockGetHostTimeClock())
-    let timer = DispatchSource.makeTimerSource(queue: sink.callbackQueue)
-    timer.schedule(
-      deadline: .now() + .milliseconds(10), repeating: .milliseconds(10),
-      leeway: .nanoseconds(0))
-    timer.setEventHandler { @Sendable in
-      var timing = CMSampleTimingInfo(
-        duration: CMTime(value: 1, timescale: 48_000),
-        presentationTimeStamp: CMTimeAdd(
-          origin, CMTime(value: Int64(sequence.next), timescale: 100)),
-        decodeTimeStamp: .invalid)
-      sequence.next += 1
-      var sample: CMSampleBuffer?
-      let status = CMSampleBufferCreateCopyWithNewTiming(
-        allocator: kCFAllocatorDefault, sampleBuffer: payload.sample,
-        sampleTimingEntryCount: 1, sampleTimingArray: &timing, sampleBufferOut: &sample)
-      guard status == noErr, let sample else {
-        Issue.record("Cannot timestamp synthetic PCM")
-        return
-      }
-      sink.enqueue(
-        sample, role: role, streamID: streamID,
-        deliveredAt: CMClockGetTime(CMClockGetHostTimeClock()))
-    }
-    producer = timer
-    timer.resume()
+    _ = try #require(sink)
+    acceptsDelivery = true
     if holdsStart {
       await withCheckedContinuation {
         pending = $0
@@ -85,6 +52,37 @@ private final class StartupAudioSequence: @unchecked Sendable {
     } else {
       signalStart()
     }
+  }
+
+  func deliverBatch() async throws {
+    guard acceptsDelivery, let sink else { return }
+    let streamID = ObjectIdentifier(self)
+    let payload = payload
+    let role = role
+    let accepted = await withCheckedContinuation { continuation in
+      sink.callbackQueue.async {
+        let deliveredAt = CMClockGetTime(CMClockGetHostTimeClock())
+        var timing = CMSampleTimingInfo(
+          duration: CMTime(value: 1, timescale: 48_000),
+          presentationTimeStamp: CMTimeSubtract(deliveredAt, CMTime(value: 1, timescale: 10)),
+          decodeTimeStamp: .invalid)
+        var sample: CMSampleBuffer?
+        let status = CMSampleBufferCreateCopyWithNewTiming(
+          allocator: kCFAllocatorDefault, sampleBuffer: payload.sample,
+          sampleTimingEntryCount: 1, sampleTimingArray: &timing, sampleBufferOut: &sample)
+        guard status == noErr, let sample else {
+          Issue.record("Cannot timestamp synthetic PCM")
+          continuation.resume(returning: false)
+          return
+        }
+        continuation.resume(
+          returning: sink.enqueue(sample, role: role, streamID: streamID, deliveredAt: deliveredAt))
+      }
+    }
+    #expect(accepted)
+    // The callback never waits. The test driver waits outside it, after one 100 ms batch,
+    // so a delayed engine cannot turn this lifecycle test into an ingress overload test.
+    try await sink.perform { _ in () }
   }
 
   func waitForStart() async {
@@ -99,8 +97,7 @@ private final class StartupAudioSequence: @unchecked Sendable {
   }
 
   func stopForRetirement() async throws {
-    producer?.cancel()
-    producer = nil
+    acceptsDelivery = false
   }
 
   private func signalStart() {
@@ -134,6 +131,15 @@ private final class StartupAudioSequence: @unchecked Sendable {
         }, sourceIsAvailable: { _ in true }))
     recorder.onFailure = { [weak self] in self?.failures.append($0) }
     return recorder
+  }
+
+  func deliverBatches(_ count: Int) async throws {
+    for _ in 0..<count {
+      guard failures.isEmpty else { return }
+      try await Task.sleep(for: .milliseconds(100))
+      try await application.deliverBatch()
+      try await microphone.deliverBatch()
+    }
   }
 }
 
@@ -183,14 +189,15 @@ func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedM
     let oldApplication = fixture.application
     let oldSink = try #require(oldApplication.sink)
     let repository = try LocalRepository(root: root, archiveID: archiveID)
-    // Exceed the two-second reorder window while the native acknowledgement stays pending.
-    try await Task.sleep(for: .milliseconds(2800))
+    // Exceed the two-second reorder window with finite input while Start remains pending.
+    try await fixture.deliverBatches(28)
     let confirmed = try repository.confirmedMediaCursor(callID: firstSession.callID)
     #expect((confirmed?.frames ?? 0) >= 16_000)
     #expect(recorder.phase == .starting)
     #expect(pending.hasPendingStart)
     #expect(fixture.failures.isEmpty)
     #expect(!oldSink.ingressStatistics.rejected)
+    #expect(oldSink.ingressStatistics.maximumPendingSourceSeconds <= 0.100_001)
     if let confirmed {
       let spans = try repository.captureIntervals(callID: firstSession.callID, through: confirmed)
       #expect(spans[0].allSatisfy { $0.state == .unavailable })
@@ -232,6 +239,7 @@ func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedM
     await fixture.microphone.waitForStart()
     let session = try #require(recorder.session)
     let repository = try LocalRepository(root: root, archiveID: archiveID)
+    try await fixture.deliverBatches(5)
     let deadline = ContinuousClock.now.advanced(by: .seconds(2))
     var beforeFrames: Int64 = 0
     while beforeFrames == 0, ContinuousClock.now < deadline, fixture.failures.isEmpty {
@@ -244,10 +252,10 @@ func pendingNativeStartCommitsApplicationAudioAndStopFencesLateDelivery(delayedM
     fixture.microphone.acknowledgeStart()
     try await attempt.value
     #expect(recorder.phase == .recording)
-    try await Task.sleep(for: .milliseconds(250))
+    try await fixture.deliverBatches(3)
     // Use the existing recording-only control admission; pending Start admits no new UI controls.
     try await recorder.setMicrophoneEnabled(false)
-    try await Task.sleep(for: .milliseconds(250))
+    try await fixture.deliverBatches(3)
     let result = try #require(try await recorder.stop())
     let final = try #require(try repository.finalizedMaster(callID: session.callID))
     let spans = try repository.captureIntervals(callID: session.callID, through: final.cursor)
