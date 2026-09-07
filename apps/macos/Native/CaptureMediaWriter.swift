@@ -13,10 +13,6 @@ public final class CaptureMediaWriter {
   public let session: CaptureArchiveSession
   let master: RecoverableMediaMaster
   private let repository: LocalRepository
-  #if DEBUG
-    // TEMP-57-OVERFLOW: separate recoverable master I/O from SQLite publication.
-    var diagnostics: CaptureOverflowDiagnostics?
-  #endif
   private var failed = false
   private let appendingAllowed: Bool
   public var durationMs: Int { Int(master.cursor.frames / 16) }
@@ -72,9 +68,6 @@ public final class CaptureMediaWriter {
     else { throw CaptureError.durationLimit }
     let start = durationMs
     let end = start + interleaved.count / 32
-    #if DEBUG
-      diagnostics?.record(.init(kind: .writerStart, frames: interleaved.count / 2))
-    #endif
     do {
       let commit = try master.append(
         interleaved: interleaved,
@@ -84,17 +77,8 @@ public final class CaptureMediaWriter {
         applicationIntervals: applicationIntervals ?? [
           .init(startMs: start, endMs: end, state: .recorded)
         ])
-      #if DEBUG
-        diagnostics?.record(.init(kind: .masterAppendFinish))
-      #endif
       try repository.commitMediaProgress(commit)
-      #if DEBUG
-        diagnostics?.record(.init(kind: .sqliteCommitFinish))
-      #endif
     } catch {
-      #if DEBUG
-        diagnostics?.record(.init(kind: .writerFailed))
-      #endif
       failed = true
       throw error
     }

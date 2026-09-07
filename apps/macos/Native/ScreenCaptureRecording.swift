@@ -82,11 +82,6 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     guard phase == .idle, pendingStart == nil, !retirement.hasPending else {
       throw CaptureStartFailure.alreadyRecording
     }
-    #if DEBUG
-      // TEMP-57-OVERFLOW: target one eligible attempt, including same-process reuse.
-      let diagnostics = CaptureOverflowDiagnostics.nextAttempt()
-      defer { if sink == nil { diagnostics?.finish() } }
-    #endif
     let attempt = CaptureStartAttempt()
     pendingStart = attempt
     var allocated: CaptureArchiveSession?
@@ -140,9 +135,6 @@ public enum ScreenCapturePhase: Equatable, Sendable {
           await self?.interrupt(reason)
         }
       })
-    #if DEBUG
-      output.installDiagnostics(diagnostics)
-    #endif
     sink = output
     phase = .starting
     let delegate = CaptureStreamDelegate { [weak self] id in
@@ -162,13 +154,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       // Native Start can deliver application audio before either stream acknowledges.
       // Keep the bounded timeline durable while those acknowledgements remain pending.
       output.startClock()
-      #if DEBUG
-        output.diagnostics?.record(.init(kind: .nativeStart, role: .application))
-      #endif
       try await stream.startCapture()
-      #if DEBUG
-        output.diagnostics?.record(.init(kind: .nativeAcknowledged, role: .application))
-      #endif
       try checkStart(attempt)
       if let microphone { await replaceMicrophone(microphone) }
       try checkStart(attempt)
@@ -362,13 +348,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       microphoneStream = stream
       try stream.addCaptureOutput(output, type: .microphone, queue: output.callbackQueue)
       output.acceptMicrophoneStream(stream)
-      #if DEBUG
-        output.diagnostics?.record(.init(kind: .nativeStart, role: .microphone))
-      #endif
       try await stream.startCapture()
-      #if DEBUG
-        output.diagnostics?.record(.init(kind: .nativeAcknowledged, role: .microphone))
-      #endif
       guard owns(output), microphoneStream.map(ObjectIdentifier.init) == ObjectIdentifier(stream)
       else {
         try await retirement.retire(stream)
@@ -432,15 +412,6 @@ private final class CaptureStreamDelegate: NSObject, SCStreamDelegate, @unchecke
 final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   let queue: DispatchQueue
   let callbackQueue = DispatchQueue(label: "trigo.capture.ingress", qos: .userInteractive)
-  #if DEBUG
-    // TEMP-57-OVERFLOW: assigned before capture outputs are registered, then immutable.
-    private(set) var diagnostics: CaptureOverflowDiagnostics?
-    func installDiagnostics(_ value: CaptureOverflowDiagnostics?) {
-      diagnostics = value
-      engine.diagnostics = value
-      ingress.diagnostics = value
-    }
-  #endif
   private var ingress: CaptureAudioIngress!
   private let engine: CaptureRecordingEngine
   private let routing: CaptureAudioRouting
@@ -486,23 +457,11 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   func acceptMicrophoneStream(_ stream: (any CaptureTransport)?) {
     let id = stream.map(ObjectIdentifier.init)
     ingress.select(id, for: .microphone)
-    #if DEBUG
-      diagnostics?.record(
-        .init(
-          kind: .streamSelection, role: .microphone,
-          code: id == nil ? 0 : 1), stream: id)
-    #endif
   }
 
   func acceptApplicationStream(_ stream: (any CaptureTransport)?) {
     let id = stream.map(ObjectIdentifier.init)
     ingress.select(id, for: .application)
-    #if DEBUG
-      diagnostics?.record(
-        .init(
-          kind: .streamSelection, role: .application,
-          code: id == nil ? 0 : 1), stream: id)
-    #endif
   }
 
   func startClock() {
@@ -525,10 +484,6 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   func advanceClock(at time: CMTime) throws {
     dispatchPrecondition(condition: .onQueue(queue))
     guard !failed else { return }
-    #if DEBUG
-      diagnostics?.record(.init(kind: .clockStart))
-      defer { diagnostics?.record(.init(kind: .clockFinish)) }
-    #endif
     try engine.advance(at: time, pendingAudioAt: ingress.earliestPendingTime)
     onSnapshot(engine.snapshot)
   }
@@ -577,10 +532,6 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
     FinalizedMediaMaster, CaptureRecordingSnapshot
   ) {
     dispatchPrecondition(condition: .onQueue(queue))
-    #if DEBUG
-      diagnostics?.record(.init(kind: .stop))
-      defer { diagnostics?.finish() }
-    #endif
     ingress.finishPending()
     let master = try engine.stop(at: time, reason: reason)
     return (master, engine.snapshot)
@@ -601,9 +552,6 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
 
   private func fail(_ reason: String) {
     guard !failed else { return }
-    #if DEBUG
-      diagnostics?.record(.init(kind: .failure, outcome: .init(failure: reason)))
-    #endif
     failed = true
     timer?.cancel()
     timer = nil

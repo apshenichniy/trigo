@@ -13,10 +13,6 @@ public struct CaptureRecordingSnapshot: Sendable, Equatable {
 /// The production sink and controlled fixtures use this same synchronous boundary.
 /// It has no TCC/UI/stream-opening side effects and cannot restart after termination.
 public final class CaptureRecordingEngine {
-  #if DEBUG
-    // TEMP-57-OVERFLOW: queue-confined phase markers, no PCM is observed.
-    var diagnostics: CaptureOverflowDiagnostics? { didSet { writer.diagnostics = diagnostics } }
-  #endif
   private let origin: CMTime
   private let writer: CaptureMediaWriter
   private let timeline: CaptureTimeline
@@ -48,9 +44,6 @@ public final class CaptureRecordingEngine {
     }
     let decoded = try (role == .microphone ? microphoneDecoder : applicationDecoder).decode(
       sample, origin: origin)
-    #if DEBUG
-      diagnostics?.record(.init(kind: .decodeFinish, role: role))
-    #endif
     if role == .microphone && decoded.startFrame < microphoneEpochFrame { return }
     try timeline.append(role: role, startFrame: decoded.startFrame, samples: decoded.samples)
   }
@@ -79,12 +72,6 @@ public final class CaptureRecordingEngine {
     microphoneDecoder = try CaptureAudioDecoder()
     microphoneEpochFrame = try relativeMs(time) * MediaMasterProfile.framesPerMs
     snapshot.microphoneEnabled = enabled
-    #if DEBUG
-      diagnostics?.record(
-        .init(
-          kind: .microphonePolicy,
-          code: (enabled ? 1 : 0) | (snapshot.microphone != nil ? 2 : 0)))
-    #endif
   }
 
   public func microphoneChanged(_ microphone: CaptureMicrophone?, at time: CMTime) throws {
@@ -93,12 +80,6 @@ public final class CaptureRecordingEngine {
     try timeline.setMicrophoneAvailable(microphone != nil, atMs: relativeMs(time))
     microphoneDecoder = try CaptureAudioDecoder()
     snapshot.microphone = microphone
-    #if DEBUG
-      diagnostics?.record(
-        .init(
-          kind: .microphonePolicy,
-          code: (snapshot.microphoneEnabled ? 1 : 0) | (microphone != nil ? 2 : 0)))
-    #endif
   }
 
   public func stop(at time: CMTime, reason: String? = nil) throws -> FinalizedMediaMaster {
