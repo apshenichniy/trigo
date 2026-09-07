@@ -111,6 +111,8 @@ vendored source and imported agent skills.
 
 All commands use `bun run <command>` from the checkout root and propagate errors.
 Root doctor/format/lint/typecheck/test/build/check commands take no arguments.
+For quick checks, explicit native suites, timing interpretation and CI selection,
+see [verification](verification.md).
 Wrappers reject unknown options, duplicate selectors and missing values rather
 than silently ignoring them. Use separate `--option value` arguments; options
 are not forwarded to Xcode or Alchemy. Vitest component commands (`test:unit` and
@@ -147,9 +149,11 @@ are not forwarded to Xcode or Alchemy. Vitest component commands (`test:unit` an
 
 The full check fails on Linux rather than silently skipping macOS. Verification
 may create ignored build outputs/caches; it must not rewrite tracked sources or
-locks. CI runs both jobs on every PR and `main` change. Required merge checks must
-be configured separately in repository rules; a green workflow does not prove
-that branch protection exists. Merge/deployment require the owner's instruction.
+locks. CI starts on every PR and `main` change and selects the affected component
+checks after the protected `All checks` migration described in
+[verification](verification.md). Required merge checks must be configured
+separately in repository rules; a green workflow does not prove that branch
+protection exists. Merge/deployment require the owner's instruction.
 Cloud commands are never part of `doctor`, `check`, `dev`, or offline CI; their
 credentials, recovery procedure and acceptance sequence are documented separately
 in [Cloud operations](cloud.md).
@@ -240,8 +244,9 @@ loopback bridge. Personal builds retain default ATS. Redirects are rejected.
 available port). The runtime binds only to `127.0.0.1` and fails on collisions.
 A per-launch run ID verifies the selected process. On macOS the launcher denies
 external networking for both the entire Alchemy/workerd child process tree and
-the optional native-client test execution. The launcher first builds the current
-locked native tests using the same command as `check:macos`, then runs them with
+the optional native-client test execution. The launcher uses its parent check's
+verified current-source build, or builds the locked native tests itself when run
+independently, then runs them with
 `--skip-build` inside the outer sandbox. That execution disables only SwiftPM's
 nested manifest sandbox; the outer network-denial profile stays active. Workers
 pool tests independently deny outbound requests. Linux keeps the explicit local
@@ -270,11 +275,14 @@ as a production API.
 
 ## Native variants and signing
 
-The native check runs the complete native test suite in Release so long-call
-fixtures retain their full duration at optimized speed. The separate Swift
-contract suite and both app builds remain Debug. Each test invocation follows a
-successful build of current sources; restored build products never skip that
-step. See [issue #49 evidence](acceptance-49.md) for timings and cache boundaries.
+The native check runs every native suite in Release so long-call fixtures retain
+their full duration at optimized speed. The separate Swift contract suite and
+both app builds remain Debug. A current-source build precedes suite discovery;
+the suite groups and parent check's native smoke reuse that validated build.
+Resource proofs execute in separate processes. Standalone native smoke builds
+current sources itself. See [verification](verification.md) for current selection,
+reuse and cache behavior, and [issue #49 evidence](acceptance-49.md) for the earlier
+cache baseline.
 
 `macos:setup` restores the generated project lock and resolves the locked SwiftPM
 and Xcode graphs. It is distinct from `macos:dependencies`, which intentionally

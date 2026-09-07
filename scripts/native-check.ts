@@ -1,5 +1,23 @@
 import { resolve } from "node:path";
-import { timedRun } from "./timing.ts";
+import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { timed, timedRun, timingEnvironment, timingRunId } from "./timing.ts";
+import { toolOutput } from "./toolchain.ts";
+import {
+  assertNativeTestOutput,
+  exactTestFilter,
+  nativeTestName,
+  parseNativeTests,
+  planNativeTests,
+  type NativeSuite,
+} from "./native-suites.ts";
+import {
+  artifactReceiptMatches,
+  buildCurrentArtifact,
+  nativeBuildIdentity,
+  supportsBuildReuse,
+} from "./build-reuse.ts";
 
 export const swiftPackages = [
   { path: "packages/contracts", configuration: "debug" },
@@ -17,19 +35,114 @@ export function lockedSwiftArguments(path: string): string[] {
   ];
 }
 
-export function swiftTests(execute = timedRun): void {
-  for (const { path, configuration } of swiftPackages) {
-    const args = [...lockedSwiftArguments(path), "--configuration", configuration];
-    // Always check current sources before executing tests, including exact cache hits.
-    // Match swift test's testable imports in Release as well as Debug.
-    execute(`${path} ${configuration} build tests`, [
-      "swift",
-      "build",
-      ...args,
-      "--build-tests",
-      "-Xswiftc",
-      "-enable-testing",
-    ]);
-    execute(`${path} ${configuration} test`, ["swift", "test", ...args, "--skip-build"]);
+export function swiftTestBuild(path: string, configuration: string, execute = timedRun): void {
+  // Always check current sources, including exact build-cache hits. Match testable
+  // imports in Release as well as Debug before any --skip-build execution/discovery.
+  execute(`${path} ${configuration} build tests`, [
+    "swift",
+    "build",
+    ...lockedSwiftArguments(path),
+    "--configuration",
+    configuration,
+    "--build-tests",
+    "-Xswiftc",
+    "-enable-testing",
+  ]);
+}
+
+export function swiftContractTests(execute = timedRun): void {
+  swiftTestBuild("packages/contracts", "debug", execute);
+  execute("packages/contracts debug test", [
+    "swift",
+    "test",
+    ...lockedSwiftArguments("packages/contracts"),
+    "--configuration",
+    "debug",
+    "--skip-build",
+  ]);
+}
+
+const nativeArtifact = () => resolve("apps/macos/.build/release/TrigoNativePackageTests.xctest");
+const nativeIdentity = () =>
+  nativeBuildIdentity("native-tests-release", ["--build-tests", "-Xswiftc", "-enable-testing"]);
+
+function buildNativeTests(): string {
+  const receipt = resolve(`.local/build-receipts/native-${randomUUID()}.json`);
+  buildCurrentArtifact(
+    {
+      receipt,
+      artifact: nativeArtifact(),
+      identity: nativeIdentity(),
+      reuse: false,
+      owner: timingRunId(),
+    },
+    () => swiftTestBuild("apps/macos", "release"),
+    () => {
+      if (!existsSync(nativeArtifact())) throw new Error("Current native test bundle is missing");
+    },
+  );
+  return receipt;
+}
+
+export function canReuseNativeTests(receipt: string): boolean {
+  return (
+    supportsBuildReuse() &&
+    artifactReceiptMatches(receipt, nativeIdentity()(), nativeArtifact(), timingRunId())
+  );
+}
+
+function runNativeGroup(phase: string, command: string[], resourceTest?: string): void {
+  timed(
+    phase,
+    () => {
+      const result = spawnSync(command[0]!, command.slice(1), {
+        encoding: "utf8",
+        maxBuffer: 16 * 1024 * 1024,
+        env: timingEnvironment(),
+      });
+      process.stdout.write(result.stdout ?? "");
+      process.stderr.write(result.stderr ?? "");
+      if (result.error) throw result.error;
+      if (result.status !== 0)
+        throw new Error(`${phase} failed (${result.status ?? result.signal})`);
+      assertNativeTestOutput(`${result.stdout}\n${result.stderr}`, resourceTest);
+    },
+    "release",
+  );
+}
+
+const nativeOperations = {
+  execute: timedRun,
+  buildNative: buildNativeTests,
+  discover: toolOutput,
+  test: runNativeGroup,
+};
+
+export function nativeTests(
+  options: { suite?: NativeSuite; filter?: string } = {},
+  operations = nativeOperations,
+): string {
+  const receipt = operations.buildNative();
+  const args = [...lockedSwiftArguments("apps/macos"), "--configuration", "release"];
+  const tests = parseNativeTests(
+    operations.discover(["swift", "test", ...args, "list", "--skip-build"]),
+  );
+  const plan = planNativeTests(tests, options.suite ?? "all", options.filter);
+  console.log(
+    `Native selection: ${options.suite ?? "all"}; ${plan.reduce((count, group) => count + group.tests.length, 0)}/${tests.length} discovered tests; ${plan.length} process groups.`,
+  );
+  for (const group of plan) {
+    const resourceTest = group.suite === "resource" ? nativeTestName(group.tests[0]!) : undefined;
+    operations.test(
+      `Native ${group.suite}${resourceTest ? ` ${resourceTest}` : ""}`,
+      ["swift", "test", ...args, "--skip-build", "--filter", exactTestFilter(group.tests)],
+      resourceTest,
+    );
   }
+  return receipt;
+}
+
+export function swiftTests(operations = nativeOperations): string {
+  swiftContractTests(operations.execute);
+  return nativeTests({}, operations);
 }

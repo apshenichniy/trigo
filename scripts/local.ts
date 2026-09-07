@@ -6,8 +6,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
 import { validateDocument } from "../packages/contracts/src/index.ts";
 import { localConfiguration, localWorkerEnvironment } from "./local-configuration.ts";
-import { lockedSwiftArguments } from "./native-check.ts";
+import { canReuseNativeTests, lockedSwiftArguments } from "./native-check.ts";
 import { commandOptions } from "./arguments.ts";
+import { beginTiming, timedAsync, timingEnvironment } from "./timing.ts";
+import { assertNativeTestOutput } from "./native-suites.ts";
 const options = commandOptions(
   "local dev (cloud stages and resource configuration are unavailable)",
   process.argv.slice(2),
@@ -25,6 +27,7 @@ if (nativeClient && !testing)
   );
 if (nativeClient && process.platform !== "darwin")
   throw new Error("Native local acceptance requires macOS");
+beginTiming(testing ? "test:local" : "dev");
 const id = createHash("sha256").update(root).digest("hex").slice(0, 12);
 const requestedPort = Number(process.env.TRIGO_LOCAL_PORT ?? (testing ? 0 : 19371));
 if (
@@ -146,23 +149,40 @@ async function status() {
   return value;
 }
 async function nativeAcceptance() {
-  const env = { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR };
-  // Use the same current-source test build command as the full native gate.
-  const build = spawn(
-    "swift",
-    [
-      "build",
-      ...lockedSwiftArguments("apps/macos"),
-      "--configuration",
+  const env = timingEnvironment({
+    PATH: process.env.PATH,
+    TMPDIR: process.env.TMPDIR,
+    DEVELOPER_DIR: process.env.DEVELOPER_DIR,
+  });
+  const receipt = process.env.TRIGO_NATIVE_BUILD_RECEIPT;
+  if (receipt && canReuseNativeTests(receipt)) {
+    console.log("Reused the parent check's verified current-source native test build.");
+  } else
+    await timedAsync(
+      "Local native current-source build",
+      async () => {
+        // Use the same current-source test build command as the full native gate.
+        const build = spawn(
+          "swift",
+          [
+            "build",
+            ...lockedSwiftArguments("apps/macos"),
+            "--configuration",
+            "release",
+            "--build-tests",
+            "-Xswiftc",
+            "-enable-testing",
+          ],
+          { cwd: root, env, stdio: "inherit" },
+        );
+        const buildCode = await new Promise<number | null>((done, reject) => {
+          build.once("error", reject);
+          build.once("exit", done);
+        });
+        if (buildCode !== 0) throw new Error(`Native local acceptance build failed: ${buildCode}`);
+      },
       "release",
-      "--build-tests",
-      "-Xswiftc",
-      "-enable-testing",
-    ],
-    { cwd: root, env, stdio: "inherit" },
-  );
-  const buildCode = await new Promise<number | null>((done) => build.once("exit", done));
-  if (buildCode !== 0) throw new Error(`Native local acceptance build failed: ${buildCode}`);
+    );
   const args = [
     "test",
     "--skip-build",
@@ -175,21 +195,40 @@ async function nativeAcceptance() {
     "--filter",
     "LocalServerAcceptanceTests",
   ];
-  const child = spawn(
-    "/usr/bin/sandbox-exec",
-    ["-f", resolve(root, "scripts/offline.sb"), "swift", ...args],
-    {
-      cwd: root,
-      env: {
-        ...env,
-        TRIGO_LOCAL_ACCEPTANCE_CONFIG: configurationPath,
-        TRIGO_LOCAL_ACCEPTANCE_WORKTREE: id,
-      },
-      stdio: "inherit",
+  await timedAsync(
+    "Native local transport acceptance",
+    async () => {
+      const child = spawn(
+        "/usr/bin/sandbox-exec",
+        ["-f", resolve(root, "scripts/offline.sb"), "swift", ...args],
+        {
+          cwd: root,
+          env: {
+            ...env,
+            TRIGO_LOCAL_ACCEPTANCE_CONFIG: configurationPath,
+            TRIGO_LOCAL_ACCEPTANCE_WORKTREE: id,
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+      let output = "";
+      child.stdout.on("data", (data: Buffer) => {
+        process.stdout.write(data);
+        output = (output + data.toString()).slice(-256 * 1024);
+      });
+      child.stderr.on("data", (data: Buffer) => {
+        process.stderr.write(data);
+        output = (output + data.toString()).slice(-256 * 1024);
+      });
+      const code = await new Promise<number | null>((done, reject) => {
+        child.once("error", reject);
+        child.once("close", done);
+      });
+      if (code !== 0) throw new Error(`Native local transport acceptance failed: ${code}`);
+      assertNativeTestOutput(output);
     },
+    "release",
   );
-  const code = await new Promise<number | null>((done) => child.once("exit", done));
-  if (code !== 0) throw new Error(`Native local transport acceptance failed: ${code}`);
 }
 try {
   await ready();

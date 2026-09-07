@@ -11,7 +11,12 @@
       }
     },
     {
-      "files": ["scripts/commands.ts", "scripts/commands.test.ts", "scripts/local.ts"],
+      "files": [
+        "scripts/commands.ts",
+        "scripts/commands.test.ts",
+        "scripts/local.ts",
+        "scripts/timing.ts"
+      ],
       "rules": {
         "effecttsgo/async-function": "off"
       }

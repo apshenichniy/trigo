@@ -16,7 +16,8 @@ import { homedir } from "node:os";
 import { run } from "./process.ts";
 import { restoreLock } from "./macos-lock.ts";
 import { lockedSwiftArguments, swiftPackages } from "./native-check.ts";
-import { timedRun } from "./timing.ts";
+import { beginTiming, timedRun } from "./timing.ts";
+import { buildCurrentArtifact, nativeBuildIdentity } from "./build-reuse.ts";
 import { readLocalConfiguration } from "./local-configuration.ts";
 import {
   assertSupportedReplacement,
@@ -48,6 +49,7 @@ const signing = nativeSigning(action, process.env.TRIGO_SIGNING_TEAM, adHoc);
 requireNativeTools();
 const root = realpathSync(new URL("..", import.meta.url).pathname);
 process.chdir(root);
+beginTiming(`macos:${action}`);
 const scheme = variant === "dev" ? "Trigo Dev" : "Trigo";
 const project = "apps/macos/Trigo.xcodeproj";
 const canonical = "apps/macos/Locks/Package.resolved";
@@ -119,7 +121,11 @@ if (action === "dependencies") {
         "-skipPackageUpdates",
       ]);
     } else {
-      timedRun(`${scheme} ${action === "archive" ? "Release archive" : "Debug build"}`, [
+      const bundle =
+        action === "archive"
+          ? resolve(root, `.local/archives/${scheme}.xcarchive/Products/Applications/${scheme}.app`)
+          : resolve(derived, `Build/Products/Debug/${scheme}.app`);
+      const buildCommand = [
         "xcodebuild",
         "-project",
         project,
@@ -139,48 +145,71 @@ if (action === "dependencies") {
         ...(action === "archive"
           ? ["-archivePath", resolve(root, `.local/archives/${scheme}.xcarchive`), "archive"]
           : ["build"]),
-      ]);
-      const bundle =
-        action === "archive"
-          ? resolve(root, `.local/archives/${scheme}.xcarchive/Products/Applications/${scheme}.app`)
-          : resolve(derived, `Build/Products/Debug/${scheme}.app`);
-      const info = resolve(bundle, "Contents/Info.plist");
-      const bundleId =
-        variant === "dev" ? "io.github.apshenichniy.trigo.dev" : "io.github.apshenichniy.trigo";
-      for (const [key, expected] of [
-        ["CFBundleIdentifier", bundleId],
-        ["TrigoWorktreeID", worktree],
-        [
-          "NSScreenCaptureUsageDescription",
-          "Trigo records audio from your selected application into a local call archive. No screen images are saved.",
-        ],
-        [
-          "NSMicrophoneUsageDescription",
-          "Trigo records your microphone as a separate audio track in your local call archive.",
-        ],
-      ]) {
-        if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
-          throw new Error(`Built app identity mismatch: ${key}`);
-      }
-      const plist: unknown = JSON.parse(
-        toolOutput(["plutil", "-convert", "json", "-o", "-", info]),
+      ];
+      const result = buildCurrentArtifact(
+        {
+          receipt: resolve(
+            root,
+            `.local/build-receipts/app-${variant}-${action === "archive" ? "release" : "debug"}.json`,
+          ),
+          artifact: bundle,
+          identity: nativeBuildIdentity(
+            action === "archive" ? "app-release" : "app-debug",
+            buildCommand,
+          ),
+          reuse: action === "install" || action === "run",
+        },
+        () =>
+          timedRun(
+            `${scheme} ${action === "archive" ? "Release archive" : "Debug build"}`,
+            buildCommand,
+          ),
+        () => {
+          const info = resolve(bundle, "Contents/Info.plist");
+          const bundleId =
+            variant === "dev" ? "io.github.apshenichniy.trigo.dev" : "io.github.apshenichniy.trigo";
+          for (const [key, expected] of [
+            ["CFBundleIdentifier", bundleId],
+            ["TrigoWorktreeID", worktree],
+            [
+              "NSScreenCaptureUsageDescription",
+              "Trigo records audio from your selected application into a local call archive. No screen images are saved.",
+            ],
+            [
+              "NSMicrophoneUsageDescription",
+              "Trigo records your microphone as a separate audio track in your local call archive.",
+            ],
+          ]) {
+            if (toolOutput(["plutil", "-extract", key!, "raw", "-o", "-", info]) !== expected)
+              throw new Error(`Built app identity mismatch: ${key}`);
+          }
+          const plist: unknown = JSON.parse(
+            toolOutput(["plutil", "-convert", "json", "-o", "-", info]),
+          );
+          if (typeof plist !== "object" || plist === null)
+            throw new Error("Built app Info.plist is invalid");
+          const transport =
+            "NSAppTransportSecurity" in plist ? plist.NSAppTransportSecurity : undefined;
+          if (variant === "dev") {
+            if (
+              typeof transport !== "object" ||
+              transport === null ||
+              !("NSAllowsLocalNetworking" in transport) ||
+              transport.NSAllowsLocalNetworking !== true
+            )
+              throw new Error("Dev app must contain the Boolean local-network ATS allowance");
+          } else if (transport !== undefined)
+            throw new Error("Personal app must retain default ATS");
+          if (process.env.TRIGO_SIGNING_TEAM || adHoc) {
+            run(["codesign", "--verify", "--strict", bundle]);
+          }
+          if (readFileSync(nested, "utf8") !== readFileSync(canonical, "utf8"))
+            throw new Error("Xcode changed the restored dependency lock");
+          assertLocksUnchanged(before);
+        },
       );
-      if (typeof plist !== "object" || plist === null)
-        throw new Error("Built app Info.plist is invalid");
-      const transport =
-        "NSAppTransportSecurity" in plist ? plist.NSAppTransportSecurity : undefined;
-      if (variant === "dev") {
-        if (
-          typeof transport !== "object" ||
-          transport === null ||
-          !("NSAllowsLocalNetworking" in transport) ||
-          transport.NSAllowsLocalNetworking !== true
-        )
-          throw new Error("Dev app must contain the Boolean local-network ATS allowance");
-      } else if (transport !== undefined) throw new Error("Personal app must retain default ATS");
-      if (process.env.TRIGO_SIGNING_TEAM || adHoc) {
-        run(["codesign", "--verify", "--strict", bundle]);
-      }
+      if (result === "reused")
+        console.log(`Reused the verified current-source ${scheme} Debug app build.`);
       if (action === "run" || action === "install") {
         const applications = resolve(homedir(), "Applications");
         mkdirSync(applications, { recursive: true });

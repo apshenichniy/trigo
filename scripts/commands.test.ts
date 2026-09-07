@@ -14,6 +14,10 @@ it.each([
   "check",
   "check:server",
   "check:macos",
+  "check:quick",
+  "test:native",
+  "check:files",
+  "check:macos:smoke",
 ])("%s rejects ignored target arguments before executing its operations", (command) => {
   const result = spawnSync("bun", ["run", command, "--stage", "dev"], { encoding: "utf8" });
   expect(result.status).toBe(1);
@@ -23,6 +27,11 @@ it.each([
 });
 
 it.each([
+  ["check:quick", ["--scope", "cloud"], "--scope must be"],
+  ["check:quick", ["--scope"], "Pass a value after --scope"],
+  ["test:native", ["--suite", "quick"], "--suite must be"],
+  ["test:native", ["--suite", "fast", "--suite", "all"], "Pass --suite at most once"],
+  ["test:native", ["--filter", "["], "Invalid regular expression"],
   ["macos:build", ["--variant", "dev", "--variant", "personal"], "Pass --variant at most once"],
   ["macos:build", ["--variant"], "Pass a value after --variant"],
   ["macos:build", ["--local-config", "--ad-hoc"], "Pass a value after --local-config"],
