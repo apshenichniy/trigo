@@ -95,11 +95,11 @@ ${fields.map((field) => `    case ${field.key}`).join("\n")}
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-${fields.map((field) => `    ${field.key} = try container.decode(\n      ${field.type}.self, forKey: .${field.key})`).join("\n")}
+${fields.map((field) => `    self.${field.key} = try container.decode(\n      ${field.type}.self, forKey: .${field.key})`).join("\n")}
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-${fields.map((field) => `    try container.encode(${field.key}, forKey: .${field.key})`).join("\n")}
+${fields.map((field) => `    try container.encode(self.${field.key}, forKey: .${field.key})`).join("\n")}
   }
 }`;
   });

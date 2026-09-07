@@ -82,7 +82,10 @@ extension LocalRepository {
 
   func stageCall(_ document: StoredDocument<CallDocument>) async throws {
     let hash = try await stageDocument(document.storedBytes)
-    let call = document.value
+    try await stageCallRows(document.value, hash: hash)
+  }
+
+  func stageCallRows(_ call: CallDocument, hash: String) async throws {
     let source = call.source
     try await stageRows(
       "INSERT OR IGNORE INTO call_values VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

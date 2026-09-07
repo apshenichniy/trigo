@@ -85,22 +85,37 @@ public struct CaptureArchiveSession: Equatable, Sendable {
 
   public func requestStop(reason: String?) async throws {
     let repository = try LocalRepository(root: root, archiveID: archiveID)
-    try await repository.requestCaptureStop(callID: callID, reason: reason)
+    try repository.requestCaptureStop(callID: callID, reason: reason)
   }
 
-  public func finish(
-    media: CapturedMedia, interruptionReason: String?,
+  public func complete(
+    media: FinalizedMediaMaster?, interruptionReason: String?,
+    associatedWork: OperationIntent? = nil,
     interruption: @escaping @Sendable (CaptureFinalizationPoint) throws -> Void = { _ in }
-  ) async throws -> LocalCallAggregate {
+  ) async throws -> CaptureCompletion {
     try requireCaptureInterruptionReason(interruptionReason)
     let repository = try LocalRepository(root: root, archiveID: archiveID)
-    try await repository.requestCaptureStop(callID: callID, reason: interruptionReason)
+    try repository.requestCaptureStop(callID: callID, reason: interruptionReason)
     try interruption(.afterStopIntent)
-    return try await repository.finalizeCapture(self, media: media, reason: interruptionReason) {
+    return try await repository.completeCapture(
+      self, master: media, reason: interruptionReason, associatedWork: associatedWork
+    ) {
       point in
       if point == .beforeRepositoryCommit { try interruption(.beforeCommit) }
       if point == .afterRepositoryCommit { try interruption(.afterCommit) }
     }
+  }
+
+  /// Explicit aggregate convenience for callers that need the full public document.
+  public func finish(
+    media: FinalizedMediaMaster?, interruptionReason: String?,
+    associatedWork: OperationIntent? = nil,
+    interruption: @escaping @Sendable (CaptureFinalizationPoint) throws -> Void = { _ in }
+  ) async throws -> LocalCallAggregate {
+    _ = try await complete(
+      media: media, interruptionReason: interruptionReason,
+      associatedWork: associatedWork, interruption: interruption)
+    return try await LocalRepository(root: root, archiveID: archiveID).loadCall(callID: callID)
   }
 
   public static func recover(root: URL, archiveID: String, callID: String) async throws
@@ -116,53 +131,64 @@ public struct CaptureArchiveSession: Equatable, Sendable {
   /// SQLite already recovers atomic metadata. This recovery only reconciles the external
   /// media boundary, without replaying the removed sequence of metadata file publications.
   public func recover() async throws -> LocalCallAggregate {
+    _ = try await recoverCompletion()
+    return try await LocalRepository(root: root, archiveID: archiveID).loadCall(callID: callID)
+  }
+
+  public func recoverCompletion() async throws -> CaptureCompletion {
     try await prepare()
     let repository = try LocalRepository(root: root, archiveID: archiveID)
-    let existing = try await repository.loadCall(callID: callID)
-    if existing.manifest.value.audioManifest != nil { return existing }
-    if let sealed = try await repository.resumeLegacyCaptureSeal(callID: callID) { return sealed }
-    let requested = try await repository.captureStopRequest(callID: callID)
-    guard
-      FileManager.default.fileExists(
-        atPath: mediaDirectory.appendingPathComponent("media-checkpoint.json").path)
-    else {
-      return try await finish(
-        media: CapturedMedia(objects: [], durationMs: 0),
-        interruptionReason: requested.map { $0.reason } ?? "process_terminated")
+    if let existing = try repository.captureCompletion(callID: callID) { return existing }
+    let requested = try repository.captureStopRequest(callID: callID)
+    let reason =
+      try requested?.reason ?? repository.captureMediaFailure(callID: callID)
+      ?? (requested == nil ? "process_terminated" : nil)
+    let mediaURL = mediaDirectory.appendingPathComponent("master.caf")
+    let indexURL = mediaDirectory.appendingPathComponent("master.index")
+    if !FileManager.default.fileExists(atPath: mediaURL.path)
+      && !FileManager.default.fileExists(atPath: indexURL.path)
+    {
+      guard try repository.confirmedMediaCursor(callID: callID) == nil else {
+        throw MediaMasterError.confirmedCursorMissing
+      }
+      // Admission can survive without ever creating external media. Publish no invented witness.
+      return try await complete(media: nil, interruptionReason: reason)
     }
-    let recovered = try CaptureMediaWriter.recover(directory: mediaDirectory)
-    return try await finish(
-      media: recovered.media,
-      interruptionReason: requested.map { $0.reason } ?? recovered.interruptionReason)
+    let writer = try CaptureMediaWriter.recover(session: self)
+    try writer.requestStop(reason: reason)
+    let master = try writer.finish()
+    return try await complete(media: master, interruptionReason: reason)
   }
 
   func callBytes(
-    media: CapturedMedia?, reason: String?, version: Int,
+    media: FinalizedMediaMaster?, reason: String?, version: Int,
+    finalized: Bool = false, microphoneIntervals: [CaptureInterval] = [],
+    applicationIntervals: [CaptureInterval] = [],
     reference: AudioManifestReference?
   ) throws -> Data {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions.insert(.withFractionalSeconds)
-    let profile = try MediaProfile.selected()
     let tracks: [AudioTrack] = [
       .init(
         trackId: microphoneTrackID, role: "microphone",
         inputDevice: microphone.map { .init(id: $0.id, name: $0.name) },
-        mediaProfileId: profile.id.rawValue,
-        intervals: intervalDocuments(media?.microphoneIntervals ?? [])),
+        mediaProfileId: MediaMasterProfile.id,
+        intervals: intervalDocuments(microphoneIntervals)),
       .init(
         trackId: applicationTrackID, role: "application", inputDevice: nil,
-        mediaProfileId: profile.id.rawValue,
-        intervals: intervalDocuments(media?.applicationIntervals ?? [])),
+        mediaProfileId: MediaMasterProfile.id,
+        intervals: intervalDocuments(applicationIntervals)),
     ]
     return try Contract.encode(
       CallDocument(
         schemaVersion: 1, archiveId: archiveID, callId: callID, documentVersion: version,
         startedAt: formatter.string(from: startedAt),
-        endedAt: media.map {
-          formatter.string(from: startedAt.addingTimeInterval(Double($0.durationMs) / 1000))
-        },
-        durationMs: media?.durationMs,
-        captureState: media == nil ? "recording" : reason == nil ? "stopped" : "interrupted",
+        endedAt: finalized
+          ? formatter.string(
+            from: startedAt.addingTimeInterval(Double(media?.durationMs ?? 0) / 1000))
+          : nil,
+        durationMs: finalized ? media?.durationMs ?? 0 : nil,
+        captureState: !finalized ? "recording" : reason == nil ? "stopped" : "interrupted",
         interruptionReason: reason,
         source: .init(
           applicationName: source.applicationName, bundleId: source.bundleID,
@@ -172,22 +198,29 @@ public struct CaptureArchiveSession: Equatable, Sendable {
         speakerNames: [:]))
   }
 
-  func audioBytes(_ media: CapturedMedia) throws -> Data {
-    try Contract.encode(
+  func audioBytes(_ master: FinalizedMediaMaster?) throws -> Data {
+    let objects: [AudioObject]
+    if let master, master.cursor.frames > 0 {
+      objects = [
+        .init(
+          objectId: masterID, index: 0, contentType: "audio/x-caf",
+          byteLength: Int(master.cursor.stableBytes), sha256: master.sha256,
+          startMs: 0, endMs: master.durationMs,
+          channelMap: [
+            .init(channelIndex: 0, trackId: microphoneTrackID),
+            .init(channelIndex: 1, trackId: applicationTrackID),
+          ])
+      ]
+    } else {
+      objects = []
+    }
+    return try Contract.encode(
       AudioManifest(
         schemaVersion: 1, callId: callID, manifestId: audioManifestID,
-        durationMs: media.durationMs, mediaProfileId: MediaProfile.selected().id.rawValue,
-        objects: media.objects.map { object in
-          .init(
-            objectId: object.objectID, index: object.index, contentType: "audio/wav",
-            byteLength: object.byteLength, sha256: object.sha256, startMs: object.startMs,
-            endMs: object.endMs,
-            channelMap: [
-              .init(channelIndex: 0, trackId: microphoneTrackID),
-              .init(channelIndex: 1, trackId: applicationTrackID),
-            ])
-        }))
+        durationMs: master?.durationMs ?? 0, mediaProfileId: MediaMasterProfile.id, objects: objects
+      ))
   }
+
 }
 
 private func captureID() -> String { UUID().uuidString.lowercased() }

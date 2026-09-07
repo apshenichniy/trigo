@@ -71,7 +71,13 @@ extension Contract {
   }
   static func validateAudio(_ audio: JSONValue) throws {
     let profile = try MediaProfile.selected()
-    try require(audio["mediaProfileId"].text == profile.id.rawValue)
+    let masterProfile = try CaptureMasterProfile.selected()
+    let master = audio["mediaProfileId"].text == masterProfile.id
+    try require(master || audio["mediaProfileId"].text == profile.id.rawValue)
+    if master {
+      try require(audio["durationMs"].integerValue <= masterProfile.maxCallDurationMs)
+      try require(audio["objects"].items.count == (audio["durationMs"].integerValue == 0 ? 0 : 1))
+    }
     let objects = audio["objects"].items
     try unique(objects.map { $0["objectId"] })
     try unique(objects.map { $0["index"] })
@@ -87,13 +93,18 @@ extension Contract {
       try unique(object["channelMap"].items.map { $0["channelIndex"] })
       try unique(object["channelMap"].items.map { $0["trackId"] })
       let durationMs = object["endMs"].integerValue - object["startMs"].integerValue
-      try require(durationMs <= profile.objectDurationMs)
+      if !master { try require(durationMs <= profile.objectDurationMs) }
       let frameCount = profile.frameCount(durationMs: durationMs)
       try require(
-        object["contentType"].text == profile.contentType.rawValue
-          && object["byteLength"].integerValue == profile.waveByteLength(frameCount: frameCount)
-          && object["byteLength"].integerValue <= profile.maxObjectBytes
-          && object["byteLength"].integerValue <= profile.limits.uploadRequestBytes
+        (master
+          ? object["contentType"].text == masterProfile.contentType
+            && object["index"].integerValue == 0 && object["startMs"].integerValue == 0
+            && object["endMs"].integerValue == audio["durationMs"].integerValue
+            && object["byteLength"].integerValue == masterProfile.headerBytes + durationMs * 64
+          : object["contentType"].text == profile.contentType.rawValue
+            && object["byteLength"].integerValue == profile.waveByteLength(frameCount: frameCount)
+            && object["byteLength"].integerValue <= profile.maxObjectBytes
+            && object["byteLength"].integerValue <= profile.limits.uploadRequestBytes)
           && object["channelMap"].items.count == profile.channels.count
           && profile.channels.allSatisfy { expected in
             object["channelMap"].items.contains {

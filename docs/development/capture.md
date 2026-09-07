@@ -1,12 +1,12 @@
 # Native audio capture
 
-Issue #15 provides a macOS 15+ native library, not the recording UI. The selected
-profile is `trigo-call-wav-s16le-16khz-stereo-60s-v1`, loaded from the shared
-Swift/TypeScript contract: stereo PCM s16le WAVE at 16 kHz, microphone channel 0,
-application channel 1, independently decodable objects of at most 60 seconds,
-and a three-hour explicit capture limit.
+The macOS 15+ capture library records one permanent master per call. The selected
+shared Swift/TypeScript profile is `caf-lpcm-s16le-16000-stereo-v1`: interleaved
+PCM s16le CAF at 16 kHz, microphone channel 0, application channel 1, and an
+explicit three-hour capture limit. The independent WAVE profile remains the
+hosted-provider probe input; it does not define permanent capture files.
 
-## Integration boundary for #16
+## Desktop integration
 
 The desktop entry point first creates `RecordingApplication`, which holds an
 exclusive OS file lock for the lifetime of its variant/worktree namespace. Only
@@ -40,13 +40,14 @@ transport is retired. A new recording cannot overlap the unfinished attempt.
 Failed preparation, writer setup or finalization retains the allocated call ID
 and cannot silently admit a replacement recording.
 Use `retryRecovery()` after correcting the failure. On launch, enumerate local
-calls and use `CaptureArchiveSession.recover(root:callID:)` for capture sessions
+calls and use `CaptureArchiveSession.recoverCompletion()` for admitted sessions
 with unfinished publication; recovery never starts capture. Expose rejected
-checkpoints as errors, not as an empty archive.
+media evidence as errors, not as an empty archive. Production stop/recovery returns
+a compact `CaptureCompletion`, without loading every interval into memory.
 
 Direct archive-library callers can allocate a `CaptureArchiveSession`, retain it,
-then call `prepare()`. Preparation is replay-safe at all three durable boundaries:
-session metadata, initial canonical call and initial lifecycle. The convenience
+then call `prepare()`. Preparation commits session identity, the initial canonical call, lifecycle and
+optional caller work in one SQLite transaction. The convenience
 `begin()` returns `CapturePreparationFailure.session` on a preparation failure.
 Instance `recover()` also works after correcting a failure before the first write;
 static recovery uses the durable session metadata after relaunch. Both finalize
@@ -78,7 +79,13 @@ one output frame of the common host clock. Real gaps, format/origin changes, or
 drift outside that bound reset the converter and re-anchor to source PTS; this
 also prevents filter history from leaking across a discontinuity. The timeline permits a
 bounded two-second reorder window; a 500 ms timer flushes behind a 250 ms delivery
-allowance. Missing samples are silence with unavailable intervals. Physical device
+allowance and waits for already-admitted pending input. The separate callback
+queue admits at most one second per source and 256 audio buffers including
+in-flight work. Each drain processes at most eight buffers before yielding to
+controls; stop freezes admission and drains the bounded remainder before sealing.
+Foreign/replaced streams are rejected before reserving capacity. Overload fails
+explicitly instead of accumulating tasks or buffers. A millisecond with any
+missing source sample is unavailable, and all its source samples become silence. Physical device
 absence takes precedence over muted intervals while mute policy remains unchanged.
 
 Microphone suppression happens before persistence. Policy changes clear pending
@@ -89,24 +96,41 @@ or screen samples enter the writer.
 
 ## Local media and recovery
 
-Each call owns `media/`, `capture-session.json` and `capture-finalization.json`
-beside its canonical call document. Media directories are owner-only. The writer
-syncs PCM fragments of at most one second, then atomically publishes a checkpoint
-with each fragment's length/hash and the durable source intervals. At 60 seconds
-it atomically seals a canonical WAVE object before advancing the checkpoint and
-removing the superseded raw spool. A crash between these steps retains a valid
-prefix, not an assumed wall-clock duration.
+Each call owns only `media/master.caf` and `media/master.index` under its stable
+call identity. The namespace SQLite repository owns admission, progress, stop
+intent, final publication and processing lifecycle. Media directories and files
+are owner-only. Every append applies microphone policy, synchronizes at most one
+second of PCM, synchronizes its integrity/index record, then commits the returned
+certificate to SQLite. There is no minute rollover, raw spool, growing checkpoint
+JSON, separate metadata publication protocol, or legacy sealed-WAVE receipt.
 
-Recovery checks object bounds, headers and hashes, then validates the contiguous
-active-fragment prefix. Uncommitted bytes are ignored; corrupt fragments and later
-tail are rejected. The measured controlled SIGKILL case loses one second, within
-the two-second target. Recovery preserves media and never resumes a session.
+The CAF header is immutable, including its indefinite final data chunk. Finalization
+appends/synchronizes a final index record and never rewrites uploaded media bytes.
+Recovery verifies every complete integrity record and the repository-confirmed
+cursor. It may discard bytes lacking a valid committed record. A terminal,
+complete-sized torn index record is also discardable only after independently
+matching the SQL witness and with at most one append of unindexed PCM. Damage
+at/below that witness, nonterminal index corruption, committed audio corruption
+or a missing repository witness fails explicitly without truncating retained evidence. A fully synchronized external commit whose
+SQLite acknowledgement was lost is reconciled idempotently. Recovered writers
+can finalize/read/extract but cannot accept new recording input.
 
-Finalization stores its immutable intent before publishing the finalized call,
-audio manifest and call reference through `LocalArchive`. Retrying after a crash
-reuses the same object and manifest identities. The independent lifecycle store
-records stopped/interrupted without claiming upload or transcription. Neither
-successful finalization nor tests delete media on a presumed server receipt.
+A known stop intent is committed before external final synchronization. Caller work,
+when supplied, is retained as session finalization intent and becomes runnable only
+with the canonical publication. Final call/audio reference, stable master witness,
+capture lifecycle and associated work commit together. Retrying after process death
+preserves identities, exact snapshot bytes and clean or interrupted stop semantics.
+An unopened capture finalizes with no invented media witness; a zero-frame opened
+master retains its real 68-byte header hash and publishes no audio object.
+
+Final publication streams merged intervals from bounded repository pages into exact
+exchange bytes and stages them in 256 KiB SQLite chunks. The production completion
+path never builds a call-long interval array or revalidates a call-long JSON tree.
+Generated scalar encoding and public contract conformance are checked on shared
+fixtures. Explicit full-aggregate APIs remain available to callers that need them.
+No successful range, extraction or finalization deletes local media. See the
+[downstream media interface](capture-master-interface.md) for stable ranges,
+final evidence, extraction and the future complete-receipt cleanup authority.
 
 ## Permissions and verification limits
 

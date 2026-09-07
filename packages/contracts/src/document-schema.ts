@@ -1,3 +1,4 @@
+import { CaptureMasterProfile } from "./capture-master-profile.ts";
 import { Schema } from "effect";
 import { MediaProfile, MediaSourceRole } from "./media-profile.ts";
 
@@ -64,7 +65,10 @@ export const AudioTrack = Schema.Struct({
   trackId: ExchangeUUID,
   role: MediaSourceRole,
   inputDevice: Schema.NullOr(InputDevice),
-  mediaProfileId: MediaProfile.fields.id,
+  mediaProfileId: Schema.Literals([
+    MediaProfile.fields.id.literal,
+    CaptureMasterProfile.fields.id.literal,
+  ]),
   intervals: Schema.Array(TrackInterval),
 }).annotate({ identifier: "AudioTrack" });
 export interface AudioTrack extends Schema.Schema.Type<typeof AudioTrack> {}
@@ -165,7 +169,10 @@ export interface ChannelMapping extends Schema.Schema.Type<typeof ChannelMapping
 export const AudioObject = Schema.Struct({
   objectId: ExchangeUUID,
   index: NonNegativeInteger,
-  contentType: MediaProfile.fields.contentType,
+  contentType: Schema.Literals([
+    MediaProfile.fields.contentType.literal,
+    CaptureMasterProfile.fields.contentType.literal,
+  ]),
   byteLength: PositiveInteger,
   sha256: SHA256,
   startMs: NonNegativeInteger,
@@ -178,7 +185,10 @@ export const AudioManifest = Schema.Struct({
   callId: ExchangeUUID,
   manifestId: ExchangeUUID,
   durationMs: NonNegativeInteger,
-  mediaProfileId: MediaProfile.fields.id,
+  mediaProfileId: Schema.Literals([
+    MediaProfile.fields.id.literal,
+    CaptureMasterProfile.fields.id.literal,
+  ]),
   objects: Schema.Array(AudioObject),
 }).annotate({ identifier: "AudioManifest" });
 export interface AudioManifest extends Schema.Schema.Type<typeof AudioManifest> {}
@@ -227,6 +237,7 @@ export interface ErrorEnvelope extends Schema.Schema.Type<typeof ErrorEnvelope> 
 export const ErrorEnvelopeSchema = ErrorEnvelope;
 
 export const documentSchemas = {
+  CaptureMasterProfile,
   CallDocument,
   TranscriptRevision,
   AudioManifest,

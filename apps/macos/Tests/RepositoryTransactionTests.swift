@@ -86,7 +86,9 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
     } == documentCount)
 }
 
-@Test func repositoryLegacySealRetainsAssociatedWorkAcrossUncertainPublication() async throws {
+@Test func repositoryFinalizationIntentRetainsAssociatedWorkAcrossUncertainPublication()
+  async throws
+{
   let root = repositoryRoot("legacy-seal-work")
   defer { try? FileManager.default.removeItem(at: root) }
   let session = try repositorySession(root)
@@ -96,7 +98,7 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
     callID: session.callID, kind: .upload, payload: Data("sealed media".utf8))
   await #expect(throws: RepositoryInjectedFailure.self) {
     try await repository.finalizeCapture(
-      session, media: .init(objects: [], durationMs: 0), reason: "process_terminated",
+      session, master: nil, reason: "process_terminated",
       associatedWork: work
     ) {
       if $0 == .beforeRepositoryCommit { throw RepositoryInjectedFailure() }
@@ -110,7 +112,7 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
   let alternate = repositoryIntent(callID: session.callID, kind: .upload)
   await #expect(throws: LocalPersistenceError.operationConflict(alternate.operationID)) {
     try await repository.finalizeCapture(
-      session, media: .init(objects: [], durationMs: 0), reason: "process_terminated",
+      session, master: nil, reason: "process_terminated",
       associatedWork: alternate)
   }
 }
@@ -164,7 +166,7 @@ func repositoryCaptureFinalizationAndWorkHaveOneCommit(point: PersistenceInterru
     root: root, archiveID: repositoryArchiveID, interruption: fault.callAsFunction)
   await #expect(throws: RepositoryInjectedFailure.self) {
     try await repository!.finalizeCapture(
-      session, media: .init(objects: [], durationMs: 0), reason: "system_sleep",
+      session, master: nil, reason: "system_sleep",
       associatedWork: work)
   }
   repository = nil
@@ -178,23 +180,24 @@ func repositoryCaptureFinalizationAndWorkHaveOneCommit(point: PersistenceInterru
   #expect(call.interruptionReason == lifecycle.capture.failure?.code)
   #expect((try await reopened.operation(work.operationID) != nil) == committed)
   let final = try await reopened.finalizeCapture(
-    session, media: .init(objects: [], durationMs: 0), reason: "system_sleep", associatedWork: work)
+    session, master: nil, reason: "system_sleep", associatedWork: work)
   let repeated = try await reopened.finalizeCapture(
-    session, media: .init(objects: [], durationMs: 0), reason: "system_sleep", associatedWork: work)
+    session, master: nil, reason: "system_sleep", associatedWork: work)
   #expect(final.manifest.storedBytes == repeated.manifest.storedBytes)
   #expect(try await reopened.lifecycle(callID: session.callID)?.upload.state == .pending)
   #expect(try await reopened.lifecycle(callID: session.callID)?.importState.state == .notAvailable)
+  var conflicting = final.manifest.value
+  conflicting.durationMs = 1
   await #expect(throws: Error.self) {
     try await reopened.finalizeCapture(
-      session, media: .init(objects: [], durationMs: 1), reason: "system_sleep",
-      associatedWork: work)
+      callSnapshot: Contract.encode(conflicting), audioManifest: #require(final.audioManifest))
   }
   let changed = OperationIntent(
     operationID: work.operationID, archiveID: work.archiveID,
     callID: work.callID, kind: .replica, payload: Data([1]))
   await #expect(throws: LocalPersistenceError.operationConflict(work.operationID)) {
     try await reopened.finalizeCapture(
-      session, media: .init(objects: [], durationMs: 0), reason: "system_sleep",
+      session, master: nil, reason: "system_sleep",
       associatedWork: changed)
   }
 }
@@ -311,7 +314,7 @@ func repositoryRevisionImportPublishesEvidenceProjectionLifecycleAndWorkTogether
   await #expect(throws: LocalPersistenceError.captureStateOwnedByRepository) {
     try await repository.publishManifest(
       session.callBytes(
-        media: .init(objects: [], durationMs: 0), reason: nil, version: 2, reference: nil))
+        media: nil, reason: nil, version: 2, finalized: true, reference: nil))
   }
   #expect(try await repository.lifecycle(callID: session.callID)?.capture.state == .recording)
 }

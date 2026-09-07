@@ -54,20 +54,23 @@ per-track recorded-activity UI is follow-up work, not a blocker for this slice.
 
 ## Local recovery
 
-After restoring the retained archive binding, recovery discovers only direct
-call directories containing `capture-session.json`. Before invoking recovery it
-validates the canonical directory call ID, matching metadata call ID, exact
-standardized namespace root and retained archive ID. Linked entries/inputs,
-foreign identities and corrupt metadata are rejected visibly. Discovery does
-not recurse into unrelated directories, delete files or resume capture.
+After restoring the retained archive binding, recovery pages the namespace SQLite
+repository for admitted recording sessions. It validates direct call/media paths
+and their retained archive, call and root identity before reconciling the external
+master. Linked entries, foreign identities and corrupt committed evidence are
+rejected visibly. Discovery does not recurse into unrelated directories, delete
+media or resume capture.
 
-Incomplete publication/lifecycle state is recovered idempotently. Already
-finalized calls do not count as newly recovered calls on later launches. A
-rejected corrupt media tail is distinguished from full recovery: only the
-verified prefix is accepted and the original retained files remain available.
-Known persisted interruption reasons are shown without inferring new causes.
-Failures block new recording until corrected and retried. This is a recovery
-surface, not an archive browser or deletion interface.
+Incomplete final publication is recovered idempotently. Already finalized calls
+do not count as newly recovered calls on later launches. Bytes without a complete
+integrity record may be discarded. A terminal complete-sized torn record is also
+discardable only above the independently matched SQL witness, with at most one
+append of unindexed PCM. Corruption of witnessed media, an index record at/below
+the witness, a nonterminal record or a missing witness rejects recovery while
+retaining evidence. Known persisted stop
+reasons are shown without inferring new causes. Failures block new recording until
+corrected and retried. This is a recovery surface, not an archive browser or deletion
+interface.
 
 The local retry action is offered only for pending capture recovery or failed
 call recovery. Connection metadata recovery instead shows the connection issue

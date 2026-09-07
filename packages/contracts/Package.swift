@@ -12,6 +12,7 @@ let package = Package(
       resources: [
         .copy("Resources/v1.schema.json"),
         .copy("Resources/media-profile.v1.json"),
+        .copy("Resources/capture-master-profile.v1.json"),
       ]),
     .testTarget(name: "TrigoContractsTests", dependencies: ["TrigoContracts"], path: "Tests"),
   ]

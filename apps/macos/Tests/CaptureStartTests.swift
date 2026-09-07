@@ -99,8 +99,8 @@ func stoppedPendingStartCannotAffectTheNextRecording(lateFailure: Bool, micropho
   }
   try FileManager.default.removeItem(at: root)
   let recovered = try await recorder.retryRecovery()
-  #expect(recovered.manifest.value.callId == callID)
-  #expect(recovered.manifest.value.captureState == "interrupted")
-  #expect(recovered.manifest.value.durationMs == 0)
+  #expect(recovered.call.callID == callID)
+  #expect(recovered.call.captureState == .interrupted)
+  #expect(recovered.call.durationMs == 0)
   #expect(recorder.phase == .idle)
 }

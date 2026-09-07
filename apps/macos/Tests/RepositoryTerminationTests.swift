@@ -44,7 +44,7 @@ func repositorySIGKILLChild() async throws {
     try repository.commitMediaProgress(appendRepositorySecond(writer))
   case "finalize":
     _ = try await repository.finalizeCapture(
-      session, media: .init(objects: [], durationMs: 0), reason: "system_sleep",
+      session, master: nil, reason: "system_sleep",
       associatedWork: work)
   case "import":
     _ = try await repository.importRevision(

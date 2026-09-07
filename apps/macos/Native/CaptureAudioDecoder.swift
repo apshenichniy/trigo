@@ -15,8 +15,7 @@ public final class CaptureAudioDecoder {
   private var nextInputTime: CMTime?
   private var nextOutputFrame: Int?
   private var clockOrigin: CMTime?
-  private let profile: MediaProfile
-  public init() throws { profile = try .selected() }
+  public init() throws {}
 
   public func decode(_ sample: CMSampleBuffer, origin: CMTime) throws -> CaptureAudioFrames {
     guard sample.isValid, CMSampleBufferDataIsReady(sample),
@@ -32,7 +31,7 @@ public final class CaptureAudioDecoder {
       let input = AVAudioPCMBuffer(
         pcmFormat: format, frameCapacity: AVAudioFrameCount(sample.numSamples)),
       let outputFormat = AVAudioFormat(
-        standardFormatWithSampleRate: Double(profile.sampleRateHz), channels: 1)
+        standardFormatWithSampleRate: Double(MediaMasterProfile.sampleRate), channels: 1)
     else { throw CaptureError.invalidAudio }
     input.frameLength = AVAudioFrameCount(sample.numSamples)
     guard
@@ -42,9 +41,10 @@ public final class CaptureAudioDecoder {
     else { throw CaptureError.invalidAudio }
     let relative = CMTimeSubtract(sample.presentationTimeStamp, origin)
     let seconds = CMTimeGetSeconds(relative)
-    guard seconds.isFinite, seconds >= -2, seconds <= Double(profile.maxCallDurationMs) / 1000 + 2
+    guard seconds.isFinite, seconds >= -2,
+      seconds <= Double(MediaMasterProfile.maximumDurationMs) / 1000 + 2
     else { throw CaptureError.invalidAudio }
-    let hostFrame = Int((seconds * Double(profile.sampleRateHz)).rounded())
+    let hostFrame = Int((seconds * Double(MediaMasterProfile.sampleRate)).rounded())
     let contiguousFrame: Int?
     if converter?.inputFormat == format, clockOrigin == origin,
       let nextInputTime, let nextOutputFrame,
@@ -68,7 +68,9 @@ public final class CaptureAudioDecoder {
       let output = AVAudioPCMBuffer(
         pcmFormat: outputFormat,
         frameCapacity: AVAudioFrameCount(
-          ceil(Double(sample.numSamples) * Double(profile.sampleRateHz) / format.sampleRate)) + 64)
+          ceil(
+            Double(sample.numSamples) * Double(MediaMasterProfile.sampleRate) / format.sampleRate))
+          + 64)
     else { throw CaptureError.invalidAudio }
     let supply = CaptureConverterInput(input)
     var error: NSError?

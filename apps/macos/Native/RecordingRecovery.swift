@@ -71,8 +71,8 @@ enum RecordingRecovery {
             if files.fileExists(atPath: session.mediaDirectory.path) {
               try rejectLinkedChildren(session.mediaDirectory)
             }
-            let aggregate = try await session.recover()
-            let reason = aggregate.manifest.value.interruptionReason
+            let aggregate = try await session.recoverCompletion()
+            let reason = aggregate.call.interruptionReason
             report.recoveredCalls.append(.init(callID: call.callID, interruptionReason: reason))
             if reason == "corrupt_media_tail" {
               report.warnings.append(

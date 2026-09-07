@@ -38,6 +38,7 @@ function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   };
 }
 const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
+  CaptureMasterProfile: decoder(documentSchemas.CaptureMasterProfile),
   CallDocument: decoder(documentSchemas.CallDocument),
   TranscriptRevision: decoder(documentSchemas.TranscriptRevision),
   AudioManifest: decoder(documentSchemas.AudioManifest),
@@ -184,3 +185,5 @@ export async function readStoredDocument<K extends DocumentKind>(kind: K, input:
     },
   };
 }
+
+export { CaptureMasterProfile, selectedCaptureMasterProfile } from "./capture-master-profile.ts";

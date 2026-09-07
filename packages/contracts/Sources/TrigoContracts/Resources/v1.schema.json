@@ -4,6 +4,9 @@
   "title": "TrigoV1",
   "anyOf": [
     {
+      "$ref": "#/$defs/CaptureMasterProfile"
+    },
+    {
       "$ref": "#/$defs/CallDocument"
     },
     {
@@ -23,6 +26,134 @@
     }
   ],
   "$defs": {
+    "CaptureMasterProfile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "id": {
+          "type": "string",
+          "enum": ["caf-lpcm-s16le-16000-stereo-v1"]
+        },
+        "container": {
+          "type": "string",
+          "enum": ["caf"]
+        },
+        "contentType": {
+          "type": "string",
+          "enum": ["audio/x-caf"]
+        },
+        "codec": {
+          "type": "string",
+          "enum": ["pcm_s16le"]
+        },
+        "sampleRateHz": {
+          "type": "number",
+          "enum": [16000]
+        },
+        "bitsPerSample": {
+          "type": "number",
+          "enum": [16]
+        },
+        "interleaved": {
+          "type": "boolean",
+          "enum": [true]
+        },
+        "microphoneChannel": {
+          "type": "number",
+          "enum": [0]
+        },
+        "applicationChannel": {
+          "type": "number",
+          "enum": [1]
+        },
+        "headerBytes": {
+          "type": "number",
+          "enum": [68]
+        },
+        "headerPolicy": {
+          "type": "string",
+          "enum": ["immutable-indefinite-final-data-chunk"]
+        },
+        "maxCallDurationMs": {
+          "type": "number",
+          "enum": [10800000]
+        },
+        "maxMasterBytes": {
+          "type": "number",
+          "enum": [691200068]
+        },
+        "maxCommitDurationMs": {
+          "type": "number",
+          "enum": [1000]
+        },
+        "maxUncommittedTailMs": {
+          "type": "number",
+          "enum": [2000]
+        },
+        "indexHeaderBytes": {
+          "type": "number",
+          "enum": [128]
+        },
+        "indexRecordBytes": {
+          "type": "number",
+          "enum": [2120]
+        },
+        "maxRangeBytes": {
+          "type": "number",
+          "enum": [8388608]
+        },
+        "minimumMultipartPartBytes": {
+          "type": "number",
+          "enum": [5242880]
+        },
+        "timeline": {
+          "type": "string",
+          "enum": ["call-relative-integer-milliseconds"]
+        },
+        "nonRecordedSamples": {
+          "type": "string",
+          "enum": ["whole-millisecond-silence-before-persistence"]
+        },
+        "extractionTransform": {
+          "type": "string",
+          "enum": ["identity-stereo-pcm-frame-slice-v1"]
+        },
+        "cleanupAuthority": {
+          "type": "string",
+          "enum": ["durably-committed-complete-verified-server-receipt"]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "container",
+        "contentType",
+        "codec",
+        "sampleRateHz",
+        "bitsPerSample",
+        "interleaved",
+        "microphoneChannel",
+        "applicationChannel",
+        "headerBytes",
+        "headerPolicy",
+        "maxCallDurationMs",
+        "maxMasterBytes",
+        "maxCommitDurationMs",
+        "maxUncommittedTailMs",
+        "indexHeaderBytes",
+        "indexRecordBytes",
+        "maxRangeBytes",
+        "minimumMultipartPartBytes",
+        "timeline",
+        "nonRecordedSamples",
+        "extractionTransform",
+        "cleanupAuthority"
+      ],
+      "additionalProperties": false
+    },
     "ExchangeUUID": {
       "type": "string",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
@@ -140,7 +271,7 @@
         },
         "mediaProfileId": {
           "type": "string",
-          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1"]
+          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1", "caf-lpcm-s16le-16000-stereo-v1"]
         },
         "intervals": {
           "type": "array",
@@ -551,7 +682,7 @@
         },
         "contentType": {
           "type": "string",
-          "enum": ["audio/wav"]
+          "enum": ["audio/wav", "audio/x-caf"]
         },
         "byteLength": {
           "$ref": "#/$defs/PositiveInteger"
@@ -603,7 +734,7 @@
         },
         "mediaProfileId": {
           "type": "string",
-          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1"]
+          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1", "caf-lpcm-s16le-16000-stereo-v1"]
         },
         "objects": {
           "type": "array",

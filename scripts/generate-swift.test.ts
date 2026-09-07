@@ -32,3 +32,19 @@ it("fails explicitly when Swift generation cannot represent new schema capabilit
     "Unresolved Swift reference",
   );
 });
+
+it("qualifies wire fields that overlap generated decoder locals", () => {
+  const source = generateSwift(
+    {
+      Wire: {
+        type: "object",
+        additionalProperties: false,
+        properties: { container: { type: "string" } },
+        required: ["container"],
+      },
+    },
+    ["Wire"],
+  );
+  expect(source).toContain("self.container = try container.decode(");
+  expect(source).toContain("try container.encode(self.container, forKey: .container)");
+});

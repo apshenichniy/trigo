@@ -1,3 +1,4 @@
+import CoreMedia
 import Foundation
 import Testing
 import TrigoContracts
@@ -6,7 +7,10 @@ import TrigoContracts
 
 /// Full-sync contention proof: new captures share a namespace with retained calls, imports,
 /// large typed transcript reads, lifecycle changes and durable operation attempts/acks.
-@Test func repositoryBackgroundImportAndLargeTypedReadsStayInsideCaptureWindow() async throws {
+@Test(arguments: [false, true])
+func repositoryBackgroundImportAndLargeTypedReadsStayInsideCaptureWindow(production: Bool)
+  async throws
+{
   let root = repositoryRoot("contention")
   defer { try? FileManager.default.removeItem(at: root) }
   let repository = try await seedRepositoryCall(root: root, finalized: true)
@@ -66,6 +70,7 @@ import TrigoContracts
     return byteCount
   }
   let capture = Task.detached(priority: .userInitiated) {
+    if production { return try await productionSinkCapture(session: session, workload: workload) }
     let writer = try RecoverableMediaMaster(
       directory: session.mediaDirectory, identity: session.mediaMasterIdentity)
     var latency: [Double] = []
@@ -108,7 +113,7 @@ import TrigoContracts
   #expect(try await repository.lifecycle(callID: repositoryCallID)?.importState.state == .imported)
   let sorted = latency.sorted()
   print(
-    "SQLITE_CONTENTION commits=\(latency.count) intervals_per_commit=2000 imported_revisions=3 imported_turns=12000 imported_bytes=\(bytes) oversized_turn_utf8=2880000 typed_large_reads=24 max_commit_ms=\(sorted.last! * 1000) p95_commit_ms=\(sorted[Int(Double(sorted.count - 1) * 0.95)] * 1000) max_input_plus_commit_ms=\(1000 + sorted.last! * 1000) journal=delete synchronous=extra fullfsync=on"
+    "SQLITE_CONTENTION production_sink=\(production) commits=\(latency.count) intervals_per_commit=\(production ? 2 : 2000) imported_revisions=3 imported_turns=12000 imported_bytes=\(bytes) oversized_turn_utf8=2880000 typed_large_reads=24 max_commit_ms=\(sorted.last! * 1000) p95_commit_ms=\(sorted[Int(Double(sorted.count - 1) * 0.95)] * 1000) max_input_plus_commit_ms=\(1000 + sorted.last! * 1000) journal=delete synchronous=extra fullfsync=on"
   )
 }
 
@@ -158,4 +163,70 @@ private final class RepositoryWorkload: @unchecked Sendable {
 
 private func elapsedSeconds(_ duration: Duration) -> Double {
   Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
+}
+
+private func productionSinkCapture(session: CaptureArchiveSession, workload: RepositoryWorkload)
+  async throws -> [Double]
+{
+  let queue = DispatchQueue(label: "trigo.test.contention-sink", qos: .userInteractive)
+  let sink = try CaptureStreamSink(
+    session: session, queue: queue, origin: .zero,
+    microphone: session.microphone, onSnapshot: { _ in },
+    onMicrophoneFailure: { _ in
+      Issue.record("Unexpected microphone failure under completed background load")
+    },
+    onFailure: { reason in Issue.record("Unexpected production sink failure: \(reason)") })
+  let (microphone, application) = await MainActor.run {
+    (RecordingTransportFixture(), RecordingTransportFixture())
+  }
+  sink.acceptMicrophoneStream(microphone)
+  sink.acceptApplicationStream(application)
+  let repository = try LocalRepository(root: session.root, archiveID: session.archiveID)
+  var latency: [Double] = []
+  while !workload.isComplete || latency.count < 120 {
+    guard latency.count < 10800 else { throw RepositoryInjectedFailure() }
+    let start = ContinuousClock.now
+    let second = latency.count
+    for part in 0..<50 {
+      let time = CMTime(value: Int64(second * 50 + part), timescale: 50)
+      let sample = try controlledAudioBuffer(
+        sampleRate: 16_000, frames: 320, time: time, value: 0.25)
+      #expect(
+        sink.enqueue(
+          sample, role: .microphone, streamID: ObjectIdentifier(microphone), deliveredAt: time))
+      #expect(
+        sink.enqueue(
+          sample, role: .application, streamID: ObjectIdentifier(application), deliveredAt: time))
+    }
+    while sink.ingressStatistics.pendingBuffers > 0 {
+      try await sink.perform { _ in }
+    }
+    try await sink.perform { engine in
+      try engine.advance(at: CMTime(value: Int64((second + 1) * 4 + 1), timescale: 4))
+    }
+    #expect(
+      try repository.confirmedMediaCursor(callID: session.callID)?.frames == Int64(second + 1)
+        * 16_000)
+    workload.captured()
+    let elapsed = elapsedSeconds(start.duration(to: .now))
+    latency.append(elapsed)
+    #expect(1 + elapsed <= 2)
+    try await Task.sleep(for: .milliseconds(20))
+  }
+  let result = try await sink.finish(
+    at: CMTime(value: Int64(latency.count), timescale: 1), reason: nil)
+  let complete = try await session.complete(media: result.0, interruptionReason: nil)
+  #expect(complete.call.durationMs == latency.count * 1000)
+  #expect(complete.call.captureState == .stopped)
+  let spans = try repository.captureIntervals(callID: session.callID, through: result.0.cursor)
+  #expect(
+    spans.allSatisfy { $0 == [.init(startMs: 0, endMs: latency.count * 1000, state: .recorded)] })
+  let statistics = sink.ingressStatistics
+  #expect(!statistics.rejected && statistics.pendingBuffers == 0)
+  #expect(statistics.maximumPendingSourceSeconds <= 1.000_001)
+  #expect(1 + statistics.maximumServiceSeconds <= 2)
+  print(
+    "PRODUCTION_QUEUE commits=\(latency.count) max_pending_buffers=\(statistics.maximumPendingBuffers) max_pending_source_s=\(statistics.maximumPendingSourceSeconds) max_service_ms=\(statistics.maximumServiceSeconds * 1000) max_input_plus_service_ms=\(1000 + statistics.maximumServiceSeconds * 1000) source_coverage=complete background_imports=\(workload.importCount)"
+  )
+  return latency
 }

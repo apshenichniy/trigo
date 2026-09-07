@@ -19,8 +19,9 @@ import TrigoContracts
   let archive = try LocalRepository(root: root, archiveID: archiveID)
   let initial = try await archive.loadCall(callID: session.callID)
   #expect(initial.manifest.value.captureState == "recording")
-  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
-  try writer.append(interleaved: Array(repeating: Int16(123), count: 64_000))
+  let writer = try CaptureMediaWriter(session: session)
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
   let recovered = try await CaptureArchiveSession.recover(
     root: root, archiveID: session.archiveID, callID: session.callID)
   #expect(recovered.manifest.value.captureState == "interrupted")
@@ -48,7 +49,7 @@ import TrigoContracts
     root: root, archiveID: UUID().uuidString.lowercased(),
     source: source, microphone: nil)
   let engine = try CaptureRecordingEngine(
-    directory: session.mediaDirectory, origin: .zero, microphone: nil)
+    writer: CaptureMediaWriter(session: session), origin: .zero, microphone: nil)
   _ = try engine.stop(at: CMTime(seconds: 0.1, preferredTimescale: 16_000), reason: "system_sleep")
   let recovered = try await CaptureArchiveSession.recover(
     root: root, archiveID: session.archiveID, callID: session.callID)
@@ -67,11 +68,12 @@ import TrigoContracts
   let session = try await CaptureArchiveSession.begin(
     root: root, archiveID: UUID().uuidString.lowercased(),
     source: source, microphone: nil)
-  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
+  let writer = try CaptureMediaWriter(session: session)
   try writer.append(interleaved: Array(repeating: 123, count: 3_200))
-  let firstRecovery = try CaptureMediaWriter.recover(directory: session.mediaDirectory)
+  let firstRecovery = try CaptureMediaWriter.recover(session: session)
+  let firstMaster = try finishCapture(firstRecovery, reason: "process_terminated")
   await #expect(throws: Crash.self) {
-    try await session.finish(media: firstRecovery.media, interruptionReason: "process_terminated") {
+    try await session.finish(media: firstMaster, interruptionReason: "process_terminated") {
       point in
       if point == .beforeCommit { throw Crash() }
     }
@@ -80,7 +82,7 @@ import TrigoContracts
     root: root, archiveID: session.archiveID, callID: session.callID)
   let audio = try jsonObject(#require(recovered.audioManifest))
   let objects = try #require(audio["objects"] as? [[String: Any]])
-  #expect(objects.first?["objectId"] as? String == firstRecovery.media.objects.first?.objectID)
+  #expect(objects.first?["objectId"] as? String == session.masterID)
 }
 
 @Test func durableSessionWithoutAnOpenedWriterRecoversAsZeroDurationInterrupted() async throws {
@@ -96,7 +98,8 @@ import TrigoContracts
   // A filesystem failure between durable session creation and stream/writer setup.
   try Data().write(to: session.mediaDirectory)
   #expect(throws: (any Error).self) {
-    try CaptureRecordingEngine(directory: session.mediaDirectory, origin: .zero, microphone: nil)
+    try CaptureRecordingEngine(
+      writer: CaptureMediaWriter(session: session), origin: .zero, microphone: nil)
   }
   let recovered = try await CaptureArchiveSession.recover(
     root: root, archiveID: session.archiveID, callID: session.callID)

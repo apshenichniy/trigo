@@ -25,7 +25,7 @@ import Testing
     archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
   await #expect(throws: Crash.self) {
     try await session.finish(
-      media: .init(objects: [], durationMs: 0), interruptionReason: "system_sleep"
+      media: nil, interruptionReason: "system_sleep"
     ) { point in
       if point == .beforeCommit { throw Crash() }
     }
@@ -67,7 +67,7 @@ import Testing
   #expect(try jsonObject(call.manifest.storedBytes)["captureState"] as? String == "recording")
 }
 
-@Test @MainActor func launchRecoveryReportsCorruptMediaTailInsteadOfClaimingCompleteRecovery()
+@Test @MainActor func launchRecoveryRejectsCommittedCorruptionWithoutChangingEvidence()
   async throws
 {
   let fixture = try RecordingControlFixture()
@@ -75,24 +75,22 @@ import Testing
   let session = try await CaptureArchiveSession.begin(
     root: fixture.namespace.archive,
     archiveID: fixture.status.archiveID, source: fixture.os.source, microphone: nil)
-  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
-  try writer.append(interleaved: Array(repeating: Int16(123), count: 64_000))
-  let media = try FileManager.default.contentsOfDirectory(
-    at: session.mediaDirectory, includingPropertiesForKeys: nil)
-  let pcm = try #require(media.first { $0.pathExtension == "pcm" })
-  let file = try FileHandle(forWritingTo: pcm)
-  try file.seek(toOffset: 64_000)
+  let writer = try CaptureMediaWriter(session: session)
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
+  let file = try FileHandle(forWritingTo: writer.master.mediaURL)
+  try file.seek(toOffset: 68)
   try file.write(contentsOf: Data([0xff]))
   try file.close()
+  let damagedBytes = try Data(contentsOf: writer.master.mediaURL)
   await fixture.bind()
-  #expect(fixture.coordinator.recoveryReport.warnings.map(\.callID) == [session.callID])
-  #expect(fixture.coordinator.phase == .interrupted)
-  #expect(!fixture.coordinator.canRetryLocalRecovery)
-  #expect(FileManager.default.fileExists(atPath: pcm.path))
+  #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == [session.callID])
+  #expect(fixture.coordinator.recoveryReport.recoveredCalls.isEmpty)
+  #expect(fixture.coordinator.phase == .recoveryRequired)
+  #expect(fixture.coordinator.canRetryLocalRecovery)
+  #expect(try Data(contentsOf: writer.master.mediaURL) == damagedBytes)
   await fixture.coordinator.retryRecovery()
-  #expect(fixture.coordinator.recoveryReport.warnings.isEmpty)
-  #expect(fixture.coordinator.recoveryReport.recoveredCallIDs.isEmpty)
-  #expect(fixture.coordinator.phase == .idle)
+  #expect(fixture.coordinator.recoveryReport.failures.map(\.callID) == [session.callID])
+  #expect(try Data(contentsOf: writer.master.mediaURL) == damagedBytes)
 }
 
 @Test @MainActor func launchRecoveryFinalizesOnlyBoundDirectCallsAndIsIdempotent() async throws {

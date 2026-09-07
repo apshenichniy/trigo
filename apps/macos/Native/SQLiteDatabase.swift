@@ -143,7 +143,7 @@ final class SQLiteDatabase: @unchecked Sendable {
           try execute(
             "INSERT INTO repository_identity VALUES (?, ?)", [.text(archiveID), .text(root.path)])
           try execute("PRAGMA application_id=\(Self.applicationID)")
-          try execute("PRAGMA user_version=1")
+          try execute("PRAGMA user_version=\(repositorySchemaVersion)")
         }
       }
     } catch {
@@ -157,7 +157,7 @@ final class SQLiteDatabase: @unchecked Sendable {
 
   private func validateExistingStore() throws {
     guard try scalarInt("PRAGMA application_id") == Self.applicationID,
-      try scalarInt("PRAGMA user_version") == 1,
+      try scalarInt("PRAGMA user_version") == repositorySchemaVersion,
       try scalarString("PRAGMA journal_mode") == "delete"
     else {
       throw LocalPersistenceError.unsupportedStore("Unsupported SQLite identity, schema or journal")

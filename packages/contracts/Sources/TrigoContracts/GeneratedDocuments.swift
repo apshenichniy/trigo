@@ -5,6 +5,7 @@ import Foundation
 
 enum GeneratedContract {
   static let documentKinds = [
+    "CaptureMasterProfile",
     "CallDocument",
     "TranscriptRevision",
     "AudioManifest",
@@ -12,6 +13,189 @@ enum GeneratedContract {
     "CommandIdentity",
     "ErrorEnvelope",
   ]
+}
+
+public struct CaptureMasterProfile: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "CaptureMasterProfile"
+  public var schemaVersion: Int
+  public var id: String
+  public var container: String
+  public var contentType: String
+  public var codec: String
+  public var sampleRateHz: Int
+  public var bitsPerSample: Int
+  public var interleaved: Bool
+  public var microphoneChannel: Int
+  public var applicationChannel: Int
+  public var headerBytes: Int
+  public var headerPolicy: String
+  public var maxCallDurationMs: Int
+  public var maxMasterBytes: Int
+  public var maxCommitDurationMs: Int
+  public var maxUncommittedTailMs: Int
+  public var indexHeaderBytes: Int
+  public var indexRecordBytes: Int
+  public var maxRangeBytes: Int
+  public var minimumMultipartPartBytes: Int
+  public var timeline: String
+  public var nonRecordedSamples: String
+  public var extractionTransform: String
+  public var cleanupAuthority: String
+  public init(
+    schemaVersion: Int,
+    id: String,
+    container: String,
+    contentType: String,
+    codec: String,
+    sampleRateHz: Int,
+    bitsPerSample: Int,
+    interleaved: Bool,
+    microphoneChannel: Int,
+    applicationChannel: Int,
+    headerBytes: Int,
+    headerPolicy: String,
+    maxCallDurationMs: Int,
+    maxMasterBytes: Int,
+    maxCommitDurationMs: Int,
+    maxUncommittedTailMs: Int,
+    indexHeaderBytes: Int,
+    indexRecordBytes: Int,
+    maxRangeBytes: Int,
+    minimumMultipartPartBytes: Int,
+    timeline: String,
+    nonRecordedSamples: String,
+    extractionTransform: String,
+    cleanupAuthority: String
+  ) {
+    self.schemaVersion = schemaVersion
+    self.id = id
+    self.container = container
+    self.contentType = contentType
+    self.codec = codec
+    self.sampleRateHz = sampleRateHz
+    self.bitsPerSample = bitsPerSample
+    self.interleaved = interleaved
+    self.microphoneChannel = microphoneChannel
+    self.applicationChannel = applicationChannel
+    self.headerBytes = headerBytes
+    self.headerPolicy = headerPolicy
+    self.maxCallDurationMs = maxCallDurationMs
+    self.maxMasterBytes = maxMasterBytes
+    self.maxCommitDurationMs = maxCommitDurationMs
+    self.maxUncommittedTailMs = maxUncommittedTailMs
+    self.indexHeaderBytes = indexHeaderBytes
+    self.indexRecordBytes = indexRecordBytes
+    self.maxRangeBytes = maxRangeBytes
+    self.minimumMultipartPartBytes = minimumMultipartPartBytes
+    self.timeline = timeline
+    self.nonRecordedSamples = nonRecordedSamples
+    self.extractionTransform = extractionTransform
+    self.cleanupAuthority = cleanupAuthority
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case id
+    case container
+    case contentType
+    case codec
+    case sampleRateHz
+    case bitsPerSample
+    case interleaved
+    case microphoneChannel
+    case applicationChannel
+    case headerBytes
+    case headerPolicy
+    case maxCallDurationMs
+    case maxMasterBytes
+    case maxCommitDurationMs
+    case maxUncommittedTailMs
+    case indexHeaderBytes
+    case indexRecordBytes
+    case maxRangeBytes
+    case minimumMultipartPartBytes
+    case timeline
+    case nonRecordedSamples
+    case extractionTransform
+    case cleanupAuthority
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self, forKey: .schemaVersion)
+    self.id = try container.decode(
+      String.self, forKey: .id)
+    self.container = try container.decode(
+      String.self, forKey: .container)
+    self.contentType = try container.decode(
+      String.self, forKey: .contentType)
+    self.codec = try container.decode(
+      String.self, forKey: .codec)
+    self.sampleRateHz = try container.decode(
+      Int.self, forKey: .sampleRateHz)
+    self.bitsPerSample = try container.decode(
+      Int.self, forKey: .bitsPerSample)
+    self.interleaved = try container.decode(
+      Bool.self, forKey: .interleaved)
+    self.microphoneChannel = try container.decode(
+      Int.self, forKey: .microphoneChannel)
+    self.applicationChannel = try container.decode(
+      Int.self, forKey: .applicationChannel)
+    self.headerBytes = try container.decode(
+      Int.self, forKey: .headerBytes)
+    self.headerPolicy = try container.decode(
+      String.self, forKey: .headerPolicy)
+    self.maxCallDurationMs = try container.decode(
+      Int.self, forKey: .maxCallDurationMs)
+    self.maxMasterBytes = try container.decode(
+      Int.self, forKey: .maxMasterBytes)
+    self.maxCommitDurationMs = try container.decode(
+      Int.self, forKey: .maxCommitDurationMs)
+    self.maxUncommittedTailMs = try container.decode(
+      Int.self, forKey: .maxUncommittedTailMs)
+    self.indexHeaderBytes = try container.decode(
+      Int.self, forKey: .indexHeaderBytes)
+    self.indexRecordBytes = try container.decode(
+      Int.self, forKey: .indexRecordBytes)
+    self.maxRangeBytes = try container.decode(
+      Int.self, forKey: .maxRangeBytes)
+    self.minimumMultipartPartBytes = try container.decode(
+      Int.self, forKey: .minimumMultipartPartBytes)
+    self.timeline = try container.decode(
+      String.self, forKey: .timeline)
+    self.nonRecordedSamples = try container.decode(
+      String.self, forKey: .nonRecordedSamples)
+    self.extractionTransform = try container.decode(
+      String.self, forKey: .extractionTransform)
+    self.cleanupAuthority = try container.decode(
+      String.self, forKey: .cleanupAuthority)
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.id, forKey: .id)
+    try container.encode(self.container, forKey: .container)
+    try container.encode(self.contentType, forKey: .contentType)
+    try container.encode(self.codec, forKey: .codec)
+    try container.encode(self.sampleRateHz, forKey: .sampleRateHz)
+    try container.encode(self.bitsPerSample, forKey: .bitsPerSample)
+    try container.encode(self.interleaved, forKey: .interleaved)
+    try container.encode(self.microphoneChannel, forKey: .microphoneChannel)
+    try container.encode(self.applicationChannel, forKey: .applicationChannel)
+    try container.encode(self.headerBytes, forKey: .headerBytes)
+    try container.encode(self.headerPolicy, forKey: .headerPolicy)
+    try container.encode(self.maxCallDurationMs, forKey: .maxCallDurationMs)
+    try container.encode(self.maxMasterBytes, forKey: .maxMasterBytes)
+    try container.encode(self.maxCommitDurationMs, forKey: .maxCommitDurationMs)
+    try container.encode(self.maxUncommittedTailMs, forKey: .maxUncommittedTailMs)
+    try container.encode(self.indexHeaderBytes, forKey: .indexHeaderBytes)
+    try container.encode(self.indexRecordBytes, forKey: .indexRecordBytes)
+    try container.encode(self.maxRangeBytes, forKey: .maxRangeBytes)
+    try container.encode(self.minimumMultipartPartBytes, forKey: .minimumMultipartPartBytes)
+    try container.encode(self.timeline, forKey: .timeline)
+    try container.encode(self.nonRecordedSamples, forKey: .nonRecordedSamples)
+    try container.encode(self.extractionTransform, forKey: .extractionTransform)
+    try container.encode(self.cleanupAuthority, forKey: .cleanupAuthority)
+  }
 }
 
 public typealias ExchangeUUID = String
@@ -50,24 +234,24 @@ public struct CaptureSourceDocument: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    applicationName = try container.decode(
+    self.applicationName = try container.decode(
       String.self, forKey: .applicationName)
-    bundleId = try container.decode(
+    self.bundleId = try container.decode(
       String.self, forKey: .bundleId)
-    processId = try container.decode(
+    self.processId = try container.decode(
       NonNegativeInteger.self, forKey: .processId)
-    windowId = try container.decode(
+    self.windowId = try container.decode(
       NonNegativeInteger?.self, forKey: .windowId)
-    windowTitle = try container.decode(
+    self.windowTitle = try container.decode(
       String?.self, forKey: .windowTitle)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(applicationName, forKey: .applicationName)
-    try container.encode(bundleId, forKey: .bundleId)
-    try container.encode(processId, forKey: .processId)
-    try container.encode(windowId, forKey: .windowId)
-    try container.encode(windowTitle, forKey: .windowTitle)
+    try container.encode(self.applicationName, forKey: .applicationName)
+    try container.encode(self.bundleId, forKey: .bundleId)
+    try container.encode(self.processId, forKey: .processId)
+    try container.encode(self.windowId, forKey: .windowId)
+    try container.encode(self.windowTitle, forKey: .windowTitle)
   }
 }
 
@@ -87,15 +271,15 @@ public struct InputDevice: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    id = try container.decode(
+    self.id = try container.decode(
       String.self, forKey: .id)
-    name = try container.decode(
+    self.name = try container.decode(
       String.self, forKey: .name)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(id, forKey: .id)
-    try container.encode(name, forKey: .name)
+    try container.encode(self.id, forKey: .id)
+    try container.encode(self.name, forKey: .name)
   }
 }
 
@@ -123,21 +307,21 @@ public struct TrackInterval: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    startMs = try container.decode(
+    self.startMs = try container.decode(
       NonNegativeInteger.self, forKey: .startMs)
-    endMs = try container.decode(
+    self.endMs = try container.decode(
       NonNegativeInteger.self, forKey: .endMs)
-    state = try container.decode(
+    self.state = try container.decode(
       String.self, forKey: .state)
-    reason = try container.decode(
+    self.reason = try container.decode(
       String?.self, forKey: .reason)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(startMs, forKey: .startMs)
-    try container.encode(endMs, forKey: .endMs)
-    try container.encode(state, forKey: .state)
-    try container.encode(reason, forKey: .reason)
+    try container.encode(self.startMs, forKey: .startMs)
+    try container.encode(self.endMs, forKey: .endMs)
+    try container.encode(self.state, forKey: .state)
+    try container.encode(self.reason, forKey: .reason)
   }
 }
 
@@ -169,24 +353,24 @@ public struct AudioTrack: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    trackId = try container.decode(
+    self.trackId = try container.decode(
       ExchangeUUID.self, forKey: .trackId)
-    role = try container.decode(
+    self.role = try container.decode(
       String.self, forKey: .role)
-    inputDevice = try container.decode(
+    self.inputDevice = try container.decode(
       InputDevice?.self, forKey: .inputDevice)
-    mediaProfileId = try container.decode(
+    self.mediaProfileId = try container.decode(
       String.self, forKey: .mediaProfileId)
-    intervals = try container.decode(
+    self.intervals = try container.decode(
       [TrackInterval].self, forKey: .intervals)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(trackId, forKey: .trackId)
-    try container.encode(role, forKey: .role)
-    try container.encode(inputDevice, forKey: .inputDevice)
-    try container.encode(mediaProfileId, forKey: .mediaProfileId)
-    try container.encode(intervals, forKey: .intervals)
+    try container.encode(self.trackId, forKey: .trackId)
+    try container.encode(self.role, forKey: .role)
+    try container.encode(self.inputDevice, forKey: .inputDevice)
+    try container.encode(self.mediaProfileId, forKey: .mediaProfileId)
+    try container.encode(self.intervals, forKey: .intervals)
   }
 }
 
@@ -208,15 +392,15 @@ public struct AudioManifestReference: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    manifestId = try container.decode(
+    self.manifestId = try container.decode(
       ExchangeUUID.self, forKey: .manifestId)
-    sha256 = try container.decode(
+    self.sha256 = try container.decode(
       SHA256Digest.self, forKey: .sha256)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(manifestId, forKey: .manifestId)
-    try container.encode(sha256, forKey: .sha256)
+    try container.encode(self.manifestId, forKey: .manifestId)
+    try container.encode(self.sha256, forKey: .sha256)
   }
 }
 
@@ -240,18 +424,18 @@ public struct RevisionReference: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    revisionId = try container.decode(
+    self.revisionId = try container.decode(
       ExchangeUUID.self, forKey: .revisionId)
-    createdAt = try container.decode(
+    self.createdAt = try container.decode(
       UTCDateTime.self, forKey: .createdAt)
-    sha256 = try container.decode(
+    self.sha256 = try container.decode(
       SHA256Digest.self, forKey: .sha256)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(revisionId, forKey: .revisionId)
-    try container.encode(createdAt, forKey: .createdAt)
-    try container.encode(sha256, forKey: .sha256)
+    try container.encode(self.revisionId, forKey: .revisionId)
+    try container.encode(self.createdAt, forKey: .createdAt)
+    try container.encode(self.sha256, forKey: .sha256)
   }
 }
 
@@ -324,54 +508,54 @@ public struct CallDocument: ContractDocument, Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    schemaVersion = try container.decode(
+    self.schemaVersion = try container.decode(
       Int.self, forKey: .schemaVersion)
-    archiveId = try container.decode(
+    self.archiveId = try container.decode(
       ExchangeUUID.self, forKey: .archiveId)
-    callId = try container.decode(
+    self.callId = try container.decode(
       ExchangeUUID.self, forKey: .callId)
-    documentVersion = try container.decode(
+    self.documentVersion = try container.decode(
       PositiveInteger.self, forKey: .documentVersion)
-    startedAt = try container.decode(
+    self.startedAt = try container.decode(
       UTCDateTime.self, forKey: .startedAt)
-    endedAt = try container.decode(
+    self.endedAt = try container.decode(
       UTCDateTime?.self, forKey: .endedAt)
-    durationMs = try container.decode(
+    self.durationMs = try container.decode(
       NonNegativeInteger?.self, forKey: .durationMs)
-    captureState = try container.decode(
+    self.captureState = try container.decode(
       String.self, forKey: .captureState)
-    interruptionReason = try container.decode(
+    self.interruptionReason = try container.decode(
       String?.self, forKey: .interruptionReason)
-    source = try container.decode(
+    self.source = try container.decode(
       CaptureSourceDocument.self, forKey: .source)
-    tracks = try container.decode(
+    self.tracks = try container.decode(
       [AudioTrack].self, forKey: .tracks)
-    audioManifest = try container.decode(
+    self.audioManifest = try container.decode(
       AudioManifestReference?.self, forKey: .audioManifest)
-    revisions = try container.decode(
+    self.revisions = try container.decode(
       [RevisionReference].self, forKey: .revisions)
-    activeRevisionId = try container.decode(
+    self.activeRevisionId = try container.decode(
       ExchangeUUID?.self, forKey: .activeRevisionId)
-    speakerNames = try container.decode(
+    self.speakerNames = try container.decode(
       [String: [String: String]].self, forKey: .speakerNames)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(schemaVersion, forKey: .schemaVersion)
-    try container.encode(archiveId, forKey: .archiveId)
-    try container.encode(callId, forKey: .callId)
-    try container.encode(documentVersion, forKey: .documentVersion)
-    try container.encode(startedAt, forKey: .startedAt)
-    try container.encode(endedAt, forKey: .endedAt)
-    try container.encode(durationMs, forKey: .durationMs)
-    try container.encode(captureState, forKey: .captureState)
-    try container.encode(interruptionReason, forKey: .interruptionReason)
-    try container.encode(source, forKey: .source)
-    try container.encode(tracks, forKey: .tracks)
-    try container.encode(audioManifest, forKey: .audioManifest)
-    try container.encode(revisions, forKey: .revisions)
-    try container.encode(activeRevisionId, forKey: .activeRevisionId)
-    try container.encode(speakerNames, forKey: .speakerNames)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.documentVersion, forKey: .documentVersion)
+    try container.encode(self.startedAt, forKey: .startedAt)
+    try container.encode(self.endedAt, forKey: .endedAt)
+    try container.encode(self.durationMs, forKey: .durationMs)
+    try container.encode(self.captureState, forKey: .captureState)
+    try container.encode(self.interruptionReason, forKey: .interruptionReason)
+    try container.encode(self.source, forKey: .source)
+    try container.encode(self.tracks, forKey: .tracks)
+    try container.encode(self.audioManifest, forKey: .audioManifest)
+    try container.encode(self.revisions, forKey: .revisions)
+    try container.encode(self.activeRevisionId, forKey: .activeRevisionId)
+    try container.encode(self.speakerNames, forKey: .speakerNames)
   }
 }
 
@@ -417,33 +601,33 @@ public struct ASRMetadata: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    adapter = try container.decode(
+    self.adapter = try container.decode(
       String.self, forKey: .adapter)
-    model = try container.decode(
+    self.model = try container.decode(
       String.self, forKey: .model)
-    profileId = try container.decode(
+    self.profileId = try container.decode(
       String.self, forKey: .profileId)
-    requestedLanguage = try container.decode(
+    self.requestedLanguage = try container.decode(
       String.self, forKey: .requestedLanguage)
-    detectedLanguages = try container.decode(
+    self.detectedLanguages = try container.decode(
       [String].self, forKey: .detectedLanguages)
-    effectiveOptions = try container.decode(
+    self.effectiveOptions = try container.decode(
       [String: ProviderOption].self, forKey: .effectiveOptions)
-    returnedModelVersion = try container.decode(
+    self.returnedModelVersion = try container.decode(
       String?.self, forKey: .returnedModelVersion)
-    providerRequestIds = try container.decode(
+    self.providerRequestIds = try container.decode(
       [String].self, forKey: .providerRequestIds)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(adapter, forKey: .adapter)
-    try container.encode(model, forKey: .model)
-    try container.encode(profileId, forKey: .profileId)
-    try container.encode(requestedLanguage, forKey: .requestedLanguage)
-    try container.encode(detectedLanguages, forKey: .detectedLanguages)
-    try container.encode(effectiveOptions, forKey: .effectiveOptions)
-    try container.encode(returnedModelVersion, forKey: .returnedModelVersion)
-    try container.encode(providerRequestIds, forKey: .providerRequestIds)
+    try container.encode(self.adapter, forKey: .adapter)
+    try container.encode(self.model, forKey: .model)
+    try container.encode(self.profileId, forKey: .profileId)
+    try container.encode(self.requestedLanguage, forKey: .requestedLanguage)
+    try container.encode(self.detectedLanguages, forKey: .detectedLanguages)
+    try container.encode(self.effectiveOptions, forKey: .effectiveOptions)
+    try container.encode(self.returnedModelVersion, forKey: .returnedModelVersion)
+    try container.encode(self.providerRequestIds, forKey: .providerRequestIds)
   }
 }
 
@@ -471,21 +655,21 @@ public struct Speaker: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    speakerId = try container.decode(
+    self.speakerId = try container.decode(
       ExchangeUUID.self, forKey: .speakerId)
-    trackId = try container.decode(
+    self.trackId = try container.decode(
       ExchangeUUID.self, forKey: .trackId)
-    diarizationScopeId = try container.decode(
+    self.diarizationScopeId = try container.decode(
       ExchangeUUID.self, forKey: .diarizationScopeId)
-    providerLabel = try container.decode(
+    self.providerLabel = try container.decode(
       String?.self, forKey: .providerLabel)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(speakerId, forKey: .speakerId)
-    try container.encode(trackId, forKey: .trackId)
-    try container.encode(diarizationScopeId, forKey: .diarizationScopeId)
-    try container.encode(providerLabel, forKey: .providerLabel)
+    try container.encode(self.speakerId, forKey: .speakerId)
+    try container.encode(self.trackId, forKey: .trackId)
+    try container.encode(self.diarizationScopeId, forKey: .diarizationScopeId)
+    try container.encode(self.providerLabel, forKey: .providerLabel)
   }
 }
 
@@ -513,21 +697,21 @@ public struct Word: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    text = try container.decode(
+    self.text = try container.decode(
       String.self, forKey: .text)
-    startMs = try container.decode(
+    self.startMs = try container.decode(
       NonNegativeInteger.self, forKey: .startMs)
-    endMs = try container.decode(
+    self.endMs = try container.decode(
       NonNegativeInteger.self, forKey: .endMs)
-    confidence = try container.decode(
+    self.confidence = try container.decode(
       Double?.self, forKey: .confidence)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(text, forKey: .text)
-    try container.encode(startMs, forKey: .startMs)
-    try container.encode(endMs, forKey: .endMs)
-    try container.encode(confidence, forKey: .confidence)
+    try container.encode(self.text, forKey: .text)
+    try container.encode(self.startMs, forKey: .startMs)
+    try container.encode(self.endMs, forKey: .endMs)
+    try container.encode(self.confidence, forKey: .confidence)
   }
 }
 
@@ -567,30 +751,30 @@ public struct Turn: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    turnId = try container.decode(
+    self.turnId = try container.decode(
       ExchangeUUID.self, forKey: .turnId)
-    trackId = try container.decode(
+    self.trackId = try container.decode(
       ExchangeUUID.self, forKey: .trackId)
-    speakerId = try container.decode(
+    self.speakerId = try container.decode(
       ExchangeUUID?.self, forKey: .speakerId)
-    startMs = try container.decode(
+    self.startMs = try container.decode(
       NonNegativeInteger.self, forKey: .startMs)
-    endMs = try container.decode(
+    self.endMs = try container.decode(
       NonNegativeInteger.self, forKey: .endMs)
-    text = try container.decode(
+    self.text = try container.decode(
       String.self, forKey: .text)
-    words = try container.decode(
+    self.words = try container.decode(
       [Word].self, forKey: .words)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(turnId, forKey: .turnId)
-    try container.encode(trackId, forKey: .trackId)
-    try container.encode(speakerId, forKey: .speakerId)
-    try container.encode(startMs, forKey: .startMs)
-    try container.encode(endMs, forKey: .endMs)
-    try container.encode(text, forKey: .text)
-    try container.encode(words, forKey: .words)
+    try container.encode(self.turnId, forKey: .turnId)
+    try container.encode(self.trackId, forKey: .trackId)
+    try container.encode(self.speakerId, forKey: .speakerId)
+    try container.encode(self.startMs, forKey: .startMs)
+    try container.encode(self.endMs, forKey: .endMs)
+    try container.encode(self.text, forKey: .text)
+    try container.encode(self.words, forKey: .words)
   }
 }
 
@@ -639,36 +823,36 @@ public struct TranscriptRevision: ContractDocument, Codable, Equatable, Sendable
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    schemaVersion = try container.decode(
+    self.schemaVersion = try container.decode(
       Int.self, forKey: .schemaVersion)
-    callId = try container.decode(
+    self.callId = try container.decode(
       ExchangeUUID.self, forKey: .callId)
-    revisionId = try container.decode(
+    self.revisionId = try container.decode(
       ExchangeUUID.self, forKey: .revisionId)
-    createdAt = try container.decode(
+    self.createdAt = try container.decode(
       UTCDateTime.self, forKey: .createdAt)
-    audioManifest = try container.decode(
+    self.audioManifest = try container.decode(
       AudioManifestReference.self, forKey: .audioManifest)
-    normalizationVersion = try container.decode(
+    self.normalizationVersion = try container.decode(
       Int.self, forKey: .normalizationVersion)
-    asr = try container.decode(
+    self.asr = try container.decode(
       ASRMetadata.self, forKey: .asr)
-    speakers = try container.decode(
+    self.speakers = try container.decode(
       [Speaker].self, forKey: .speakers)
-    turns = try container.decode(
+    self.turns = try container.decode(
       [Turn].self, forKey: .turns)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(schemaVersion, forKey: .schemaVersion)
-    try container.encode(callId, forKey: .callId)
-    try container.encode(revisionId, forKey: .revisionId)
-    try container.encode(createdAt, forKey: .createdAt)
-    try container.encode(audioManifest, forKey: .audioManifest)
-    try container.encode(normalizationVersion, forKey: .normalizationVersion)
-    try container.encode(asr, forKey: .asr)
-    try container.encode(speakers, forKey: .speakers)
-    try container.encode(turns, forKey: .turns)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.revisionId, forKey: .revisionId)
+    try container.encode(self.createdAt, forKey: .createdAt)
+    try container.encode(self.audioManifest, forKey: .audioManifest)
+    try container.encode(self.normalizationVersion, forKey: .normalizationVersion)
+    try container.encode(self.asr, forKey: .asr)
+    try container.encode(self.speakers, forKey: .speakers)
+    try container.encode(self.turns, forKey: .turns)
   }
 }
 
@@ -688,15 +872,15 @@ public struct ChannelMapping: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    channelIndex = try container.decode(
+    self.channelIndex = try container.decode(
       NonNegativeInteger.self, forKey: .channelIndex)
-    trackId = try container.decode(
+    self.trackId = try container.decode(
       ExchangeUUID.self, forKey: .trackId)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(channelIndex, forKey: .channelIndex)
-    try container.encode(trackId, forKey: .trackId)
+    try container.encode(self.channelIndex, forKey: .channelIndex)
+    try container.encode(self.trackId, forKey: .trackId)
   }
 }
 
@@ -740,33 +924,33 @@ public struct AudioObject: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    objectId = try container.decode(
+    self.objectId = try container.decode(
       ExchangeUUID.self, forKey: .objectId)
-    index = try container.decode(
+    self.index = try container.decode(
       NonNegativeInteger.self, forKey: .index)
-    contentType = try container.decode(
+    self.contentType = try container.decode(
       String.self, forKey: .contentType)
-    byteLength = try container.decode(
+    self.byteLength = try container.decode(
       PositiveInteger.self, forKey: .byteLength)
-    sha256 = try container.decode(
+    self.sha256 = try container.decode(
       SHA256Digest.self, forKey: .sha256)
-    startMs = try container.decode(
+    self.startMs = try container.decode(
       NonNegativeInteger.self, forKey: .startMs)
-    endMs = try container.decode(
+    self.endMs = try container.decode(
       NonNegativeInteger.self, forKey: .endMs)
-    channelMap = try container.decode(
+    self.channelMap = try container.decode(
       [ChannelMapping].self, forKey: .channelMap)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(objectId, forKey: .objectId)
-    try container.encode(index, forKey: .index)
-    try container.encode(contentType, forKey: .contentType)
-    try container.encode(byteLength, forKey: .byteLength)
-    try container.encode(sha256, forKey: .sha256)
-    try container.encode(startMs, forKey: .startMs)
-    try container.encode(endMs, forKey: .endMs)
-    try container.encode(channelMap, forKey: .channelMap)
+    try container.encode(self.objectId, forKey: .objectId)
+    try container.encode(self.index, forKey: .index)
+    try container.encode(self.contentType, forKey: .contentType)
+    try container.encode(self.byteLength, forKey: .byteLength)
+    try container.encode(self.sha256, forKey: .sha256)
+    try container.encode(self.startMs, forKey: .startMs)
+    try container.encode(self.endMs, forKey: .endMs)
+    try container.encode(self.channelMap, forKey: .channelMap)
   }
 }
 
@@ -803,27 +987,27 @@ public struct AudioManifest: ContractDocument, Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    schemaVersion = try container.decode(
+    self.schemaVersion = try container.decode(
       Int.self, forKey: .schemaVersion)
-    callId = try container.decode(
+    self.callId = try container.decode(
       ExchangeUUID.self, forKey: .callId)
-    manifestId = try container.decode(
+    self.manifestId = try container.decode(
       ExchangeUUID.self, forKey: .manifestId)
-    durationMs = try container.decode(
+    self.durationMs = try container.decode(
       NonNegativeInteger.self, forKey: .durationMs)
-    mediaProfileId = try container.decode(
+    self.mediaProfileId = try container.decode(
       String.self, forKey: .mediaProfileId)
-    objects = try container.decode(
+    self.objects = try container.decode(
       [AudioObject].self, forKey: .objects)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(schemaVersion, forKey: .schemaVersion)
-    try container.encode(callId, forKey: .callId)
-    try container.encode(manifestId, forKey: .manifestId)
-    try container.encode(durationMs, forKey: .durationMs)
-    try container.encode(mediaProfileId, forKey: .mediaProfileId)
-    try container.encode(objects, forKey: .objects)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.manifestId, forKey: .manifestId)
+    try container.encode(self.durationMs, forKey: .durationMs)
+    try container.encode(self.mediaProfileId, forKey: .mediaProfileId)
+    try container.encode(self.objects, forKey: .objects)
   }
 }
 
@@ -851,21 +1035,21 @@ public struct StatusReadiness: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    archive = try container.decode(
+    self.archive = try container.decode(
       String.self, forKey: .archive)
-    ownerAuthentication = try container.decode(
+    self.ownerAuthentication = try container.decode(
       String.self, forKey: .ownerAuthentication)
-    transcription = try container.decode(
+    self.transcription = try container.decode(
       String.self, forKey: .transcription)
-    callOperations = try container.decode(
+    self.callOperations = try container.decode(
       String.self, forKey: .callOperations)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(archive, forKey: .archive)
-    try container.encode(ownerAuthentication, forKey: .ownerAuthentication)
-    try container.encode(transcription, forKey: .transcription)
-    try container.encode(callOperations, forKey: .callOperations)
+    try container.encode(self.archive, forKey: .archive)
+    try container.encode(self.ownerAuthentication, forKey: .ownerAuthentication)
+    try container.encode(self.transcription, forKey: .transcription)
+    try container.encode(self.callOperations, forKey: .callOperations)
   }
 }
 
@@ -889,18 +1073,18 @@ public struct StatusNotice: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    code = try container.decode(
+    self.code = try container.decode(
       String.self, forKey: .code)
-    retry = try container.decode(
+    self.retry = try container.decode(
       String.self, forKey: .retry)
-    message = try container.decode(
+    self.message = try container.decode(
       String.self, forKey: .message)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(code, forKey: .code)
-    try container.encode(retry, forKey: .retry)
-    try container.encode(message, forKey: .message)
+    try container.encode(self.code, forKey: .code)
+    try container.encode(self.retry, forKey: .retry)
+    try container.encode(self.message, forKey: .message)
   }
 }
 
@@ -937,27 +1121,27 @@ public struct StatusResponse: ContractDocument, Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    schemaVersion = try container.decode(
+    self.schemaVersion = try container.decode(
       Int.self, forKey: .schemaVersion)
-    apiVersion = try container.decode(
+    self.apiVersion = try container.decode(
       Int.self, forKey: .apiVersion)
-    archiveId = try container.decode(
+    self.archiveId = try container.decode(
       ExchangeUUID.self, forKey: .archiveId)
-    stage = try container.decode(
+    self.stage = try container.decode(
       String.self, forKey: .stage)
-    readiness = try container.decode(
+    self.readiness = try container.decode(
       StatusReadiness.self, forKey: .readiness)
-    errors = try container.decode(
+    self.errors = try container.decode(
       [StatusNotice].self, forKey: .errors)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(schemaVersion, forKey: .schemaVersion)
-    try container.encode(apiVersion, forKey: .apiVersion)
-    try container.encode(archiveId, forKey: .archiveId)
-    try container.encode(stage, forKey: .stage)
-    try container.encode(readiness, forKey: .readiness)
-    try container.encode(errors, forKey: .errors)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.apiVersion, forKey: .apiVersion)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.stage, forKey: .stage)
+    try container.encode(self.readiness, forKey: .readiness)
+    try container.encode(self.errors, forKey: .errors)
   }
 }
 
@@ -978,15 +1162,15 @@ public struct CommandIdentity: ContractDocument, Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    schemaVersion = try container.decode(
+    self.schemaVersion = try container.decode(
       Int.self, forKey: .schemaVersion)
-    operationId = try container.decode(
+    self.operationId = try container.decode(
       ExchangeUUID.self, forKey: .operationId)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(schemaVersion, forKey: .schemaVersion)
-    try container.encode(operationId, forKey: .operationId)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.operationId, forKey: .operationId)
   }
 }
 
@@ -1016,21 +1200,21 @@ public struct ErrorDetail: Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    code = try container.decode(
+    self.code = try container.decode(
       String.self, forKey: .code)
-    retry = try container.decode(
+    self.retry = try container.decode(
       String.self, forKey: .retry)
-    message = try container.decode(
+    self.message = try container.decode(
       String.self, forKey: .message)
-    requestId = try container.decode(
+    self.requestId = try container.decode(
       CanonicalUUIDv4.self, forKey: .requestId)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(code, forKey: .code)
-    try container.encode(retry, forKey: .retry)
-    try container.encode(message, forKey: .message)
-    try container.encode(requestId, forKey: .requestId)
+    try container.encode(self.code, forKey: .code)
+    try container.encode(self.retry, forKey: .retry)
+    try container.encode(self.message, forKey: .message)
+    try container.encode(self.requestId, forKey: .requestId)
   }
 }
 
@@ -1051,14 +1235,14 @@ public struct ErrorEnvelope: ContractDocument, Codable, Equatable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    schemaVersion = try container.decode(
+    self.schemaVersion = try container.decode(
       Int.self, forKey: .schemaVersion)
-    error = try container.decode(
+    self.error = try container.decode(
       ErrorDetail.self, forKey: .error)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(schemaVersion, forKey: .schemaVersion)
-    try container.encode(error, forKey: .error)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.error, forKey: .error)
   }
 }

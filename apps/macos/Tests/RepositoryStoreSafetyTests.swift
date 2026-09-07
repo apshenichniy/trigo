@@ -4,7 +4,9 @@ import Testing
 
 @testable import TrigoNative
 
-@Test(arguments: ["version", "application", "schema", "foreign", "copied-root", "corrupt"])
+@Test(arguments: [
+  "version", "prior-capture-schema", "application", "schema", "foreign", "copied-root", "corrupt",
+])
 func repositoryUnsupportedForeignAndCorruptStoresRemainUntouched(kind: String) async throws {
   let root = repositoryRoot("unsupported")
   defer { try? FileManager.default.removeItem(at: root) }
@@ -14,6 +16,7 @@ func repositoryUnsupportedForeignAndCorruptStoresRemainUntouched(kind: String) a
   var target = root
   let url = root.appendingPathComponent(SQLiteDatabase.filename)
   if kind == "version" { try sqliteFixtureSQL(url, "PRAGMA user_version=99") }
+  if kind == "prior-capture-schema" { try sqliteFixtureSQL(url, "PRAGMA user_version=1") }
   if kind == "application" { try sqliteFixtureSQL(url, "PRAGMA application_id=123") }
   if kind == "schema" { try sqliteFixtureSQL(url, "CREATE TABLE unexpected(value TEXT)") }
   if kind == "corrupt" { try Data("not a SQLite database".utf8).write(to: url) }

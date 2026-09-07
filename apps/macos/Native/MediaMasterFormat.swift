@@ -1,17 +1,25 @@
 import CryptoKit
 import Foundation
+import TrigoContracts
 
-/// Proof profile; the selected production exchange profile is deliberately unchanged.
+/// Production CAF profile selected by the recoverability proof.
 public enum MediaMasterProfile {
-  public static let id = "caf-lpcm-s16le-16000-stereo-v1"
-  public static let sampleRate = 16_000
+  private static let profile: CaptureMasterProfile = {
+    do { return try .selected() } catch {
+      preconditionFailure("Invalid bundled capture master profile: \(error)")
+    }
+  }()
+  public static var id: String { profile.id }
+  public static var sampleRate: Int { profile.sampleRateHz }
+  public static var framesPerMs: Int { sampleRate / 1000 }
+  public static var maximumDurationMs: Int { profile.maxCallDurationMs }
   public static let bytesPerFrame = 4
-  public static let headerBytes = 68
-  public static let maximumCommitFrames = 16_000
-  public static let maximumFrames: Int64 = 172_800_000
-  public static let maximumRequestBytes = 8 * 1_024 * 1_024
-  public static let indexHeaderBytes = 128
-  public static let indexRecordBytes = 2_120
+  public static var headerBytes: Int { profile.headerBytes }
+  public static var maximumCommitFrames: Int { profile.maxCommitDurationMs * framesPerMs }
+  public static var maximumFrames: Int64 { Int64(maximumDurationMs * framesPerMs) }
+  public static var maximumRequestBytes: Int { profile.maxRangeBytes }
+  public static var indexHeaderBytes: Int { profile.indexHeaderBytes }
+  public static var indexRecordBytes: Int { profile.indexRecordBytes }
 
   // CAF chunk metadata is big-endian; interleaved sample data is little-endian.
   // The last data chunk retains size -1 forever. Finalization changes no media bytes.

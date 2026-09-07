@@ -3,6 +3,8 @@ import Foundation
 /// Immutable preparation rows are content-addressed. Only the small calls/evidence/history
 /// publication tables make prepared data visible. A crash may retain unreachable preparation;
 /// it never exposes a half-imported revision or a partially assembled call snapshot.
+let repositorySchemaVersion = 2
+
 let repositorySchema = [
   "CREATE TABLE repository_identity(archive_id TEXT NOT NULL, root TEXT NOT NULL) STRICT",
   "CREATE TABLE documents(hash TEXT PRIMARY KEY, byte_count INTEGER NOT NULL CHECK(byte_count>=0), complete INTEGER NOT NULL CHECK(complete IN (0,1))) STRICT",
@@ -48,8 +50,7 @@ let repositorySchema = [
   """,
   "CREATE INDEX operations_pending ON operations(acknowledged,created_ms,operation_id)",
   "CREATE TABLE semantic_work(identity TEXT PRIMARY KEY, operation_id TEXT REFERENCES operations(operation_id)) STRICT",
-  "CREATE TABLE sessions(call_id TEXT PRIMARY KEY REFERENCES calls(call_id), microphone_track_id TEXT NOT NULL, application_track_id TEXT NOT NULL, audio_manifest_id TEXT NOT NULL UNIQUE, master_id TEXT NOT NULL UNIQUE, started_reference REAL NOT NULL, process_launch_reference REAL NOT NULL, stop_requested INTEGER NOT NULL DEFAULT 0 CHECK(stop_requested IN (0,1)), stop_reason TEXT) STRICT",
-  "CREATE TABLE legacy_capture_seals(call_id TEXT PRIMARY KEY REFERENCES sessions(call_id), call_hash TEXT NOT NULL REFERENCES call_values(hash), audio_hash TEXT NOT NULL REFERENCES documents(hash), work_id TEXT, work_kind TEXT, work_payload_hash TEXT REFERENCES documents(hash)) STRICT",
+  "CREATE TABLE sessions(call_id TEXT PRIMARY KEY REFERENCES calls(call_id), microphone_track_id TEXT NOT NULL, application_track_id TEXT NOT NULL, audio_manifest_id TEXT NOT NULL UNIQUE, master_id TEXT NOT NULL UNIQUE, started_reference REAL NOT NULL, process_launch_reference REAL NOT NULL, stop_requested INTEGER NOT NULL DEFAULT 0 CHECK(stop_requested IN (0,1)), stop_reason TEXT, media_failure TEXT, final_work_id TEXT, final_work_kind TEXT, final_work_payload_hash TEXT REFERENCES documents(hash), final_work_prepared INTEGER NOT NULL DEFAULT 0 CHECK(final_work_prepared IN (0,1))) STRICT",
   """
   CREATE TABLE media_commits(
     call_id TEXT NOT NULL REFERENCES sessions(call_id), sequence INTEGER NOT NULL CHECK(sequence>0),

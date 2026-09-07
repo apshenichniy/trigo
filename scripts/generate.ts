@@ -39,6 +39,10 @@ if (formattedSchema.errors.length > 0)
 const schemaText = formattedSchema.code;
 const swift = generateSwift(document.definitions, Object.keys(documentSchemas));
 const files: Record<string, string> = {
+  "Sources/TrigoContracts/Resources/capture-master-profile.v1.json": await readFile(
+    "packages/contracts/schema/capture-master-profile.v1.json",
+    "utf8",
+  ),
   "schema/v1.schema.json": schemaText,
   "Sources/TrigoContracts/Resources/v1.schema.json": schemaText,
   "Sources/TrigoContracts/GeneratedDocuments.swift": swift,

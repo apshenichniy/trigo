@@ -135,10 +135,9 @@ func repositoryZeroFrameMasterFinalizationIsJointAndRetainsItsCertificate(
   let writer = try RecoverableMediaMaster(
     directory: session.mediaDirectory, identity: session.mediaMasterIdentity)
   let final = try writer.finish()
-  let media = CapturedMedia(objects: [], durationMs: 0)
-  let audio = try session.audioBytes(media)
+  let audio = try session.audioBytes(final)
   let snapshot = try session.callBytes(
-    media: media, reason: "process_terminated", version: 2,
+    media: final, reason: "process_terminated", version: 2, finalized: true,
     reference: .init(manifestId: session.audioManifestID, sha256: Contract.hash(audio)))
   let fault = RepositoryFault(point)
   var repository: LocalRepository? = try .init(

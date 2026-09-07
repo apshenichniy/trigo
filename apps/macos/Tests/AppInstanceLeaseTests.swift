@@ -13,7 +13,7 @@ import Testing
   let session = try await CaptureArchiveSession.begin(
     root: fixture.namespace.archive, archiveID: fixture.status.archiveID,
     source: fixture.os.source, microphone: nil)
-  let writer = try CaptureMediaWriter(directory: session.mediaDirectory)
+  let writer = try CaptureMediaWriter(session: session)
   try writer.append(interleaved: Array(repeating: 123, count: 32_000))
 
   // The second application's startup recovery must not claim a live writer.
@@ -26,13 +26,13 @@ import Testing
   #expect(!initializedSecondCoordinator)
   #expect(second.coordinator == nil)
   #expect(second.startupFailure?.title == "This local archive is already open")
-  #expect(
-    !FileManager.default.fileExists(
-      atPath: fixture.namespace.archive.appendingPathComponent(session.callID)
-        .appendingPathComponent("capture-finalization.json").path))
+  let repository = try LocalRepository(
+    root: fixture.namespace.archive, archiveID: fixture.status.archiveID)
+  #expect(try repository.captureCompletion(callID: session.callID) == nil)
+  #expect(try repository.confirmedMediaCursor(callID: session.callID)?.frames == 16_000)
 
   try writer.append(interleaved: Array(repeating: 456, count: 32_000))
-  let completed = try await session.finish(media: writer.finish(), interruptionReason: nil)
+  let completed = try await session.finish(media: finishCapture(writer), interruptionReason: nil)
   let call = try jsonObject(completed.manifest.storedBytes)
   #expect(call["durationMs"] as? Int == 2_000)
   #expect(call["captureState"] as? String == "stopped")
