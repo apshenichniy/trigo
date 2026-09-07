@@ -1,217 +1,154 @@
 # Recording foundation refactor acceptance
 
-Canonical scope: [epic #48](https://github.com/apshenichniy/trigo/issues/48).
-The approved specification and child issues own the requirements. This document
-records implementation and verification evidence for the integrated source.
+Scope: [epic #48](https://github.com/apshenichniy/trigo/issues/48), implemented in
+[PR #59](https://github.com/apshenichniy/trigo/pull/59) against baseline
+`36d381e2a6b0eb5d32f0f619625650ef88b4febc`.
 
-Baseline: `36d381e2a6b0eb5d32f0f619625650ef88b4febc`.
+The foundation now uses one transactional SQLite repository, one recoverable
+stereo CAF master per call, Effect-authored exchange schemas with generated Swift
+models, and one authenticated HttpApi composition for local and cloud execution.
+The source retains ScreenCaptureKit, Alchemy, app variants, namespace isolation,
+scoped Keychain credentials, and the existing capture and durability bounds.
 
-## Delivery evidence
+The owner directed delivery to continue on 2026-09-07 with the intermittent
+installed-start overflow deferred to [#60](https://github.com/apshenichniy/trigo/issues/60).
+That failure is unresolved. Successful subsequent recordings are evidence of
+those runs, not proof of a fix or universal startup reliability.
 
-| Issue | Boundary                                | Evidence                                                                                                                                                                    |
-| ----- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #49   | macOS check performance                 | Implemented; local and cold/restored CI passed ([evidence](acceptance-49.md))                                                                                               |
-| #50   | Effect Schema and typed Swift contracts | Implemented; local and integrated CI passed ([evidence](acceptance-50.md))                                                                                                  |
-| #51   | Recoverable master format proof         | Implemented; bounded media proofs, local gates and integrated CI passed ([evidence](acceptance-51.md))                                                                      |
-| #52   | SQLite archive and durable operations   | Implemented; transaction/recovery checks passed; shared contention acceptance follows the current #53 evidence ([evidence](acceptance-52.md))                               |
-| #53   | Production stereo master recording      | Implemented; current durability and contention verification is recorded in the linked evidence ([evidence](acceptance-53.md)); current integration CI is reported in the PR |
-| #54   | Shared local/cloud product HttpApi      | Implemented; local server/native/offline checks passed; current integration CI is reported in the PR ([evidence](acceptance-54.md))                                         |
-| #55   | Permissions and Keychain readiness      | Implemented; local and integrated CI passed. Installed credential/permission observations remain in #57 ([evidence](acceptance-55.md))                                      |
-| #56   | Commands and architecture documentation | Implemented; final local gates and isolated resource proofs passed; integration CI is reported in the PR ([evidence](acceptance-56.md))                                     |
-| #57   | Installed signed app acceptance         | Pending owner-assisted execution                                                                                                                                            |
+## Delivery and evidence
 
-## Contention correction
+| Issue | Delivered boundary                                                                                                                | Evidence                                                                           |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| #49   | Optimized native checks, versioned caches, frozen resolution and measured cold/restored paths                                     | [Acceptance](acceptance-49.md)                                                     |
+| #50   | Effect Schema authoring, typed Swift generation, shared validation corpus and immutable-byte preservation                         | [Acceptance](acceptance-50.md)                                                     |
+| #51   | Stereo LPCM CAF, stable header/ranges, incremental integrity index, bounded seek/extraction and fault recovery                    | [Acceptance](acceptance-51.md)                                                     |
+| #52   | Typed SQLite archive and semantic capture/import/operation transactions, conflicts and interruption recovery                      | [Acceptance](acceptance-52.md)                                                     |
+| #53   | Production recorder using the selected master and repository, effective microphone suppression and bounded durability             | [Acceptance](acceptance-53.md), [master interface](capture-master-interface.md)    |
+| #54   | Shared authenticated status/error API, isolated local D1/R2/workflow composition and fake ASR                                     | [Acceptance](acceptance-54.md)                                                     |
+| #55   | Explicit readiness actions, separate authorization/device/credential states and safe installed credential continuity              | [Acceptance](acceptance-55.md), [installed observations](acceptance-57.md)         |
+| #56   | Thin development commands, argument/failure consistency, obsolete-path cleanup and current architecture/setup entrypoints         | [Acceptance](acceptance-56.md), [architecture](architecture.md), [setup](setup.md) |
+| #57   | Performed controlled recording, interruption recovery, source exit, ordinary relaunch/authentication and supported signed rebuild | [Installed evidence](acceptance-57.md), with the disclosed #60 deferral            |
 
-After the first passing #53 integration run, a source-identical
-[CI run 34074455910](https://github.com/apshenichniy/trigo/actions/runs/34074455910)
-exceeded the preserved two-second capture window during background archive work.
-The coordinator paused #54 and reopened this concurrency acceptance. The failure,
-measured cause and controlled intervention remain in [the #53 evidence](acceptance-53.md).
+## Final checked source and measurements
 
-The production correction prevents background SQL disk I/O from retaining the
-shared owner at background priority while capture waits. It passed the original
-three-process stress and isolated one/three-hour resource proofs. The measured
-isolated peak RSS through full extraction was 54,198,272 B for one hour and
-43,433,984 B for three hours, below 80 MiB. These are historical measurements of
-the unchanged production source, not substitutes for subsequent required gates.
+The complete local gates and [CI run 34142151962](https://github.com/apshenichniy/trigo/actions/runs/34142151962)
+passed for `9b852477fd19273014febf026b34b1630cc1b041`, tree
+`9f05d894d4d60fdcc34e04438fa25f13669a7ee3`. Both CI jobs checked out synthetic merge
+`10f613f3db0cc37911d27da63cb33b1147fdcf15`; its complete tree matched the PR source.
+The final cleanup/rebuild source `64086c8952150082172fb65ac1de507d404aab87` restores
+that exact full tree. Subsequent acceptance-document changes do not alter the
+checked implementation. Current PR-tip CI is reported in the PR.
 
-[CI run 34098630005](https://github.com/apshenichniy/trigo/actions/runs/34098630005)
-then exposed a measurement boundary problem: its slowest production observation
-included 1,114.989 ms after the synchronous durable operation had already ended.
-The contention fixture now records a validated, independently read SQLite cursor
-on the capture queue before timestamping durability. It retains every preceding
-input, ingress, queue and persistence wait. A separate delayed-observer test
-reopens the committed master and verifies another capture commit and unchanged
-stable bytes before releasing the first result. Caller delay remains reported.
+| Check                                                                      | Local result                               | CI result                                 |
+| -------------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------- |
+| Server gate                                                                | 338 unit tests, 36 Workers tests; 30.260 s | Same counts; job 79 s                     |
+| Native contracts                                                           | 9 tests                                    | 9 tests                                   |
+| Native suite                                                               | 171 tests; test runner 179.821 s           | 171 tests; test runner 279.671 s          |
+| Complete macOS gate                                                        | 316.630 s                                  | Job 616 s                                 |
+| Both Debug app variants                                                    | Passed                                     | Passed                                    |
+| Actual native/local smoke under external-network denial                    | Passed; 18.210 s                           | Passed; 24.612 s                          |
+| Contracts, formatting, lint, types, bundles, frozen locks and clean output | Passed                                     | Passed, including nested-lock restoration |
 
-Further local checks exposed two distinct fixture problems. Immutable synthetic
-format metadata was repeatedly built inside capture timing, although
-ScreenCaptureKit supplies that metadata before the application receives a sample.
-Only this producer setup moves outside the timer; PCM/sample construction and the
-first production decoder use remain measured. The old fixture also used
-a 20 ms idle gap per generated source second, exhausting the real three-hour
-cap before its background work completed. Capture now produces one second of audio
-per wall-clock second without catch-up bursts. It retains at least 120 commits,
-all three imports, 12,000 turns, 24 large typed reads and capture progress during
-every background revision. The two-second durability limit and all separate
-long-call, recovery and bounded-resource fixtures remain unchanged. Failed runs
-and the limits of the causal evidence remain in the #53 acceptance document.
+These measurements are not a promised speedup. Baseline and cache comparisons
+remain in #49; later source-specific timings and intermediate failures remain in
+their owning acceptance documents. Both native caches in the final CI run restored
+from prior compatible keys and saved under the current checkout. Cache reuse did
+not skip compilation or checks.
 
-The current fixture source passes the full server gate (269 unit tests, 17
-Worker tests, deterministic contracts, formatting/lint/types and both Worker
-bundles) and macOS gate (nine contract tests, 153 native tests in 197.133 s,
-both Debug app builds and the network-denied local Worker/R2/fake-ASR smoke).
-In the full native suite, dense capture completed 181 commits and production
-capture 180, with all background work and per-revision progress confirmed.
-Their maximum complete input-through-durability envelopes were 1,116.358 ms
-and 1,115.559 ms. Raw logs: `53-delivery-wall-clock-check-server.log` and
-`53-delivery-wall-clock-check-macos.log` under `/tmp/trigo-epic-48/`.
+The final isolated Release binary passed the complete one- and three-hour
+production fixtures through extraction. Peak RSS was 54,460,416 B and 50,266,112 B,
+below 80 MiB. They verified 57,600,000 and 172,800,000 frames in one permanent
+master per fixture; test times were 34.952 and 111.767 s. Source-relative one-hour
+drift was 0 ms. These are controlled synthetic proofs, separate from the installed
+recordings. The exact binary, helper and log hashes are recorded in
+`57-final-resource-proof.json` under `/tmp/trigo-epic-48/`.
 
-Both jobs of [CI run 34108231975](https://github.com/apshenichniy/trigo/actions/runs/34108231975)
-passed on `7db0f90ff4ed86d90218fe8c249693d55c4c2f88`, completing #53 verification.
-The runner passed all 153 native tests in 196.382 s; both contention cases
-completed 120 commits, all background work and capture progress during every
-revision. Their maximum input-plus-durability envelopes were 1,085.466 ms dense
-and 1,266.190 ms production. The separate observer probe reached durability in
-774.660 ms while its caller received the result in 10,300.414 ms, after verified
-recovery and further capture progress. Both jobs checked out synthetic merge
-`50e590a44d9709b154873aeeef495b3d254cc77b`, whose tree exactly matched the PR tip.
+The final CI contention cases completed 135 dense and 146 production commits,
+all three imports, 12,000 turns and 24 large typed reads per case. Maximum complete
+input-through-durability times were 1,174.165 and 1,183.666 ms, below two seconds.
+A separate delayed-observer case verified recovery and another commit before its
+caller returned; the retained evidence distinguishes durability from caller delay.
 
-Current integration source and CI results remain in
-[PR #59](https://github.com/apshenichniy/trigo/pull/59). Historical successful runs
-do not replace verification of later source changes.
+## Performed installed checks
 
-## Shared product API and local execution
+Controlled media inspection selected exactly three owner-created Chrome calls.
+Other call media was excluded. The installed Native subtree was
+`916ba1f510e62c91c85f31490d1df245a15f385c`, identical to the final clean source.
 
-The #54 composition uses the same authenticated Effect HttpApi handler for local
-and cloud status/error behavior. Its local D1/R2/workflow path exercises the
-shared deterministic fake-ASR seam and preserves state across a local restart.
-The private CLI-to-native configuration joins the Effect-authored generated
-contracts; a shared 16-case corpus checks structural acceptance/rejection in
-Effect, JSON Schema, generated Swift and both file readers. File ownership,
-worktree identity and exact loopback origin remain contextual checks.
+- The 35.118-second core recording retained application audio across owner focus
+  changes and microphone on/off/on actions. The microphone's 8.855-second muted
+  interval contained exactly zero samples; unavailable intervals were also zero.
+  SQLite, immutable documents, channel mapping, index, stable header and the
+  single stereo master agreed.
+- A controlled SIGKILL left 75.282 seconds of committed media. Relaunch recovered
+  the complete independently observed post-kill prefix unchanged, preserved all
+  call/track/master identities, and marked the call interrupted. The owner
+  confirmed capture did not restart. This is separate from the deterministic
+  two-second loss-bound and corruption/short-write proofs.
+- Closing the owned Chrome process interrupted its separate 114.740-second call
+  with `source_exited`; retained media and prior verified calls remained intact.
+  The owner did not separately report the exact source-loss UI wording.
+- An ordinary owner Quit and unchanged relaunch retained the app-owned credential
+  account. The owner used Retry saved connection and Validate and save, reported
+  `authenticated`, and saw no system dialogs.
+- The final supported signed rebuild retained the installed path, bundle/team,
+  designated requirement, namespace and committed credential account. After the
+  requested unchanged Retry/Validate actions, the owner reported everything OK
+  and permissions `granted`. The exact connection-status word and a separate
+  dialog response were not quoted in that final reply. Source/build hashes and
+  these observation limits are recorded in the #57 evidence.
 
-The final local server gate passed 304 unit tests, 36 Workers-runtime tests,
-formatting/lint/types, deterministic generation and both Worker bundles. The
-macOS gate passed nine contract tests, 161 native tests in 352.156 s, both Debug
-app builds and the actual native/local composition smoke under the external
-network-denial profile. The native suite completed 319 dense and 321 production
-capture commits, all three imports, 12,000 turns and 24 reads per case; maximum
-input-through-durability envelopes were 1,194.406 ms and 1,217.283 ms. This is
-the measured final run; earlier #54 timings describe earlier source snapshots.
+The observed system dialog concerned direct screen/audio capture, not Keychain.
+The earlier recurrence cause remains unconfirmed. The explicit readiness-request
+regression was fixed separately; ScreenCaptureKit can still present OS-controlled
+consent/reminder UI despite granted preflight. No global privacy/Keychain reset,
+credential replacement by an external helper, or weakened access was used.
+Physical unplug/reconnect was unavailable because the owner had only the built-in
+microphone. Deterministic denial/revocation/credential-loss cases remain distinct
+from physically performed observations.
 
-The local smoke uses current-source test compilation followed by execution under
-the outer offline profile. The final incremental build took 3.40 s; the complete
-smoke took 16.941 s. It verifies native URLSession pairing, failed credentials,
-retained binding and unavailable operations against the actual Alchemy runtime.
-It uses disposable credentials and does not establish installed-app Keychain,
-physical permission or bundle ATS behavior. Those observations remain in #57.
-Raw final logs are `54-check-server-final.log` and `54-check-macos-final.log`
-under `/tmp/trigo-epic-48/`; [the #54 evidence](acceptance-54.md) records scope,
-source identity and earlier failed checks.
+Two later diagnostic calls of 36.466 and 12.343 seconds stopped normally, including
+a second start in the same process. A ten-second metadata trace did not reproduce
+the earlier overflow. Its four dropped rows prohibit absence/accounting claims.
+All temporary diagnostics and opt-in behavior were removed; the raw investigation
+is retained for #60 and is not described as a production repair.
 
-Both jobs of [CI run 34113984002](https://github.com/apshenichniy/trigo/actions/runs/34113984002)
-passed on `4564e3f4643ad94a724bb512a14c56d784025192`, completing #54 verification.
-The server job took 75 s and the macOS job 579 s. Both native caches missed;
-locked setup, compilation, nine contract tests, all 161 native tests in 209.851 s,
-both Debug app builds, the actual sandboxed local/native smoke in 19.276 s,
-nested-lock restoration and clean-checkout checks passed. Both contention cases
-completed 120 commits and all background work with maximum envelopes
-1,075.517 ms dense and 1,070.870 ms production. Both jobs checked out synthetic
-merge `942e772607d9f77dcf0d44f3234805dd7a74e879`, whose whole tree matched the
-published PR tip. Raw logs and timing metadata are `54-ci-*` under
-`/tmp/trigo-epic-48/`.
+## Corrections and retained contracts
 
-## Capture readiness and credential access
+The #53 contention correction prevents background SQL disk I/O from retaining the
+shared owner at background priority while capture waits. Later failures exposed
+fixture measurement and pacing errors; the final tests retain all input, ingress,
+queue and persistence waits, all background work, and the original two-second
+limit. The detailed causal evidence and unsuccessful runs remain in
+[acceptance-53](acceptance-53.md).
 
-#55 separates explicit setup actions from Start and refreshes readiness on app
-activation, wake and input-device changes. Microphone authorization remains
-separate from device availability and recording mute; screen preflight is
-presented as access required without inferring an unavailable OS distinction.
-Active microphone permission loss retires that input while preserving application
-audio. Screen permission loss interrupts capture with actionable Settings guidance.
+Installed verification also exposed a separate startup-clock defect: application
+audio can arrive before native Start acknowledges. The clock now starts before
+that boundary. Finite callback regressions cover delayed application/microphone
+acknowledgements, microphone suppression and cancellation without conflating a
+lifecycle test with unlimited producer throughput. This fix is not an established
+cause or cure of #60.
 
-The confirmed pre-change Start reproduction requested permission in both denied
-cases, where zero requests were required. The reported Allow / Always Allow dialog
-itself remains unconfirmed: its requester, category and cause have not been
-observed. The final installed gate retains that observation boundary.
+The final audit covers all 50 checkbox requirements and the additional prose
+contracts. SQLite owns canonical and operational state without conflating capture,
+upload, transcription, import, replica and deletion. Immutable bytes/hashes and
+uncertain operation identity remain authoritative. Media stays outside SQLite;
+only durable ranges are published. Effect schemas are the structural source;
+provider/semantic validation and binary evidence remain separate. The local app
+uses the product authenticated-status path with fake ASR and no cloud credentials
+or inference; future product endpoints are not claimed here.
 
-Credential failures distinguish missing, interaction-required, denied, cancelled,
-unreadable and unavailable states while retaining offline archive binding. An
-unchanged remote-validated URL/token keeps the committed item; explicitly entered
-replacement for known unreadable data uses the existing safe transaction. Access
-errors do not imply corruption. Success and failed-commit rollback cases passed.
-Live helpers use isolated metadata/adapters or a validated private deployment
-handoff and cannot replace the normal installed app's credential.
+[The master interface](capture-master-interface.md) and
+[architecture handoff](architecture.md) retain upload during capture, post-call
+ASR, the 8 MiB request cap and actual multipart constraints, whole-master checksum
+verification, bounded channel/interval provenance, and retaining local media until
+a complete verified server receipt is durably committed locally. Receipt-driven
+automatic cleanup remains product work, not an implemented foundation shortcut.
 
-The supported installer requires explicit signed or ad-hoc mode, validates bundle
-and designated-requirement continuity, and provides a build/install action without
-launching. Local installs have a separate path and data namespace but share Dev OS
-permission identity. The controlled audio fixture and final installed procedure
-cover pinned-source focus changes, independent microphone mute, interruption,
-credential continuity and supported rebuild; they are preparation, not acceptance.
-
-Both local gates passed on the final runtime source: 311 unit tests, 36 Workers
-tests, nine Swift contract tests and 169 native tests in 376.447 s, deterministic
-generation, formatting/lint/types, both Worker bundles and both Debug apps.
-The native contention cases completed 344/346 commits and all background work;
-maximum input-through-durability envelopes were 1,178.553/1,166.988 ms against the
-unchanged two-second limit. The actual native/local smoke passed in 19.082 s under
-external network denial. Final source identity and the separate signed preparation
-are recorded in [the #55 evidence](acceptance-55.md). Raw logs are
-`55-check-server-final.log` and `55-check-macos-final.log` under
-`/tmp/trigo-epic-48/`. Both jobs of [CI run 34119318519](https://github.com/apshenichniy/trigo/actions/runs/34119318519)
-passed on `e0ab70a6f70b94f9a89b91ae8cae01335caed833`. Server took 75 s and
-macOS 556 s, with both native cache misses. Locked setup, nine contract tests,
-all 169 native tests in 165.328 s, both Debug apps, the actual sandboxed
-native/local smoke in 17.319 s, nested-lock restoration and clean-checkout
-checks passed. Each contention case completed 120 commits and all background
-work; maximum input-through-durability envelopes were 1,338.214/1,202.075 ms.
-The delayed observer reached durability in 568.663 ms and verified recovery and
-further capture progress before its caller completed in 6,618.790 ms. Both jobs
-checked out `48772ec08b82601ef602e46913f99d6318c7ed7f`, whose whole tree matched
-the published PR tip. The signed worker preparation is retained at
-`/tmp/trigo-epic-48/55-signed-candidate.app`; its signature/CDHash match the
-original prepared bundle. Actual installed observations remain #57.
-
-## Final command and architecture entrypoint
-
-#56 makes the current architecture and setup the documented entrypoint. Thin
-command wrappers reject unknown/duplicate options and missing values before side
-effects, while existing cloud account/stage, signing and credential policies keep
-their ownership. The confirmed unused placeholder is removed, and ordinary source
-searches exclude the pinned read-only Effect reference without blocking explicit
-reference searches. Native capture, repository code, fixtures, cadence, resource
-limits and dependency locks remain unchanged.
-
-Both final local gates passed: 338 unit tests, 36 Workers tests, nine Swift contract
-tests and 169 native tests in 286.012 s, formatting/lint/types, deterministic
-contracts, both Worker bundles and both Debug apps. The native/local smoke passed
-under external network denial in 26.418 s. Dense and production contention
-completed 260/261 commits and all background work; maximum complete envelopes were
-1,652.748/1,604.164 ms, below the unchanged two-second limit.
-
-The same Release test binary then passed isolated one- and three-hour production
-fixtures through full extraction. Their peak RSS was 50,806,784 B and 54,771,712 B,
-below 80 MiB. They verified 57,600,000/172,800,000 frames and
-230,400,068/691,200,068 bytes; elapsed test times were 34.432/115.225 s.
-Source-relative one-hour drift remained 0 ms in the full gate. Source and binary
-identity, detailed phase timings and unchanged-output proof are recorded in
-[the #56 evidence](acceptance-56.md); raw logs are `56-*` under
-`/tmp/trigo-epic-48/`. Current integration CI remains in the PR until its result
-is recorded. Signed installed observations still belong to #57.
-
-## Completion boundary
-
-Deterministic tests, CI, media proofs and installed-app observations are separate
-evidence. Record the exact source/build identity and observed results for each.
-Do not mark physical permission or Keychain behavior verified through mocks.
-
-The final gate requires controlled non-private capture, interruption/relaunch,
-normal app-owned credential use across relaunch and a supported signed rebuild,
-and the local authenticated status flow. A prepared procedure alone does not
-complete #57 or the epic.
-
-Hosted ASR and the final product workflow remain in #10 and #13. Infrastructure
-state recovery #32 remains a gate before first personal deployment. PR merge and
-deployment follow the repository's separate owner-instruction policy.
+Hosted ASR compatibility remains [#13](https://github.com/apshenichniy/trigo/issues/13).
+Production upload/ASR/synchronization, transcript UI, compact measured recording
+feedback, double-Left-Option and private real-call acceptance remain
+[#10](https://github.com/apshenichniy/trigo/issues/10) and its existing children.
+Infrastructure state recovery [#32](https://github.com/apshenichniy/trigo/issues/32)
+still gates the first personal deployment. The known startup issue #60 remains
+open. PR merge and deployment require separate owner instructions.
