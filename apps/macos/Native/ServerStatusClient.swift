@@ -10,13 +10,18 @@ enum ServerStatusDecoder {
         let operations = CallOperationsReadiness(rawValue: value.readiness.callOperations)
       else { throw ConnectionIssue.incompatible }
       return ServerStatus(
-        schemaVersion: value.schemaVersion, apiVersion: value.apiVersion,
-        archiveId: value.archiveId, stage: stage,
+        schemaVersion: value.schemaVersion,
+        apiVersion: value.apiVersion,
+        archiveId: value.archiveId,
+        stage: stage,
         readiness: .init(
           archive: value.readiness.archive,
           ownerAuthentication: value.readiness.ownerAuthentication,
-          transcription: transcription, callOperations: operations),
-        errors: value.errors.map { .init(code: $0.code, retry: $0.retry, message: $0.message) })
+          transcription: transcription,
+          callOperations: operations
+        ),
+        errors: value.errors.map { .init(code: $0.code, retry: $0.retry, message: $0.message) }
+      )
     } catch {
       throw ConnectionIssue.incompatible
     }
@@ -26,8 +31,10 @@ enum ServerStatusDecoder {
 private final class RedirectRejectingDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable
 {
   func urlSession(
-    _ session: URLSession, task: URLSessionTask,
-    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+    _ session: URLSession,
+    task: URLSessionTask,
+    willPerformHTTPRedirection response: HTTPURLResponse,
+    newRequest request: URLRequest,
     completionHandler: @escaping @Sendable (URLRequest?) -> Void
   ) {
     completionHandler(nil)
@@ -45,7 +52,10 @@ actor HTTPSStatusClient: ServerStatusFetching {
     configuration.timeoutIntervalForResource = timeout
     configuration.urlCache = nil
     session = URLSession(
-      configuration: configuration, delegate: RedirectRejectingDelegate(), delegateQueue: nil)
+      configuration: configuration,
+      delegate: RedirectRejectingDelegate(),
+      delegateQueue: nil
+    )
   }
 
   func fetch(serverURL: URL, token: String) async throws -> ServerStatus {

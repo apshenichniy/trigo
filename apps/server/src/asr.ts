@@ -1,5 +1,7 @@
-import { selectedMediaProfile, TranscriptRevision } from "@trigo/contracts";
 import { DateTime, Effect, Schema } from "effect";
+
+import { selectedMediaProfile, TranscriptRevision } from "@trigo/contracts";
+
 import { Nova3NormalizationInput, normalizeNova3, Nova3NormalizationError } from "./nova-3.ts";
 
 /** Canonical adapter result boundary shared by the dev probe and offline composition. */

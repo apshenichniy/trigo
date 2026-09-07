@@ -1,10 +1,12 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Effect } from "effect";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { validateDocument } from "@trigo/contracts";
+
 import migration from "../migrations/0001_owner_identity.sql?raw";
-import localWorker from "../src/local-worker.ts";
 import cloudWorker from "../src/cloud-worker.ts";
+import localWorker from "../src/local-worker.ts";
 import {
   applyOwnerOperation,
   ArchiveId,

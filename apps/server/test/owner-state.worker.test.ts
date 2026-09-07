@@ -1,8 +1,10 @@
-import { validateDocument } from "@trigo/contracts";
 import { expect, it } from "@effect/vitest";
 import { env } from "cloudflare:workers";
 import { Effect, Result } from "effect";
 import { beforeEach, vi } from "vitest";
+
+import { validateDocument } from "@trigo/contracts";
+
 import ownerIdentityMigration from "../migrations/0001_owner_identity.sql?raw";
 import cloudWorker, { type CloudEnvironmentProbe } from "../src/cloud-worker.ts";
 import {

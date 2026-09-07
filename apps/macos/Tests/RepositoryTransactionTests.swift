@@ -21,7 +21,9 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
   var call = try await repository.call(callID: repositoryCallID)
   call.documentVersion += 1
   call.audioManifest = .init(
-    manifestId: "00000000-0000-4000-8000-000000000004", sha256: Contract.hash(audio))
+    manifestId: "00000000-0000-4000-8000-000000000004",
+    sha256: Contract.hash(audio)
+  )
   _ = try await repository.publishManifest(Contract.encode(call))
   let retainedBytes = try repositoryFixture("revision.json")
   _ = try await repository.importRevision(retainedBytes, associatedWork: repositoryIntent())
@@ -62,7 +64,8 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
           [
             .blob(Data(repeating: 0, count: retainedBytes.count)),
             .text(Contract.hash(retainedBytes)),
-          ])
+          ]
+        )
       }
     }
   }
@@ -78,12 +81,14 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
   #expect(try await repository.call(callID: repositoryCallID).documentVersion == version)
   #expect(try await repository.lifecycle(callID: repositoryCallID) == lifecycle)
   #expect(
-    try await repository.turns(callID: repositoryCallID, revisionID: incoming.revisionId).isEmpty)
+    try await repository.turns(callID: repositoryCallID, revisionID: incoming.revisionId).isEmpty
+  )
   #expect(try await repository.operation(work.operationID) == nil)
   #expect(
     try repository.database.access {
       try repository.database.scalarInt("SELECT count(*) FROM documents")
-    } == documentCount)
+    } == documentCount
+  )
 }
 
 @Test func repositoryFinalizationIntentRetainsAssociatedWorkAcrossUncertainPublication()
@@ -95,10 +100,15 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
   try await session.prepare()
   let repository = try LocalRepository(root: root, archiveID: repositoryArchiveID)
   let work = repositoryIntent(
-    callID: session.callID, kind: .upload, payload: Data("sealed media".utf8))
+    callID: session.callID,
+    kind: .upload,
+    payload: Data("sealed media".utf8)
+  )
   await #expect(throws: RepositoryInjectedFailure.self) {
     try await repository.finalizeCapture(
-      session, master: nil, reason: "process_terminated",
+      session,
+      master: nil,
+      reason: "process_terminated",
       associatedWork: work
     ) {
       if $0 == .beforeRepositoryCommit { throw RepositoryInjectedFailure() }
@@ -112,23 +122,34 @@ func repositoryTypedImportRejectsInvalidReferencesWithoutPublishing(
   let alternate = repositoryIntent(callID: session.callID, kind: .upload)
   await #expect(throws: LocalPersistenceError.operationConflict(alternate.operationID)) {
     try await repository.finalizeCapture(
-      session, master: nil, reason: "process_terminated",
-      associatedWork: alternate)
+      session,
+      master: nil,
+      reason: "process_terminated",
+      associatedWork: alternate
+    )
   }
 }
 
 @Test(arguments: [PersistenceInterruptionPoint.beforeRepositoryCommit, .afterRepositoryCommit])
-func repositoryCaptureAdmissionAndWorkHaveOneCommit(point: PersistenceInterruptionPoint)
+func repositoryCaptureAdmissionAndWorkHaveOneCommit(
+  point: PersistenceInterruptionPoint
+)
   async throws
 {
   let root = repositoryRoot("admission")
   defer { try? FileManager.default.removeItem(at: root) }
   let session = try repositorySession(root)
   let work = repositoryIntent(
-    callID: session.callID, kind: .capture, payload: Data("allocated".utf8))
+    callID: session.callID,
+    kind: .capture,
+    payload: Data("allocated".utf8)
+  )
   let fault = RepositoryFault(point)
   var repository: LocalRepository? = try .init(
-    root: root, archiveID: repositoryArchiveID, interruption: fault.callAsFunction)
+    root: root,
+    archiveID: repositoryArchiveID,
+    interruption: fault.callAsFunction
+  )
   await #expect(throws: RepositoryInjectedFailure.self) {
     try await repository!.beginCapture(session, associatedWork: work)
   }
@@ -145,15 +166,21 @@ func repositoryCaptureAdmissionAndWorkHaveOneCommit(point: PersistenceInterrupti
   #expect(try await reopened.lifecycle(callID: session.callID)?.capture.state == .recording)
   #expect(try await reopened.operation(work.operationID)?.payload == work.payload)
   let changed = OperationIntent(
-    operationID: work.operationID, archiveID: work.archiveID,
-    callID: work.callID, kind: .upload, payload: Data("different".utf8))
+    operationID: work.operationID,
+    archiveID: work.archiveID,
+    callID: work.callID,
+    kind: .upload,
+    payload: Data("different".utf8)
+  )
   await #expect(throws: LocalPersistenceError.operationConflict(work.operationID)) {
     try await reopened.beginCapture(session, associatedWork: changed)
   }
 }
 
 @Test(arguments: [PersistenceInterruptionPoint.beforeRepositoryCommit, .afterRepositoryCommit])
-func repositoryCaptureFinalizationAndWorkHaveOneCommit(point: PersistenceInterruptionPoint)
+func repositoryCaptureFinalizationAndWorkHaveOneCommit(
+  point: PersistenceInterruptionPoint
+)
   async throws
 {
   let root = repositoryRoot("finalize")
@@ -163,11 +190,18 @@ func repositoryCaptureFinalizationAndWorkHaveOneCommit(point: PersistenceInterru
   let work = repositoryIntent(callID: session.callID, kind: .upload)
   let fault = RepositoryFault(point)
   var repository: LocalRepository? = try .init(
-    root: root, archiveID: repositoryArchiveID, interruption: fault.callAsFunction)
+    root: root,
+    archiveID: repositoryArchiveID,
+    interruption: fault.callAsFunction
+  )
   await #expect(throws: RepositoryInjectedFailure.self) {
-    try await repository!.finalizeCapture(
-      session, master: nil, reason: "system_sleep",
-      associatedWork: work)
+    try await repository!
+      .finalizeCapture(
+        session,
+        master: nil,
+        reason: "system_sleep",
+        associatedWork: work
+      )
   }
   repository = nil
   let reopened = try LocalRepository(root: root, archiveID: repositoryArchiveID)
@@ -180,9 +214,17 @@ func repositoryCaptureFinalizationAndWorkHaveOneCommit(point: PersistenceInterru
   #expect(call.interruptionReason == lifecycle.capture.failure?.code)
   #expect((try await reopened.operation(work.operationID) != nil) == committed)
   let final = try await reopened.finalizeCapture(
-    session, master: nil, reason: "system_sleep", associatedWork: work)
+    session,
+    master: nil,
+    reason: "system_sleep",
+    associatedWork: work
+  )
   let repeated = try await reopened.finalizeCapture(
-    session, master: nil, reason: "system_sleep", associatedWork: work)
+    session,
+    master: nil,
+    reason: "system_sleep",
+    associatedWork: work
+  )
   #expect(final.manifest.storedBytes == repeated.manifest.storedBytes)
   #expect(try await reopened.lifecycle(callID: session.callID)?.upload.state == .pending)
   #expect(try await reopened.lifecycle(callID: session.callID)?.importState.state == .notAvailable)
@@ -190,15 +232,24 @@ func repositoryCaptureFinalizationAndWorkHaveOneCommit(point: PersistenceInterru
   conflicting.durationMs = 1
   await #expect(throws: Error.self) {
     try await reopened.finalizeCapture(
-      callSnapshot: Contract.encode(conflicting), audioManifest: #require(final.audioManifest))
+      callSnapshot: Contract.encode(conflicting),
+      audioManifest: #require(final.audioManifest)
+    )
   }
   let changed = OperationIntent(
-    operationID: work.operationID, archiveID: work.archiveID,
-    callID: work.callID, kind: .replica, payload: Data([1]))
+    operationID: work.operationID,
+    archiveID: work.archiveID,
+    callID: work.callID,
+    kind: .replica,
+    payload: Data([1])
+  )
   await #expect(throws: LocalPersistenceError.operationConflict(work.operationID)) {
     try await reopened.finalizeCapture(
-      session, master: nil, reason: "system_sleep",
-      associatedWork: changed)
+      session,
+      master: nil,
+      reason: "system_sleep",
+      associatedWork: changed
+    )
   }
 }
 
@@ -214,7 +265,8 @@ func repositoryRevisionImportPublishesEvidenceProjectionLifecycleAndWorkTogether
   var call = try await repository!.call(callID: repositoryCallID)
   call.audioManifest = .init(
     manifestId: "00000000-0000-4000-8000-000000000004",
-    sha256: Contract.hash(try repositoryFixture("audio.json")))
+    sha256: Contract.hash(try repositoryFixture("audio.json"))
+  )
   call.documentVersion += 1
   _ = try await repository!.publishManifest(Contract.encode(call))
   let work = repositoryIntent(payload: Data("replicate-revision".utf8))
@@ -222,13 +274,18 @@ func repositoryRevisionImportPublishesEvidenceProjectionLifecycleAndWorkTogether
   let revision = try Contract.decode(TranscriptRevision.self, bytes: bytes).value
   let prepared = try await repository!.prepareRevisionImport(bytes, associatedWork: work)
   #expect(
-    try await repository!.turns(callID: repositoryCallID, revisionID: revision.revisionId).isEmpty)
+    try await repository!.turns(callID: repositoryCallID, revisionID: revision.revisionId).isEmpty
+  )
   #expect(try await repository!.operation(work.operationID) == nil)
   #expect(
-    try await repository!.lifecycle(callID: repositoryCallID)?.importState.state == .notAvailable)
+    try await repository!.lifecycle(callID: repositoryCallID)?.importState.state == .notAvailable
+  )
   let fault = RepositoryFault(point)
   repository = try LocalRepository(
-    root: root, archiveID: repositoryArchiveID, interruption: fault.callAsFunction)
+    root: root,
+    archiveID: repositoryArchiveID,
+    interruption: fault.callAsFunction
+  )
   await #expect(throws: RepositoryInjectedFailure.self) {
     try await repository!.commitRevisionImport(prepared)
   }
@@ -237,16 +294,21 @@ func repositoryRevisionImportPublishesEvidenceProjectionLifecycleAndWorkTogether
   let committed = point == .afterRepositoryCommit
   #expect(
     (try await reopened.call(callID: repositoryCallID).activeRevisionId == revision.revisionId)
-      == committed)
+      == committed
+  )
   #expect((try await reopened.operation(work.operationID) != nil) == committed)
   #expect(
     (try await reopened.lifecycle(callID: repositoryCallID)?.importState.state == .imported)
-      == committed)
+      == committed
+  )
   _ = try await reopened.commitRevisionImport(prepared)
   #expect(try await reopened.importRevision(bytes, associatedWork: work) == .alreadyPresent)
   #expect(
     try await reopened.transcriptRevisionBytes(
-      callID: repositoryCallID, revisionID: revision.revisionId) == bytes)
+      callID: repositoryCallID,
+      revisionID: revision.revisionId
+    ) == bytes
+  )
   let turns = try await reopened.turns(callID: repositoryCallID, revisionID: revision.revisionId)
   #expect(turns.map(\.turnID) == revision.turns.map(\.turnId))
   #expect(turns.map(\.text) == revision.turns.map(\.text))
@@ -261,12 +323,16 @@ func repositoryRevisionImportPublishesEvidenceProjectionLifecycleAndWorkTogether
   _ = try await repository.publishAudioManifest(audio)
   var call = try await repository.call(callID: repositoryCallID)
   call.audioManifest = .init(
-    manifestId: "00000000-0000-4000-8000-000000000004", sha256: Contract.hash(audio))
+    manifestId: "00000000-0000-4000-8000-000000000004",
+    sha256: Contract.hash(audio)
+  )
   call.documentVersion = 2
   _ = try await repository.publishManifest(Contract.encode(call))
   let work = repositoryIntent()
   let prepared = try await repository.prepareRevisionImport(
-    repositoryFixture("revision.json"), associatedWork: work)
+    repositoryFixture("revision.json"),
+    associatedWork: work
+  )
   call.documentVersion = 3
   _ = try await repository.publishManifest(Contract.encode(call))
   await #expect(throws: LocalPersistenceError.concurrentMutation) {
@@ -314,7 +380,13 @@ func repositoryRevisionImportPublishesEvidenceProjectionLifecycleAndWorkTogether
   await #expect(throws: LocalPersistenceError.captureStateOwnedByRepository) {
     try await repository.publishManifest(
       session.callBytes(
-        media: nil, reason: nil, version: 2, finalized: true, reference: nil))
+        media: nil,
+        reason: nil,
+        version: 2,
+        finalized: true,
+        reference: nil
+      )
+    )
   }
   #expect(try await repository.lifecycle(callID: session.callID)?.capture.state == .recording)
 }

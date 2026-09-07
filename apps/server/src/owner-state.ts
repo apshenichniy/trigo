@@ -1,7 +1,8 @@
-import { CanonicalUUIDv4, SHA256 } from "@trigo/contracts";
 import { D1Client } from "@effect/sql-d1";
 import { Effect, Option, Schema } from "effect";
 import * as Reactivity from "effect/unstable/reactivity/Reactivity";
+
+import { CanonicalUUIDv4, SHA256 } from "@trigo/contracts";
 
 export const OwnerVerifierSha256 = SHA256.pipe(Schema.brand("OwnerVerifierSha256"));
 export type OwnerVerifierSha256 = Schema.Schema.Type<typeof OwnerVerifierSha256>;
@@ -103,15 +104,17 @@ export const authenticateOwner = Effect.fn("OwnerState.authenticateOwner")(funct
   request: Request,
 ) {
   const authorization = decodeAuthorizationHeader(request.headers.get("authorization"));
-  if (Option.isNone(authorization))
+  if (Option.isNone(authorization)) {
     return yield* new OwnerAuthenticationError({
       message: "Provide the current Trigo owner token.",
     });
+  }
   const token = decodeOwnerToken(authorization.value.slice("Bearer ".length));
-  if (Option.isNone(token))
+  if (Option.isNone(token)) {
     return yield* new OwnerAuthenticationError({
       message: "Provide the current Trigo owner token.",
     });
+  }
   const verifierSha256 = yield* hashOwnerToken(token.value);
   const result = yield* Effect.tryPromise({
     try: () =>
@@ -133,10 +136,11 @@ export const authenticateOwner = Effect.fn("OwnerState.authenticateOwner")(funct
       }),
   });
   const persisted = result.results[0];
-  if (persisted === undefined)
+  if (persisted === undefined) {
     return yield* new OwnerAuthenticationError({
       message: "Provide the current Trigo owner token.",
     });
+  }
   const row = yield* decodeOwnerAuthenticationRow(persisted).pipe(
     Effect.mapError(
       (cause) =>
@@ -167,7 +171,7 @@ export interface OwnerOperationQuery {
 }
 
 export function ownerOperationQueries(input: OwnerOperation): ReadonlyArray<OwnerOperationQuery> {
-  if (input.kind === "initialize")
+  if (input.kind === "initialize") {
     return [
       {
         sql: `INSERT OR IGNORE INTO trigo_archive_identity
@@ -219,9 +223,10 @@ export function ownerOperationQueries(input: OwnerOperation): ReadonlyArray<Owne
         params: [input.archiveId, input.verifierSha256, input.operationId],
       },
     ];
+  }
 
   const nextGeneration = input.expectedGeneration + 1;
-  if (input.kind === "rotate")
+  if (input.kind === "rotate") {
     return [
       {
         sql: `UPDATE trigo_owner_credential_state
@@ -293,6 +298,7 @@ export function ownerOperationQueries(input: OwnerOperation): ReadonlyArray<Owne
         params: [String(nextGeneration), input.verifierSha256, input.operationId],
       },
     ];
+  }
 
   return [
     {
@@ -363,11 +369,12 @@ export const applyOwnerOperation = Effect.fn("OwnerState.applyOperation")(functi
   db: D1Database,
   input: OwnerOperation,
 ) {
-  if (input.kind !== "revoke" && Option.isNone(decodeOwnerVerifierSha256(input.verifierSha256)))
+  if (input.kind !== "revoke" && Option.isNone(decodeOwnerVerifierSha256(input.verifierSha256))) {
     return yield* new OwnerOperationConflict({
       operationId: input.operationId,
       message: "Owner verifier must be a lowercase SHA-256 digest",
     });
+  }
 
   const program = Effect.gen(function* () {
     const sql = yield* D1Client.make({ db });
@@ -382,11 +389,12 @@ export const applyOwnerOperation = Effect.fn("OwnerState.applyOperation")(functi
       .pipe(Effect.mapError(persistenceError));
     const rows = results[results.length - 1] ?? [];
     const persisted = rows[0];
-    if (persisted === undefined)
+    if (persisted === undefined) {
       return yield* new OwnerOperationConflict({
         operationId: input.operationId,
         message: "Owner operation conflicts with the current credential generation or content",
       });
+    }
     const row = yield* decodeOwnerStateRow(persisted).pipe(Effect.mapError(persistenceError));
     return {
       archiveId: row.archive_id,

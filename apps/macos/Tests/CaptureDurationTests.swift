@@ -7,7 +7,8 @@ import Testing
 
 @Test func threeHourProfileWriterRetainsEverySecondWithoutTruncation() async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "trigo-three-hour-\(UUID())")
+    "trigo-three-hour-\(UUID())"
+  )
   defer { try? FileManager.default.removeItem(at: root) }
   let writer = try await captureWriter(root: root)
   let second = (0..<16_000).flatMap { _ in [Int16(2_048), Int16(-4_096)] }
@@ -25,17 +26,19 @@ import Testing
   #expect(final.manifest.value.durationMs == 10_800_000)
   #expect(final.manifest.value.tracks.allSatisfy { $0.intervals.count == 1 })
   masterResources("production-constant-three-hour-final-projection")
-
 }
 
 @Test func oneHourCommonClockFixtureHasNoAccumulatingSourceRelativeDrift() async throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-    "trigo-one-hour-\(UUID())")
+    "trigo-one-hour-\(UUID())"
+  )
   defer { try? FileManager.default.removeItem(at: root) }
   let writer = try await captureWriter(root: root)
   let engine = try CaptureRecordingEngine(
-    writer: writer, origin: .zero,
-    microphone: .init(id: "fixture", name: "Controlled 44.1 kHz microphone"))
+    writer: writer,
+    origin: .zero,
+    microphone: .init(id: "fixture", name: "Controlled 44.1 kHz microphone")
+  )
   // Independent 48 kHz/44.1 kHz callbacks share host timestamps. A simultaneous
   // 100 ms pulse every second is an external synchronization marker, not implementation math.
   for second in 0..<3_600 {
@@ -44,10 +47,12 @@ import Testing
       let level: Float = part == 0 ? 0.25 : 0
       try engine.receive(
         controlledAudioBuffer(sampleRate: 48_000, frames: 4_800, time: time, value: level),
-        role: .application)
+        role: .application
+      )
       try engine.receive(
         controlledAudioBuffer(sampleRate: 44_100, frames: 4_410, time: time, value: level),
-        role: .microphone)
+        role: .microphone
+      )
       if part == 4 || part == 9 {
         try engine.advance(at: CMTime(value: Int64(second * 10 + part + 1), timescale: 10))
       }
@@ -59,7 +64,8 @@ import Testing
   var worstDriftFrames = 0
   let file = try AVAudioFile(forReading: writer.master.mediaURL)
   let buffer = try #require(
-    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_000))
+    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16_000)
+  )
   for _ in 0..<3_600 {
     try file.read(into: buffer)
     let channels = try #require(buffer.floatChannelData)

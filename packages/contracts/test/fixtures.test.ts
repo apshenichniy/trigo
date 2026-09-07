@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
+
 import { expect, it } from "vitest";
-import { parseStored, validateArchive, type DocumentKind } from "../src/index.ts";
+
 import cases from "../fixtures/cases.json";
+import { parseStored, validateArchive, type DocumentKind } from "../src/index.ts";
 const read = (file: string) =>
   new Uint8Array(readFileSync(new URL(`../fixtures/${file}`, import.meta.url)));
-for (const fixture of cases)
+for (const fixture of cases) {
   it(fixture.name, async () => {
     const bytes = read(fixture.document);
     const run = async () =>
@@ -18,6 +20,10 @@ for (const fixture of cases)
             )
           ).call
         : parseStored(fixture.kind as DocumentKind, bytes);
-    if (fixture.expected) await expect(run()).rejects.toThrowError(fixture.expected);
-    else expect(await run()).toEqual(JSON.parse(new TextDecoder().decode(bytes)));
+    if (fixture.expected) {
+      await expect(run()).rejects.toThrowError(fixture.expected);
+    } else {
+      expect(await run()).toEqual(JSON.parse(new TextDecoder().decode(bytes)));
+    }
   });
+}

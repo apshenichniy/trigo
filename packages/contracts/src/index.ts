@@ -1,7 +1,8 @@
 import { Result, Schema } from "effect";
+
 import { documentSchemas, type Documents, type DocumentKind } from "./document-schema.ts";
-import { validateCall, validateRevision, validateAudio } from "./semantics.ts";
 import { selectedMediaProfile } from "./media-profile.ts";
+import { validateCall, validateRevision, validateAudio } from "./semantics.ts";
 export {
   AsrProbeLanguage,
   AsrProbeTranscriptionResponse,
@@ -33,7 +34,9 @@ function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   const decode = Schema.decodeUnknownResult(schema, { onExcessProperty: "error" });
   return (value: unknown): S["Type"] => {
     const result = decode(value);
-    if (Result.isFailure(result)) throw new Error("structure");
+    if (Result.isFailure(result)) {
+      throw new Error("structure");
+    }
     return result.success;
   };
 }
@@ -53,9 +56,15 @@ export function validateStructure<K extends DocumentKind>(kind: K, value: unknow
 }
 export function validateDocument<K extends DocumentKind>(kind: K, value: unknown): Documents[K] {
   const document = validateStructure(kind, value);
-  if (kind === "CallDocument") validateCall(document as CallDocument);
-  if (kind === "TranscriptRevision") validateRevision(document as TranscriptRevision);
-  if (kind === "AudioManifest") validateAudio(document as AudioManifest);
+  if (kind === "CallDocument") {
+    validateCall(document as CallDocument);
+  }
+  if (kind === "TranscriptRevision") {
+    validateRevision(document as TranscriptRevision);
+  }
+  if (kind === "AudioManifest") {
+    validateAudio(document as AudioManifest);
+  }
   return document;
 }
 export async function storedByteHash(bytes: Uint8Array): Promise<string> {
@@ -89,9 +98,13 @@ export async function validateArchive(
     hash: string,
   ): Promise<Documents[K]> {
     const source = references.get(id);
-    if (!source) throw new Error("reference");
+    if (!source) {
+      throw new Error("reference");
+    }
     const bytes = new Uint8Array(source);
-    if ((await storedByteHash(bytes)) !== hash) throw new Error("checksum");
+    if ((await storedByteHash(bytes)) !== hash) {
+      throw new Error("checksum");
+    }
     const document = parseStored(kind, bytes);
     stored.set(id, bytes);
     return document;
@@ -100,7 +113,9 @@ export async function validateArchive(
     ? await resolve("AudioManifest", call.audioManifest.manifestId, call.audioManifest.sha256)
     : null;
   const check = (condition: unknown) => {
-    if (!condition) throw new Error("reference");
+    if (!condition) {
+      throw new Error("reference");
+    }
   };
   if (audio) {
     check(
@@ -108,8 +123,10 @@ export async function validateArchive(
         audio.manifestId === call.audioManifest?.manifestId &&
         audio.durationMs === call.durationMs,
     );
-    for (const track of call.tracks) check(track.mediaProfileId === audio.mediaProfileId);
-    for (const object of audio.objects)
+    for (const track of call.tracks) {
+      check(track.mediaProfileId === audio.mediaProfileId);
+    }
+    for (const object of audio.objects) {
       for (const expected of selectedMediaProfile.channels) {
         const channel = object.channelMap.find(
           (candidate) => candidate.channelIndex === expected.index,
@@ -121,6 +138,7 @@ export async function validateArchive(
             ),
         );
       }
+    }
     for (const track of call.tracks) {
       let cursor = 0;
       for (const object of audio.objects.filter((o) =>
@@ -147,13 +165,15 @@ export async function validateArchive(
         revision.audioManifest.manifestId === audio.manifestId &&
         revision.audioManifest.sha256 === call.audioManifest?.sha256,
     );
-    for (const speaker of revision.speakers)
+    for (const speaker of revision.speakers) {
       check(call.tracks.some((t) => t.trackId === speaker.trackId));
-    for (const turn of revision.turns)
+    }
+    for (const turn of revision.turns) {
       check(
         call.tracks.some((t) => t.trackId === turn.trackId) &&
           turn.endMs <= (call.durationMs ?? -1),
       );
+    }
     for (const speaker of revision.speakers) {
       check(!speakerIds.has(speaker.speakerId));
       speakerIds.add(speaker.speakerId);
@@ -167,8 +187,9 @@ export async function validateArchive(
   for (const [revisionId, names] of Object.entries(call.speakerNames)) {
     const revision = revisions.get(revisionId);
     check(revision);
-    for (const speakerId of Object.keys(names))
+    for (const speakerId of Object.keys(names)) {
       check(revision?.speakers.some((s) => s.speakerId === speakerId));
+    }
   }
   return { call, audio, revisions, stored };
 }

@@ -6,7 +6,8 @@ import Testing
 @Suite(.serialized)
 struct LiveConnectionAcceptanceTests {
   @Test(
-    .enabled(if: ProcessInfo.processInfo.environment["TRIGO_LIVE_HANDOFF_PATH"] != nil))
+    .enabled(if: ProcessInfo.processInfo.environment["TRIGO_LIVE_HANDOFF_PATH"] != nil)
+  )
   func pairAndRestoreThroughFileMetadataAndInjectedCredentials() async throws {
     let environment = ProcessInfo.processInfo.environment
     let handoffPath = try #require(environment["TRIGO_LIVE_HANDOFF_PATH"])
@@ -15,17 +16,23 @@ struct LiveConnectionAcceptanceTests {
     let expectedTarget = OwnerHandoffTarget(
       accountId: try #require(environment["TRIGO_LIVE_ACCOUNT_ID"]),
       databaseName: try #require(environment["TRIGO_LIVE_DATABASE_NAME"]),
-      deploymentIdentity: try #require(environment["TRIGO_LIVE_DEPLOYMENT_IDENTITY"]))
+      deploymentIdentity: try #require(environment["TRIGO_LIVE_DEPLOYMENT_IDENTITY"])
+    )
     let rawExpectedGeneration = try #require(environment["TRIGO_LIVE_EXPECTED_GENERATION"])
     let expectedGeneration = try #require(Int(rawExpectedGeneration))
     let handoff = try readValidatedHandoff(
-      at: URL(filePath: handoffPath), expectedTarget: expectedTarget,
-      expectedGeneration: expectedGeneration)
+      at: URL(filePath: handoffPath),
+      expectedTarget: expectedTarget,
+      expectedGeneration: expectedGeneration
+    )
     guard let canonicalServerURL = ServerConnection.canonicalServerURL(serverURL),
       archiveId.range(of: canonicalUUIDPattern, options: .regularExpression) != nil
     else { throw LiveAcceptanceError.invalidSelector }
-    let status = try await HTTPSStatusClient().fetch(
-      serverURL: canonicalServerURL, token: handoff.token)
+    let status = try await HTTPSStatusClient()
+      .fetch(
+        serverURL: canonicalServerURL,
+        token: handoff.token
+      )
     guard status.stage == .dev, status.archiveId == archiveId else {
       throw LiveAcceptanceError.unexpectedServer
     }
@@ -38,7 +45,9 @@ struct LiveConnectionAcceptanceTests {
     let connection = ServerConnection(
       expectedStage: .dev,
       metadataStore: FileConnectionMetadataStore(url: namespace.connection),
-      credentialStore: credentials, statusClient: HTTPSStatusClient())
+      credentialStore: credentials,
+      statusClient: HTTPSStatusClient()
+    )
     let connected = await connection.connect(serverURL: serverURL, token: handoff.token)
     #expect(connected.binding?.archiveId == archiveId)
     #expect(connected.health.isConnected)
@@ -50,7 +59,9 @@ struct LiveConnectionAcceptanceTests {
     #expect(replaced.lastAttemptIssue == nil)
 
     let rejected = await connection.connect(
-      serverURL: serverURL, token: "trigo-invalid-acceptance-token")
+      serverURL: serverURL,
+      token: "trigo-invalid-acceptance-token"
+    )
     #expect(rejected.binding == replaced.binding)
     #expect(rejected.lastAttemptIssue == .unauthorized)
     #expect(rejected.recordingEligibility == .eligible(archiveId: archiveId))
@@ -58,7 +69,9 @@ struct LiveConnectionAcceptanceTests {
     let relaunched = ServerConnection(
       expectedStage: .dev,
       metadataStore: FileConnectionMetadataStore(url: namespace.connection),
-      credentialStore: credentials, statusClient: HTTPSStatusClient())
+      credentialStore: credentials,
+      statusClient: HTTPSStatusClient()
+    )
     let restored = await relaunched.restore()
     #expect(restored.binding == replaced.binding)
     #expect(restored.health.isConnected)
@@ -73,7 +86,9 @@ struct LiveConnectionAcceptanceTests {
 
   @Test func protectedHandoffReaderRejectsUnsafeOrMismatchedInput() throws {
     let root = FileManager.default.temporaryDirectory.appending(
-      path: "trigo-live-handoff-\(UUID())", directoryHint: .isDirectory)
+      path: "trigo-live-handoff-\(UUID())",
+      directoryHint: .isDirectory
+    )
     let handoff = root.appending(path: "handoff.json")
     let symbolicLink = root.appending(path: "handoff-link.json")
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
@@ -87,7 +102,10 @@ struct LiveConnectionAcceptanceTests {
 
     try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: handoff.path)
     let valid = try readValidatedHandoff(
-      at: handoff, expectedTarget: .fixture, expectedGeneration: 3)
+      at: handoff,
+      expectedTarget: .fixture,
+      expectedGeneration: 3
+    )
     #expect(valid.target == .fixture)
     #expect(valid.expectedGeneration == 3)
 
@@ -99,15 +117,20 @@ struct LiveConnectionAcceptanceTests {
       try readValidatedHandoff(
         at: handoff,
         expectedTarget: OwnerHandoffTarget(
-          accountId: String(repeating: "f", count: 32), databaseName: "trigo-dev-catalog",
-          deploymentIdentity: "trigo-dev-api:different"),
-        expectedGeneration: 3)
+          accountId: String(repeating: "f", count: 32),
+          databaseName: "trigo-dev-catalog",
+          deploymentIdentity: "trigo-dev-api:different"
+        ),
+        expectedGeneration: 3
+      )
     }
   }
 
   @Test func protectedHandoffReaderMatchesProductionTimestampAndUUIDRules() throws {
     let root = FileManager.default.temporaryDirectory.appending(
-      path: "trigo-live-handoff-schema-\(UUID())", directoryHint: .isDirectory)
+      path: "trigo-live-handoff-schema-\(UUID())",
+      directoryHint: .isDirectory
+    )
     let handoff = root.appending(path: "handoff.json")
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
     defer { try? FileManager.default.removeItem(at: root) }
@@ -117,8 +140,12 @@ struct LiveConnectionAcceptanceTests {
       try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: handoff.path)
       #expect(
         try readValidatedHandoff(
-          at: handoff, expectedTarget: .fixture, expectedGeneration: 3
-        ).createdAt == timestamp)
+          at: handoff,
+          expectedTarget: .fixture,
+          expectedGeneration: 3
+        )
+        .createdAt == timestamp
+      )
     }
 
     try validHandoffData(operationId: "00000000-0000-1000-8000-000000000031")
@@ -162,8 +189,10 @@ private enum LiveAcceptanceError: Error, Equatable {
 
 extension OwnerHandoffTarget {
   fileprivate static let fixture = OwnerHandoffTarget(
-    accountId: String(repeating: "0", count: 32), databaseName: "trigo-dev-catalog",
-    deploymentIdentity: "trigo-dev-api:0000000000000000")
+    accountId: String(repeating: "0", count: 32),
+    databaseName: "trigo-dev-catalog",
+    deploymentIdentity: "trigo-dev-api:0000000000000000"
+  )
 }
 
 private func validHandoffData(
@@ -191,7 +220,9 @@ private let canonicalUUIDPattern =
   "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 
 private func readValidatedHandoff(
-  at url: URL, expectedTarget: OwnerHandoffTarget, expectedGeneration: Int
+  at url: URL,
+  expectedTarget: OwnerHandoffTarget,
+  expectedGeneration: Int
 ) throws -> OwnerHandoff {
   let values = try url.resourceValues(forKeys: [
     .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey,
@@ -218,7 +249,9 @@ private func readValidatedHandoff(
     handoff.expectedGeneration == expectedGeneration, expectedGeneration >= 1,
     handoff.target == expectedTarget,
     handoff.target.accountId.range(
-      of: "^[0-9a-f]{32}$", options: .regularExpression) != nil,
+      of: "^[0-9a-f]{32}$",
+      options: .regularExpression
+    ) != nil,
     !handoff.target.databaseName.isEmpty, !handoff.target.deploymentIdentity.isEmpty,
     handoff.operationId.range(of: canonicalUUIDPattern, options: .regularExpression) != nil,
     hasValidTimestamp,

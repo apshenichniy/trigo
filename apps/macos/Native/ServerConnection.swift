@@ -27,7 +27,9 @@ public struct ServerReadiness: Codable, Equatable, Sendable {
   public let callOperations: CallOperationsReadiness
 
   public init(
-    archive: String, ownerAuthentication: String, transcription: TranscriptionReadiness,
+    archive: String,
+    ownerAuthentication: String,
+    transcription: TranscriptionReadiness,
     callOperations: CallOperationsReadiness
   ) {
     self.archive = archive
@@ -53,8 +55,12 @@ public struct ServerStatus: Codable, Equatable, Sendable {
   public let errors: [ServerStatusNotice]
 
   public init(
-    schemaVersion: Int, apiVersion: Int, archiveId: String, stage: ServerStage,
-    readiness: ServerReadiness, errors: [ServerStatusNotice]
+    schemaVersion: Int,
+    apiVersion: Int,
+    archiveId: String,
+    stage: ServerStage,
+    readiness: ServerReadiness,
+    errors: [ServerStatusNotice]
   ) {
     self.schemaVersion = schemaVersion
     self.apiVersion = apiVersion
@@ -177,7 +183,9 @@ public struct ConnectionSnapshot: Equatable, Sendable {
   public let lastAttemptIssue: ConnectionIssue?
 
   public init(
-    binding: ArchiveBinding?, health: ConnectionHealth, lastAttemptIssue: ConnectionIssue?
+    binding: ArchiveBinding?,
+    health: ConnectionHealth,
+    lastAttemptIssue: ConnectionIssue?
   ) {
     self.binding = binding
     self.health = health
@@ -221,7 +229,8 @@ struct ConnectionMetadata: Codable, Equatable, Sendable {
   var retiredCredentialAccounts: [String]
 
   init(
-    committed: StoredConnection? = nil, pending: StoredConnection? = nil,
+    committed: StoredConnection? = nil,
+    pending: StoredConnection? = nil,
     retiredCredentialAccounts: [String] = []
   ) {
     formatVersion = 1
@@ -257,11 +266,16 @@ public actor ServerConnection {
   private var recoveryIssue: ConnectionIssue?
   private var operationInProgress = false
   private var current = ConnectionSnapshot(
-    binding: nil, health: .setupRequired, lastAttemptIssue: nil)
+    binding: nil,
+    health: .setupRequired,
+    lastAttemptIssue: nil
+  )
 
   init(
-    expectedStage: ServerStage, metadataStore: any ConnectionMetadataStoring,
-    credentialStore: any CredentialStoring, statusClient: any ServerStatusFetching,
+    expectedStage: ServerStage,
+    metadataStore: any ConnectionMetadataStoring,
+    credentialStore: any CredentialStoring,
+    statusClient: any ServerStatusFetching,
     transportPolicy: ServerTransportPolicy = .httpsOnly
   ) {
     self.transportPolicy = transportPolicy
@@ -277,9 +291,13 @@ public actor ServerConnection {
     return ServerConnection(
       expectedStage: variant.serverStage,
       metadataStore: FileConnectionMetadataStore(
-        url: namespace.connection, transportPolicy: policy),
+        url: namespace.connection,
+        transportPolicy: policy
+      ),
       credentialStore: KeychainCredentialStore(service: namespace.keychainService),
-      statusClient: HTTPSStatusClient(transportPolicy: policy), transportPolicy: policy)
+      statusClient: HTTPSStatusClient(transportPolicy: policy),
+      transportPolicy: policy
+    )
   }
 
   public func snapshot() -> ConnectionSnapshot { current }
@@ -296,7 +314,10 @@ public actor ServerConnection {
       didLoad = true
     } catch {
       current = ConnectionSnapshot(
-        binding: nil, health: .recoveryRequired(.persistence), lastAttemptIssue: nil)
+        binding: nil,
+        health: .recoveryRequired(.persistence),
+        lastAttemptIssue: nil
+      )
       return current
     }
 
@@ -305,13 +326,16 @@ public actor ServerConnection {
       current = ConnectionSnapshot(
         binding: nil,
         health: recovered ? .setupRequired : .recoveryRequired(.persistence),
-        lastAttemptIssue: recovered ? nil : (recoveryIssue ?? .persistence))
+        lastAttemptIssue: recovered ? nil : (recoveryIssue ?? .persistence)
+      )
       return current
     }
 
     current = ConnectionSnapshot(
-      binding: committed.binding, health: .checking,
-      lastAttemptIssue: recovered ? nil : (recoveryIssue ?? .persistence))
+      binding: committed.binding,
+      health: .checking,
+      lastAttemptIssue: recovered ? nil : (recoveryIssue ?? .persistence)
+    )
     // Local capture can recover and become eligible before the remote health request completes.
     await onBindingRestored(current)
     let token: String
@@ -319,8 +343,10 @@ public actor ServerConnection {
       guard let savedToken = try await credentialStore.load(account: committed.credentialAccount)
       else {
         current = ConnectionSnapshot(
-          binding: committed.binding, health: .blocked(.credentialMissing),
-          lastAttemptIssue: current.lastAttemptIssue)
+          binding: committed.binding,
+          health: .blocked(.credentialMissing),
+          lastAttemptIssue: current.lastAttemptIssue
+        )
         return current
       }
       token = savedToken
@@ -328,28 +354,38 @@ public actor ServerConnection {
       current = ConnectionSnapshot(
         binding: committed.binding,
         health: .blocked(.credentialAccess(credentialAccessFailure(error))),
-        lastAttemptIssue: current.lastAttemptIssue)
+        lastAttemptIssue: current.lastAttemptIssue
+      )
       return current
     }
     do {
       let status = try await statusClient.fetch(serverURL: committed.serverURL, token: token)
       try validate(status, expectedArchiveId: committed.archiveId)
       current = ConnectionSnapshot(
-        binding: committed.binding, health: .connected(status),
-        lastAttemptIssue: current.lastAttemptIssue)
+        binding: committed.binding,
+        health: .connected(status),
+        lastAttemptIssue: current.lastAttemptIssue
+      )
     } catch let issue as ConnectionIssue {
       current = ConnectionSnapshot(
-        binding: committed.binding, health: .blocked(issue),
-        lastAttemptIssue: current.lastAttemptIssue)
+        binding: committed.binding,
+        health: .blocked(issue),
+        lastAttemptIssue: current.lastAttemptIssue
+      )
     } catch {
       current = ConnectionSnapshot(
-        binding: committed.binding, health: .blocked(.unreachable),
-        lastAttemptIssue: current.lastAttemptIssue)
+        binding: committed.binding,
+        health: .blocked(.unreachable),
+        lastAttemptIssue: current.lastAttemptIssue
+      )
     }
     return current
   }
 
-  public func connect(serverURL rawServerURL: String, token rawToken: String) async
+  public func connect(
+    serverURL rawServerURL: String,
+    token rawToken: String
+  ) async
     -> ConnectionSnapshot
   {
     guard beginOperation() else { return current }
@@ -379,7 +415,10 @@ public actor ServerConnection {
         // A read failure is not permission to replace a retained credential.
         if try await credentialStore.load(account: committed.credentialAccount) == token {
           current = ConnectionSnapshot(
-            binding: committed.binding, health: .connected(status), lastAttemptIssue: nil)
+            binding: committed.binding,
+            health: .connected(status),
+            lastAttemptIssue: nil
+          )
           return current
         }
       } catch {
@@ -391,12 +430,18 @@ public actor ServerConnection {
     }
 
     let candidate = StoredConnection(
-      serverURL: serverURL, archiveId: status.archiveId, stage: status.stage,
-      credentialAccount: UUID().uuidString.lowercased())
+      serverURL: serverURL,
+      archiveId: status.archiveId,
+      stage: status.stage,
+      credentialAccount: UUID().uuidString.lowercased()
+    )
     if let issue = await commit(candidate: candidate, token: token) { return reject(issue) }
 
     current = ConnectionSnapshot(
-      binding: candidate.binding, health: .connected(status), lastAttemptIssue: nil)
+      binding: candidate.binding,
+      health: .connected(status),
+      lastAttemptIssue: nil
+    )
     await cleanRetiredCredentials()
     return current
   }
@@ -404,8 +449,10 @@ public actor ServerConnection {
   private func beginOperation() -> Bool {
     guard !operationInProgress else {
       current = ConnectionSnapshot(
-        binding: current.binding, health: current.health,
-        lastAttemptIssue: .operationInProgress)
+        binding: current.binding,
+        health: current.health,
+        lastAttemptIssue: .operationInProgress
+      )
       return false
     }
     operationInProgress = true
@@ -420,12 +467,18 @@ public actor ServerConnection {
       didLoad = true
       if let committed = metadata.committed {
         current = ConnectionSnapshot(
-          binding: committed.binding, health: .checking, lastAttemptIssue: nil)
+          binding: committed.binding,
+          health: .checking,
+          lastAttemptIssue: nil
+        )
       }
       return true
     } catch {
       current = ConnectionSnapshot(
-        binding: nil, health: .recoveryRequired(.persistence), lastAttemptIssue: nil)
+        binding: nil,
+        health: .recoveryRequired(.persistence),
+        lastAttemptIssue: nil
+      )
       return false
     }
   }
@@ -517,7 +570,9 @@ public actor ServerConnection {
     }
     if let expectedArchiveId, status.archiveId != expectedArchiveId {
       throw ConnectionIssue.differentArchive(
-        expected: expectedArchiveId, actual: status.archiveId)
+        expected: expectedArchiveId,
+        actual: status.archiveId
+      )
     }
   }
 
@@ -535,7 +590,10 @@ public actor ServerConnection {
 
   private func reject(_ issue: ConnectionIssue) -> ConnectionSnapshot {
     current = ConnectionSnapshot(
-      binding: current.binding, health: current.health, lastAttemptIssue: issue)
+      binding: current.binding,
+      health: current.health,
+      lastAttemptIssue: issue
+    )
     return current
   }
 

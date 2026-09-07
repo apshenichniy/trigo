@@ -22,20 +22,32 @@ private final class IngressFixtureState: @unchecked Sendable {
   queue.suspend()
   let state = IngressFixtureState()
   let ingress = CaptureAudioIngress(
-    queue: queue, consume: { _ in state.consumed() },
-    overflow: { state.failed() })
+    queue: queue,
+    consume: { _ in state.consumed() },
+    overflow: { state.failed() }
+  )
   let stream = NSObject()
   ingress.select(ObjectIdentifier(stream), for: .microphone)
   let sample = try controlledAudioBuffer(sampleRate: 48_000, frames: 4_800, time: .zero, value: 0.5)
   for _ in 0..<10 {
     #expect(
       ingress.submit(
-        sample, role: .microphone, streamID: ObjectIdentifier(stream), deliveredAt: .zero))
+        sample,
+        role: .microphone,
+        streamID: ObjectIdentifier(stream),
+        deliveredAt: .zero
+      )
+    )
   }
   for _ in 0..<1000 {
     #expect(
       !ingress.submit(
-        sample, role: .microphone, streamID: ObjectIdentifier(stream), deliveredAt: .zero))
+        sample,
+        role: .microphone,
+        streamID: ObjectIdentifier(stream),
+        deliveredAt: .zero
+      )
+    )
   }
   #expect(ingress.statistics.maximumPendingBuffers == 10)
   #expect(ingress.statistics.maximumPendingSourceSeconds <= 1.000_001)
@@ -63,11 +75,14 @@ private final class ReplenishingIngress: @unchecked Sendable {
       consume: { next in
         if state.consumed() < 1000 {
           #expect(
-            holder.ingress.submit(next.sample, role: .microphone, streamID: id, deliveredAt: .zero))
+            holder.ingress.submit(next.sample, role: .microphone, streamID: id, deliveredAt: .zero)
+          )
         } else {
           continuation.finish()
         }
-      }, overflow: { state.failed() })
+      },
+      overflow: { state.failed() }
+    )
   }
   holder.ingress.select(id, for: .microphone)
   #expect(holder.ingress.submit(sample, role: .microphone, streamID: id, deliveredAt: .zero))
@@ -91,10 +106,14 @@ private final class ReplenishingIngress: @unchecked Sendable {
   let queue = DispatchQueue(label: "trigo.test.sink-admission")
   let failures = IngressFixtureState()
   let sink = try CaptureStreamSink(
-    session: session, queue: queue, origin: .zero,
-    microphone: session.microphone, onSnapshot: { _ in },
+    session: session,
+    queue: queue,
+    origin: .zero,
+    microphone: session.microphone,
+    onSnapshot: { _ in },
     onMicrophoneFailure: { _ in failures.failed() },
-    onFailure: { _ in failures.failed() })
+    onFailure: { _ in failures.failed() }
+  )
   let old = RecordingTransportFixture()
   let current = RecordingTransportFixture()
   let application = RecordingTransportFixture()
@@ -105,25 +124,42 @@ private final class ReplenishingIngress: @unchecked Sendable {
   queue.suspend()
   for _ in 0..<10 {
     #expect(
-      sink.enqueue(sample, role: .microphone, streamID: ObjectIdentifier(old), deliveredAt: .zero))
+      sink.enqueue(sample, role: .microphone, streamID: ObjectIdentifier(old), deliveredAt: .zero)
+    )
   }
   sink.acceptMicrophoneStream(current)
   for _ in 0..<1000 {
     #expect(
-      !sink.enqueue(sample, role: .microphone, streamID: ObjectIdentifier(old), deliveredAt: .zero))
+      !sink.enqueue(sample, role: .microphone, streamID: ObjectIdentifier(old), deliveredAt: .zero)
+    )
     #expect(
       !sink.enqueue(
-        sample, role: .application, streamID: ObjectIdentifier(foreign), deliveredAt: .zero))
+        sample,
+        role: .application,
+        streamID: ObjectIdentifier(foreign),
+        deliveredAt: .zero
+      )
+    )
     #expect(
       !sink.enqueue(
-        sample, role: .microphone, streamID: ObjectIdentifier(application), deliveredAt: .zero))
+        sample,
+        role: .microphone,
+        streamID: ObjectIdentifier(application),
+        deliveredAt: .zero
+      )
+    )
   }
   #expect(
     sink.enqueue(sample, role: .microphone, streamID: ObjectIdentifier(current), deliveredAt: .zero)
   )
   #expect(
     sink.enqueue(
-      sample, role: .application, streamID: ObjectIdentifier(application), deliveredAt: .zero))
+      sample,
+      role: .application,
+      streamID: ObjectIdentifier(application),
+      deliveredAt: .zero
+    )
+  )
   queue.resume()
   let master = try await sink.perform { try $0.stop(at: CMTime(value: 1, timescale: 10)) }
   let result = try await session.complete(media: master, interruptionReason: nil)
@@ -143,10 +179,14 @@ private final class ReplenishingIngress: @unchecked Sendable {
   let queue = DispatchQueue(label: "trigo.test.stop-drain")
   let failures = IngressFixtureState()
   let sink = try CaptureStreamSink(
-    session: session, queue: queue, origin: .zero,
-    microphone: session.microphone, onSnapshot: { _ in },
+    session: session,
+    queue: queue,
+    origin: .zero,
+    microphone: session.microphone,
+    onSnapshot: { _ in },
     onMicrophoneFailure: { _ in failures.failed() },
-    onFailure: { _ in failures.failed() })
+    onFailure: { _ in failures.failed() }
+  )
   let microphone = RecordingTransportFixture()
   let application = RecordingTransportFixture()
   sink.acceptMicrophoneStream(microphone)
@@ -157,10 +197,20 @@ private final class ReplenishingIngress: @unchecked Sendable {
     let sample = try controlledAudioBuffer(sampleRate: 16_000, frames: 320, time: time, value: 0.5)
     #expect(
       sink.enqueue(
-        sample, role: .microphone, streamID: ObjectIdentifier(microphone), deliveredAt: time))
+        sample,
+        role: .microphone,
+        streamID: ObjectIdentifier(microphone),
+        deliveredAt: time
+      )
+    )
     #expect(
       sink.enqueue(
-        sample, role: .application, streamID: ObjectIdentifier(application), deliveredAt: time))
+        sample,
+        role: .application,
+        streamID: ObjectIdentifier(application),
+        deliveredAt: time
+      )
+    )
   }
   #expect(sink.ingressStatistics.pendingBuffers == 100)
   queue.resume()
@@ -183,29 +233,44 @@ private final class ReplenishingIngress: @unchecked Sendable {
   let queue = DispatchQueue(label: "trigo.test.delayed-timer")
   let failures = IngressFixtureState()
   let sink = try CaptureStreamSink(
-    session: session, queue: queue, origin: .zero,
-    microphone: session.microphone, onSnapshot: { _ in },
+    session: session,
+    queue: queue,
+    origin: .zero,
+    microphone: session.microphone,
+    onSnapshot: { _ in },
     onMicrophoneFailure: { _ in failures.failed() },
-    onFailure: { _ in failures.failed() })
+    onFailure: { _ in failures.failed() }
+  )
   let microphone = RecordingTransportFixture()
   let application = RecordingTransportFixture()
   sink.acceptMicrophoneStream(microphone)
   sink.acceptApplicationStream(application)
-  let input = try (0..<50).map { part in
-    let time = CMTime(value: Int64(part), timescale: 50)
-    return (
-      try controlledAudioBuffer(sampleRate: 16_000, frames: 320, time: time, value: 0.5), time
-    )
-  }
+  let input = try (0..<50)
+    .map { part in
+      let time = CMTime(value: Int64(part), timescale: 50)
+      return (
+        try controlledAudioBuffer(sampleRate: 16_000, frames: 320, time: time, value: 0.5), time
+      )
+    }
   queue.suspend()
   let began = ContinuousClock.now
   for (sample, time) in input {
     #expect(
       sink.enqueue(
-        sample, role: .microphone, streamID: ObjectIdentifier(microphone), deliveredAt: time))
+        sample,
+        role: .microphone,
+        streamID: ObjectIdentifier(microphone),
+        deliveredAt: time
+      )
+    )
     #expect(
       sink.enqueue(
-        sample, role: .application, streamID: ObjectIdentifier(application), deliveredAt: time))
+        sample,
+        role: .application,
+        streamID: ObjectIdentifier(application),
+        deliveredAt: time
+      )
+    )
   }
   let timer = AsyncThrowingStream<(FinalizedMediaMaster, ContinuousClock.Instant), any Error> {
     continuation in
@@ -223,9 +288,10 @@ private final class ReplenishingIngress: @unchecked Sendable {
   }
   // The hold is released independently of MainActor test scheduling. Measure the
   // durable commit on the engine queue; report subsequent caller delivery separately.
-  DispatchQueue.global(qos: .userInteractive).asyncAfter(deadline: .now() + .milliseconds(300)) {
-    queue.resume()
-  }
+  DispatchQueue.global(qos: .userInteractive)
+    .asyncAfter(deadline: .now() + .milliseconds(300)) {
+      queue.resume()
+    }
   var finished: (FinalizedMediaMaster, ContinuousClock.Instant)?
   for try await value in timer { finished = value }
   let result = try #require(finished)

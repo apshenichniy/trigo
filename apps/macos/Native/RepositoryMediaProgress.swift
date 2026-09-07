@@ -12,7 +12,8 @@ extension LocalRepository {
     if let existing = try mediaCommit(callID: callID, sequence: commit.cursor.commitCount) {
       guard existing == commit else {
         throw LocalPersistenceError.immutableConflict(
-          "media:\(callID):\(commit.cursor.commitCount)")
+          "media:\(callID):\(commit.cursor.commitCount)"
+        )
       }
       return .alreadyPresent
     }
@@ -20,18 +21,23 @@ extension LocalRepository {
     try validateMediaCommit(commit, after: prior)
     return try database.access(capture: true) {
       try database.transaction(interruption: interruption) {
-        let row = try database.rows(
-          "SELECT sequence,finalized_hash FROM capture_progress WHERE call_id=?", [.text(callID)]
-        ).first
+        let row =
+          try database.rows(
+            "SELECT sequence,finalized_hash FROM capture_progress WHERE call_id=?",
+            [.text(callID)]
+          )
+          .first
         let current = try row?.optionalInt(0) ?? 0
         guard current == prior.commitCount, try row?.optionalString(1) == nil else {
           throw LocalPersistenceError.concurrentMutation
         }
         guard
-          let state = try database.rows(
-            "SELECT v.capture_state FROM calls c JOIN call_values v ON v.hash=c.hash WHERE c.call_id=?",
-            [.text(callID)]
-          ).first,
+          let state =
+            try database.rows(
+              "SELECT v.capture_state FROM calls c JOIN call_values v ON v.hash=c.hash WHERE c.call_id=?",
+              [.text(callID)]
+            )
+            .first,
           try state.string(0) == "recording"
         else { throw LocalPersistenceError.invalidMediaProgress }
         try database.execute(
@@ -41,7 +47,8 @@ extension LocalRepository {
             .integer(commit.cursor.frames),
             .integer(commit.cursor.stableBytes), .text(commit.cursor.integritySHA256),
             .text(commit.pcmSHA256),
-          ])
+          ]
+        )
         for (channel, intervals) in [commit.microphoneIntervals, commit.applicationIntervals]
           .enumerated()
         {
@@ -51,12 +58,14 @@ extension LocalRepository {
               [
                 .text(callID), .integer(commit.cursor.commitCount), .int(channel), .int(ordinal),
                 .int(interval.startMs), .int(interval.endMs), .text(interval.state.rawValue),
-              ])
+              ]
+            )
           }
         }
         try database.execute(
           "INSERT INTO capture_progress VALUES (?,?,NULL) ON CONFLICT(call_id) DO UPDATE SET sequence=excluded.sequence",
-          [.text(callID), .integer(commit.cursor.commitCount)])
+          [.text(callID), .integer(commit.cursor.commitCount)]
+        )
         return .committed
       }
     }
@@ -66,13 +75,16 @@ extension LocalRepository {
     let identity = try masterIdentity(callID)
     return try database.access(capture: true) {
       guard
-        let row = try database.rows(
-          """
-          SELECT m.frames,m.stable_bytes,m.sequence,m.integrity_hash,p.finalized_hash
-          FROM capture_progress p LEFT JOIN media_commits m ON m.call_id=p.call_id AND m.sequence=p.sequence
-          WHERE p.call_id=?
-          """, [.text(callID)]
-        ).first
+        let row =
+          try database.rows(
+            """
+            SELECT m.frames,m.stable_bytes,m.sequence,m.integrity_hash,p.finalized_hash
+            FROM capture_progress p LEFT JOIN media_commits m ON m.call_id=p.call_id AND m.sequence=p.sequence
+            WHERE p.call_id=?
+            """,
+            [.text(callID)]
+          )
+          .first
       else { return nil }
       if try row.optionalInt(2) == nil {
         guard let hash = try row.optionalString(4) else { throw invalidRow() }
@@ -80,8 +92,12 @@ extension LocalRepository {
         return initialCursor(identity)
       }
       return try .init(
-        identity: identity, frames: row.integer(0), stableBytes: row.integer(1),
-        commitCount: row.integer(2), integritySHA256: row.string(3))
+        identity: identity,
+        frames: row.integer(0),
+        stableBytes: row.integer(1),
+        commitCount: row.integer(2),
+        integritySHA256: row.string(3)
+      )
     }
   }
 
@@ -89,14 +105,17 @@ extension LocalRepository {
     let identity = try masterIdentity(callID)
     return try database.access(capture: true) {
       guard
-        let row = try database.rows(
-          "SELECT start_frame,frames,stable_bytes,integrity_hash,pcm_hash FROM media_commits WHERE call_id=? AND sequence=?",
-          [.text(callID), .integer(sequence)]
-        ).first
+        let row =
+          try database.rows(
+            "SELECT start_frame,frames,stable_bytes,integrity_hash,pcm_hash FROM media_commits WHERE call_id=? AND sequence=?",
+            [.text(callID), .integer(sequence)]
+          )
+          .first
       else { return nil }
       let spans = try database.rows(
         "SELECT channel,start_ms,end_ms,state FROM media_intervals WHERE call_id=? AND sequence=? ORDER BY channel,ordinal LIMIT 2001",
-        [.text(callID), .integer(sequence)])
+        [.text(callID), .integer(sequence)]
+      )
       guard spans.count <= 2000 else { throw invalidRow() }
       var intervals: [[CaptureInterval]] = [[], []]
       for span in spans {
@@ -108,10 +127,17 @@ extension LocalRepository {
       }
       return try .init(
         cursor: .init(
-          identity: identity, frames: row.integer(1), stableBytes: row.integer(2),
-          commitCount: sequence, integritySHA256: row.string(3)), startFrame: row.integer(0),
+          identity: identity,
+          frames: row.integer(1),
+          stableBytes: row.integer(2),
+          commitCount: sequence,
+          integritySHA256: row.string(3)
+        ),
+        startFrame: row.integer(0),
         pcmSHA256: row.string(4),
-        microphoneIntervals: intervals[0], applicationIntervals: intervals[1])
+        microphoneIntervals: intervals[0],
+        applicationIntervals: intervals[1]
+      )
     }
   }
 
@@ -119,17 +145,22 @@ extension LocalRepository {
     try requireCanonicalIdentifier(callID)
     return try database.access(capture: true) {
       guard
-        let row = try database.rows(
-          "SELECT master_id,microphone_track_id,application_track_id FROM sessions WHERE call_id=?",
-          [.text(callID)]
-        ).first,
+        let row =
+          try database.rows(
+            "SELECT master_id,microphone_track_id,application_track_id FROM sessions WHERE call_id=?",
+            [.text(callID)]
+          )
+          .first,
         let call = UUID(uuidString: callID), let master = try UUID(uuidString: row.string(0)),
         let microphone = try UUID(uuidString: row.string(1)),
         let application = try UUID(uuidString: row.string(2))
       else { throw invalidRow() }
       return .init(
-        masterID: master, callID: call, microphoneTrackID: microphone,
-        applicationTrackID: application)
+        masterID: master,
+        callID: call,
+        microphoneTrackID: microphone,
+        applicationTrackID: application
+      )
     }
   }
 
@@ -143,20 +174,30 @@ extension LocalRepository {
       commit.microphoneIntervals.count <= 1000, commit.applicationIntervals.count <= 1000
     else { throw LocalPersistenceError.invalidMediaProgress }
     let mic = try MediaMasterIndex.states(
-      commit.microphoneIntervals, startMs: Int(prior.frames / 16), countMs: Int(frames / 16),
-      microphone: true)
+      commit.microphoneIntervals,
+      startMs: Int(prior.frames / 16),
+      countMs: Int(frames / 16),
+      microphone: true
+    )
     let app = try MediaMasterIndex.states(
-      commit.applicationIntervals, startMs: Int(prior.frames / 16), countMs: Int(frames / 16),
-      microphone: false)
+      commit.applicationIntervals,
+      startMs: Int(prior.frames / 16),
+      countMs: Int(frames / 16),
+      microphone: false
+    )
     var states = Data()
     for index in mic.indices {
       states.append(mic[index])
       states.append(app[index])
     }
     let record = try MediaMasterIndex.record(
-      final: false, frames: cursor.frames, bytes: cursor.stableBytes,
-      hash: digestBytes(commit.pcmSHA256), previous: digestBytes(prior.integritySHA256),
-      states: states)
+      final: false,
+      frames: cursor.frames,
+      bytes: cursor.stableBytes,
+      hash: digestBytes(commit.pcmSHA256),
+      previous: digestBytes(prior.integritySHA256),
+      states: states
+    )
     guard record.suffix(32).masterHex == cursor.integritySHA256 else {
       throw LocalPersistenceError.invalidMediaProgress
     }
@@ -164,31 +205,44 @@ extension LocalRepository {
 
   func initialCursor(_ identity: MediaMasterIdentity) -> MediaMasterCursor {
     .init(
-      identity: identity, frames: 0, stableBytes: 68, commitCount: 0,
-      integritySHA256: MediaMasterIndex.header(identity).suffix(32).masterHex)
+      identity: identity,
+      frames: 0,
+      stableBytes: 68,
+      commitCount: 0,
+      integritySHA256: MediaMasterIndex.header(identity).suffix(32).masterHex
+    )
   }
 
   /// Called inside the same finalization transaction as the canonical pointer and work.
   func commitFinalMaster(_ master: FinalizedMediaMaster, callID: String) throws {
     if master.cursor.commitCount == 0 {
-      if let row = try database.rows(
-        "SELECT sequence,finalized_hash FROM capture_progress WHERE call_id=?", [.text(callID)]
-      ).first {
+      if let row =
+        try database.rows(
+          "SELECT sequence,finalized_hash FROM capture_progress WHERE call_id=?",
+          [.text(callID)]
+        )
+        .first
+      {
         guard try row.optionalInt(0) == nil, try row.optionalString(1) == master.sha256 else {
           throw LocalPersistenceError.invalidMediaProgress
         }
         return
       }
       try database.execute(
-        "INSERT INTO capture_progress VALUES (?,NULL,?)", [.text(callID), .text(master.sha256)])
+        "INSERT INTO capture_progress VALUES (?,NULL,?)",
+        [.text(callID), .text(master.sha256)]
+      )
       return
     }
-    let row = try database.rows(
-      """
-      SELECT m.frames,m.stable_bytes,m.sequence,m.integrity_hash,p.finalized_hash
-      FROM capture_progress p JOIN media_commits m ON m.call_id=p.call_id AND m.sequence=p.sequence WHERE p.call_id=?
-      """, [.text(callID)]
-    ).first
+    let row =
+      try database.rows(
+        """
+        SELECT m.frames,m.stable_bytes,m.sequence,m.integrity_hash,p.finalized_hash
+        FROM capture_progress p JOIN media_commits m ON m.call_id=p.call_id AND m.sequence=p.sequence WHERE p.call_id=?
+        """,
+        [.text(callID)]
+      )
+      .first
     guard let row, try row.integer(0) == master.cursor.frames,
       try row.integer(1) == master.cursor.stableBytes,
       try row.integer(2) == master.cursor.commitCount,
@@ -197,16 +251,21 @@ extension LocalRepository {
     else { throw LocalPersistenceError.invalidMediaProgress }
     try database.execute(
       "UPDATE capture_progress SET finalized_hash=? WHERE call_id=?",
-      [.text(master.sha256), .text(callID)])
+      [.text(master.sha256), .text(callID)]
+    )
   }
 
   public func finalizedMaster(callID: String) throws -> FinalizedMediaMaster? {
     guard let cursor = try confirmedMediaCursor(callID: callID) else { return nil }
     guard
       let hash = try database.access({
-        try database.rows(
-          "SELECT finalized_hash FROM capture_progress WHERE call_id=?", [.text(callID)]
-        ).first?.optionalString(0)
+        try database
+          .rows(
+            "SELECT finalized_hash FROM capture_progress WHERE call_id=?",
+            [.text(callID)]
+          )
+          .first?
+          .optionalString(0)
       })
     else { return nil }
     return .init(cursor: cursor, sha256: hash)

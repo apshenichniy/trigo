@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+
 import source from "../schema/media-profile.v1.json";
 
 export const MediaSourceRole = Schema.Literals(["microphone", "application"]);
@@ -85,16 +86,18 @@ function fourCC(bytes: Uint8Array, offset: number): string {
 }
 
 export function inspectWaveObject(bytes: Uint8Array): WaveObjectInspection {
-  if (bytes.byteLength < selectedMediaProfile.waveHeaderBytes)
+  if (bytes.byteLength < selectedMediaProfile.waveHeaderBytes) {
     throw new Error("media_profile: truncated WAVE header");
+  }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (
     fourCC(bytes, 0) !== "RIFF" ||
     fourCC(bytes, 8) !== "WAVE" ||
     fourCC(bytes, 12) !== "fmt " ||
     fourCC(bytes, 36) !== "data"
-  )
+  ) {
     throw new Error("media_profile: expected canonical RIFF/WAVE chunks");
+  }
 
   const channels = selectedMediaProfile.channels.length;
   const bytesPerSample = selectedMediaProfile.bitsPerSample / 8;
@@ -113,8 +116,9 @@ export function inspectWaveObject(bytes: Uint8Array): WaveObjectInspection {
     dataBytes !== bytes.byteLength - selectedMediaProfile.waveHeaderBytes ||
     dataBytes % blockAlign !== 0 ||
     bytes.byteLength > selectedMediaProfile.maxObjectBytes
-  )
+  ) {
     throw new Error("media_profile: WAVE object does not match the selected profile");
+  }
 
   const frameCount = dataBytes / blockAlign;
   return {
@@ -129,11 +133,13 @@ function writeFourCC(bytes: Uint8Array, offset: number, value: string): void {
 }
 
 export function makeWaveHeader(frameCount: number): Uint8Array {
-  if (!Number.isSafeInteger(frameCount) || frameCount < 0)
+  if (!Number.isSafeInteger(frameCount) || frameCount < 0) {
     throw new Error("media_profile: frame count must be a nonnegative safe integer");
+  }
   const byteLength = waveByteLength(frameCount);
-  if (byteLength > selectedMediaProfile.maxObjectBytes)
+  if (byteLength > selectedMediaProfile.maxObjectBytes) {
     throw new Error("media_profile: WAVE object exceeds the selected object duration");
+  }
 
   const channels = selectedMediaProfile.channels.length;
   const bytesPerSample = selectedMediaProfile.bitsPerSample / 8;

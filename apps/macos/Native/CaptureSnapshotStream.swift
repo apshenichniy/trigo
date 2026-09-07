@@ -15,10 +15,13 @@ final class CaptureSnapshotStream {
 
   init() throws {
     directory = FileManager.default.temporaryDirectory.appendingPathComponent(
-      "trigo-snapshot-\(UUID())")
+      "trigo-snapshot-\(UUID())"
+    )
     try FileManager.default.createDirectory(
-      at: directory, withIntermediateDirectories: false,
-      attributes: [.posixPermissions: 0o700])
+      at: directory,
+      withIntermediateDirectories: false,
+      attributes: [.posixPermissions: 0o700]
+    )
     url = directory.appendingPathComponent("snapshot.json")
     handle = try MediaMasterIO.create(url)
     encoder = JSONEncoder()
@@ -56,7 +59,10 @@ final class CaptureSnapshotStream {
 
   /// Generated values own scalar encoding. Field ordering mirrors Contract.encode's sorted
   /// keys; conformance tests compare exact bytes, including required nulls and Unicode.
-  func encode(_ call: CallDocument, intervals: (Int, (TrackInterval) throws -> Void) throws -> Void)
+  func encode(
+    _ call: CallDocument,
+    intervals: (Int, (TrackInterval) throws -> Void) throws -> Void
+  )
     throws
   {
     try token("{\"activeRevisionId\":")
@@ -137,13 +143,12 @@ struct CaptureIntervalCursor {
       }
       endMs = span.endMs
       if var previous = pending {
-        if previous.state == span.state {
-          previous.endMs = span.endMs
-          pending = previous
-        } else {
+        guard previous.state == span.state else {
           pending = span
           return document(previous)
         }
+        previous.endMs = span.endMs
+        pending = previous
       } else {
         pending = span
       }
@@ -171,8 +176,11 @@ struct CaptureIntervalCursor {
   }
   private func document(_ span: CaptureInterval) -> TrackInterval {
     .init(
-      startMs: span.startMs, endMs: span.endMs, state: span.state.rawValue,
-      reason: span.state == .recorded ? nil : span.state.rawValue)
+      startMs: span.startMs,
+      endMs: span.endMs,
+      state: span.state.rawValue,
+      reason: span.state == .recorded ? nil : span.state.rawValue
+    )
   }
 }
 
@@ -182,8 +190,11 @@ extension LocalRepository {
   func validateCaptureIntervals(_ call: CallDocument, cursor: MediaMasterCursor?) throws {
     for track in call.tracks {
       var expected = CaptureIntervalCursor(
-        repository: self, callID: call.callId,
-        cursor: cursor, channel: track.role == "microphone" ? 0 : 1)
+        repository: self,
+        callID: call.callId,
+        cursor: cursor,
+        channel: track.role == "microphone" ? 0 : 1
+      )
       var previous: TrackInterval?
       for span in track.intervals {
         if var prior = previous, prior.state == span.state, prior.reason == span.reason {

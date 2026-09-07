@@ -1,6 +1,6 @@
 import { expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { cloudTargetFor } from "./cloud.ts";
+
 import { ownerHandoffFromUnknown, ownerHandoffTarget } from "./cloud-owner.ts";
 import {
   inspectCloudInfrastructure,
@@ -10,6 +10,7 @@ import {
   verifyCloudOwnerStatus,
   verifyCloudFixture,
 } from "./cloud-verify.ts";
+import { cloudTargetFor } from "./cloud.ts";
 
 it("parses explicit inspect, fixture, and owner-status modes", () => {
   expect(parseCloudVerification(["--stage", "dev"])).toEqual({

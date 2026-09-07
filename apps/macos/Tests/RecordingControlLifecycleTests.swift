@@ -57,11 +57,15 @@ import Testing
   defer { fixture.cleanup() }
   await fixture.bind()
   let fresh = RecordingCoordinator(
-    connection: fixture.connection, namespace: fixture.namespace,
+    connection: fixture.connection,
+    namespace: fixture.namespace,
     capture: fixture.capture,
     sources: .init(
       permissions: { fixture.os.permissions },
-      frontmost: fixture.os.frontmost, requestPermission: { _ in fixture.os.permissions }))
+      frontmost: fixture.os.frontmost,
+      requestPermission: { _ in fixture.os.permissions }
+    )
+  )
   await fixture.status.holdNextFetch()
   let restoration = Task { await fresh.restore() }
   await fixture.status.waitForHeldFetch()
@@ -147,8 +151,13 @@ import Testing
   let expected = fixture.os.source
   fixture.os.onFilter = {
     fixture.os.source = .init(
-      applicationName: "Permission prompt", bundleID: "test.prompt", processID: 999,
-      windowID: 999, windowTitle: nil, processLaunchDate: expected.processLaunchDate)
+      applicationName: "Permission prompt",
+      bundleID: "test.prompt",
+      processID: 999,
+      windowID: 999,
+      windowTitle: nil,
+      processLaunchDate: expected.processLaunchDate
+    )
   }
   await fixture.coordinator.shortcutPressed()
   #expect(fixture.coordinator.phase == .recording)
@@ -163,7 +172,9 @@ import Testing
 }
 
 @Test(arguments: [false, true]) @MainActor
-func permissionDenialNeverSnapshotsOrStartsAndRetainsActionableSettingsHelp(screenGranted: Bool)
+func permissionDenialNeverSnapshotsOrStartsAndRetainsActionableSettingsHelp(
+  screenGranted: Bool
+)
   async throws
 {
   let fixture = try RecordingControlFixture()
@@ -188,8 +199,10 @@ func permissionDenialNeverSnapshotsOrStartsAndRetainsActionableSettingsHelp(scre
   await fixture.coordinator.stop()
   let pinned = fixture.coordinator.pinnedSource
   fixture.os.permissions = .init(
-    screenAudio: false, microphoneAuthorization: .denied,
-    microphoneAvailable: false)
+    screenAudio: false,
+    microphoneAuthorization: .denied,
+    microphoneAvailable: false
+  )
   fixture.coordinator.refreshCaptureReadiness()
   #expect(!fixture.coordinator.capturePermissions.ready)
   #expect(fixture.coordinator.capturePermissions.microphoneAuthorization == .denied)
@@ -213,8 +226,10 @@ func microphoneSetupAfterDenialOpensSettingsWithoutRequesting(
   let fixture = try RecordingControlFixture()
   defer { fixture.cleanup() }
   fixture.os.permissions = .init(
-    screenAudio: true, microphoneAuthorization: authorization,
-    microphoneAvailable: true)
+    screenAudio: true,
+    microphoneAuthorization: authorization,
+    microphoneAvailable: true
+  )
   await fixture.coordinator.enableCaptureAccess(.microphone)
   #expect(fixture.os.permissionRequests == 0)
   #expect(fixture.os.settingsOpened == [.microphone])

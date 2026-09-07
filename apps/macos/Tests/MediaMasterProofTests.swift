@@ -36,7 +36,8 @@ import TrigoContracts
   #expect(initialWave != finalizedWave)
   #expect(
     zip(initialWave, finalizedWave).enumerated().filter { $0.element.0 != $0.element.1 }
-      .allSatisfy { (4..<8).contains($0.offset) || (40..<44).contains($0.offset) })
+      .allSatisfy { (4..<8).contains($0.offset) || (40..<44).contains($0.offset) }
+  )
   for (name, header) in [
     ("candidate.wav", finalizedWave), ("candidate.caf", MediaMasterProfile.header),
   ] {
@@ -46,7 +47,8 @@ import TrigoContracts
     #expect(audio.length == 16000)
     audio.framePosition = 8123
     let buffer = try #require(
-      AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: 97))
+      AVAudioPCMBuffer(pcmFormat: audio.processingFormat, frameCapacity: 97)
+    )
     try audio.read(into: buffer)
     #expect(buffer.floatChannelData?[0][0] == 0.25)
     #expect(buffer.floatChannelData?[1][96] == -0.125)
@@ -89,12 +91,14 @@ private func proveLongMaster(seconds: Int) throws {
   #expect(final.cursor.frames == Int64(seconds) * 16000)
   #expect(final.cursor.stableBytes == 68 + Int64(seconds) * 64000)
   #expect(
-    try writer.readStableBytes(in: 0..<Int64(MediaMasterProfile.maximumRequestBytes)) == firstRange)
+    try writer.readStableBytes(in: 0..<Int64(MediaMasterProfile.maximumRequestBytes)) == firstRange
+  )
   let file = try AVAudioFile(forReading: writer.mediaURL)
   #expect(file.length == Int64(seconds) * 16000)
   #expect(file.fileFormat.sampleRate == 16000 && file.fileFormat.channelCount == 2)
   let buffer = try #require(
-    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16000))
+    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16000)
+  )
   let decodeStart = Date()
   for second in 0..<seconds {
     try file.read(into: buffer)
@@ -112,7 +116,10 @@ private func proveLongMaster(seconds: Int) throws {
   }
   let reopenStart = Date()
   let reopened = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: final.cursor)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: final.cursor
+  )
   #expect(reopened.finalized == final)
   #expect(try reopened.finish() == final)
   #expect(try masterFileHash(writer.mediaURL) == final.sha256)
@@ -124,7 +131,8 @@ private func proveLongMaster(seconds: Int) throws {
       for span in spans {
         #expect(
           span.state
-            == masterState(second: commits, millisecond: span.startMs % 1000, channel: channel))
+            == masterState(second: commits, millisecond: span.startMs % 1000, channel: channel)
+        )
         intervals += 1
       }
     }
@@ -134,8 +142,11 @@ private func proveLongMaster(seconds: Int) throws {
   let members = try FileManager.default.contentsOfDirectory(atPath: root.path).sorted()
   #expect(members == ["master.caf", "master.index"])
   let indexSize =
-    try FileManager.default.attributesOfItem(
-      atPath: root.appendingPathComponent("master.index").path)[.size] as? Int
+    try
+    FileManager.default
+    .attributesOfItem(
+      atPath: root.appendingPathComponent("master.index").path
+    )[.size] as? Int
   #expect(indexSize == 128 + (seconds + 1) * 2120)
   let recoverySeconds = Date().timeIntervalSince(reopenStart)
   let extractionStart = Date()
@@ -177,8 +188,13 @@ private func proveLongMaster(seconds: Int) throws {
       ] {
         let output = try decoder.decode(
           controlledAudioBuffer(
-            sampleRate: rate, frames: count, time: time, value: channel == 0 ? pulse : -pulse),
-          origin: .zero)
+            sampleRate: rate,
+            frames: count,
+            time: time,
+            value: channel == 0 ? pulse : -pulse
+          ),
+          origin: .zero
+        )
         for (offset, value) in output.samples.enumerated() {
           let frame = output.startFrame + offset - second * 16000
           guard (0..<16000).contains(frame) else { throw MediaMasterError.invalidInput }
@@ -192,7 +208,8 @@ private func proveLongMaster(seconds: Int) throws {
   _ = try writer.finish()
   let file = try AVAudioFile(forReading: writer.mediaURL)
   let buffer = try #require(
-    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16000))
+    AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16000)
+  )
   var worst = 0
   for _ in 0..<3600 {
     try file.read(into: buffer)

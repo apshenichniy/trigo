@@ -1,7 +1,9 @@
 import { mkdtempSync, chmodSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
+
 import structuralCorpus from "../packages/contracts/fixtures/structure-cases.json";
 import {
   localConfiguration,
@@ -21,14 +23,18 @@ function fixture(use: (path: string) => void) {
 }
 
 describe("private offline bridge", () => {
-  for (const item of structuralCorpus.filter((item) => item.kind === "LocalDevelopmentBridge"))
+  for (const item of structuralCorpus.filter((item) => item.kind === "LocalDevelopmentBridge")) {
     it(`enforces the shared bridge corpus at the file boundary: ${item.name}`, () =>
       fixture((path) => {
         writeFileSync(path, item.json, { mode: 0o600 });
         const read = () => readLocalConfiguration(path, worktree);
-        if (item.valid) expect(read()).toEqual(JSON.parse(item.json));
-        else expect(read).toThrow();
+        if (item.valid) {
+          expect(read()).toEqual(JSON.parse(item.json));
+        } else {
+          expect(read).toThrow();
+        }
       }));
+  }
   it("reuses the local archive/token on restart and isolates independent worktrees", () =>
     fixture((path) => {
       const first = localConfiguration(path, worktree, origin);

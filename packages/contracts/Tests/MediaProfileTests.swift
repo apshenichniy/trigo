@@ -8,7 +8,8 @@ import Testing
     profile.channels == [
       .init(index: 0, role: .microphone),
       .init(index: 1, role: .application),
-    ])
+    ]
+  )
   #expect(profile.interleaved)
   #expect(profile.assembly.missingFrames == .silence)
   #expect(profile.asr.speakerScope == .objectChannel)

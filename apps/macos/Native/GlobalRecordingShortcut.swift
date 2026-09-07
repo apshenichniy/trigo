@@ -76,15 +76,23 @@ enum RecordingShortcutError: Error { case registrationFailed(OSStatus) }
   var handler: EventHandlerRef?
   var hotKey: EventHotKeyRef?
   var eventType = EventTypeSpec(
-    eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+    eventClass: OSType(kEventClassKeyboard),
+    eventKind: UInt32(kEventHotKeyPressed)
+  )
   let handlerStatus = InstallEventHandler(
     GetApplicationEventTarget(),
     { _, event, pointer in
       guard let pointer, let event else { return OSStatus(eventNotHandledErr) }
       var identifier = EventHotKeyID()
       let status = GetEventParameter(
-        event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
-        MemoryLayout<EventHotKeyID>.size, nil, &identifier)
+        event,
+        EventParamName(kEventParamDirectObject),
+        EventParamType(typeEventHotKeyID),
+        nil,
+        MemoryLayout<EventHotKeyID>.size,
+        nil,
+        &identifier
+      )
       guard status == noErr, identifier.signature == 0x5452_4947, identifier.id == 16 else {
         return OSStatus(eventNotHandledErr)
       }
@@ -93,14 +101,23 @@ enum RecordingShortcutError: Error { case registrationFailed(OSStatus) }
         Unmanaged<RecordingHotKeyCallback>.fromOpaque(pointer).takeUnretainedValue().action()
       }
       return noErr
-    }, 1, &eventType, Unmanaged.passUnretained(context).toOpaque(), &handler)
+    },
+    1,
+    &eventType,
+    Unmanaged.passUnretained(context).toOpaque(),
+    &handler
+  )
   guard handlerStatus == noErr else {
     throw RecordingShortcutError.registrationFailed(handlerStatus)
   }
   let status = RegisterEventHotKey(
-    UInt32(kVK_ANSI_R), UInt32(controlKey | optionKey | cmdKey),
-    EventHotKeyID(signature: 0x5452_4947, id: 16), GetApplicationEventTarget(),
-    OptionBits(kEventHotKeyExclusive), &hotKey)
+    UInt32(kVK_ANSI_R),
+    UInt32(controlKey | optionKey | cmdKey),
+    EventHotKeyID(signature: 0x5452_4947, id: 16),
+    GetApplicationEventTarget(),
+    OptionBits(kEventHotKeyExclusive),
+    &hotKey
+  )
   guard status == noErr else {
     if let handler { RemoveEventHandler(handler) }
     throw RecordingShortcutError.registrationFailed(status)

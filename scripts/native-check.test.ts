@@ -1,7 +1,9 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { afterEach, expect, it, vi } from "vitest";
+
 import { swiftTests } from "./native-check.ts";
 import { timedRun } from "./timing.ts";
 
@@ -9,10 +11,11 @@ afterEach(() => vi.unstubAllEnvs());
 
 it("builds current sources before each complete test suite, even with warm caches", () => {
   const commands: string[][] = [];
-  for (let run = 0; run < 2; run++)
+  for (let run = 0; run < 2; run++) {
     swiftTests((_phase, command) => {
       commands.push(command);
     });
+  }
   expect(commands).toHaveLength(8);
   for (let index = 0; index < commands.length; index += 2) {
     const build = commands[index]!;
@@ -39,7 +42,9 @@ it.each([0, 2])("does not run stale test binaries when build phase %s fails", (f
   expect(() =>
     swiftTests((phase) => {
       executed.push(phase);
-      if (executed.length - 1 === failedPhase) throw new Error("compiler failed");
+      if (executed.length - 1 === failedPhase) {
+        throw new Error("compiler failed");
+      }
     }),
   ).toThrow("compiler failed");
   expect(executed).toHaveLength(failedPhase + 1);

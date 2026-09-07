@@ -24,20 +24,25 @@ func repositoryUnsupportedForeignAndCorruptStoresRemainUntouched(kind: String) a
     target = root.appendingPathComponent("copied")
     try FileManager.default.createDirectory(at: target, withIntermediateDirectories: false)
     try FileManager.default.copyItem(
-      at: url, to: target.appendingPathComponent(SQLiteDatabase.filename))
+      at: url,
+      to: target.appendingPathComponent(SQLiteDatabase.filename)
+    )
   }
   let targetURL = target.appendingPathComponent(SQLiteDatabase.filename)
   let before = try Data(contentsOf: targetURL)
   #expect(throws: LocalPersistenceError.self) {
     try LocalRepository(
       root: target,
-      archiveID: kind == "foreign" ? UUID().uuidString.lowercased() : repositoryArchiveID)
+      archiveID: kind == "foreign" ? UUID().uuidString.lowercased() : repositoryArchiveID
+    )
   }
   #expect(try Data(contentsOf: targetURL) == before)
   #expect(
-    try FileManager.default.contentsOfDirectory(atPath: target.path).filter {
-      $0.hasPrefix(SQLiteDatabase.filename)
-    } == [SQLiteDatabase.filename])
+    try FileManager.default.contentsOfDirectory(atPath: target.path)
+      .filter {
+        $0.hasPrefix(SQLiteDatabase.filename)
+      } == [SQLiteDatabase.filename]
+  )
 }
 
 @Test(arguments: ["root", "parent", "database", "journal", "wal", "shm", "hard-link"])
@@ -92,7 +97,9 @@ func repositoryLinkedStoresAreRejectedWithoutFollowingThem(kind: String) async t
   #expect(try Data(contentsOf: evidence) == bytes)
   #expect(try FileManager.default.contentsOfDirectory(atPath: legacy.path) == ["call.json"])
   let another = try LocalRepository(
-    root: fixture.appendingPathComponent("another-test"), archiveID: repositoryArchiveID)
+    root: fixture.appendingPathComponent("another-test"),
+    archiveID: repositoryArchiveID
+  )
   #expect(try await another.calls().isEmpty)
 }
 
@@ -128,7 +135,8 @@ func repositoryLinkedStoresAreRejectedWithoutFollowingThem(kind: String) async t
       try database.transaction {
         try database.execute("UPDATE lifecycle SET upload='uploading'")
         try database.execute(
-          "INSERT INTO document_chunks SELECT hash,999,zeroblob(262144) FROM documents LIMIT 1")
+          "INSERT INTO document_chunks SELECT hash,999,zeroblob(262144) FROM documents LIMIT 1"
+        )
       }
     }
   }
@@ -143,8 +151,11 @@ func repositoryLinkedStoresAreRejectedWithoutFollowingThem(kind: String) async t
 func sqliteFixtureOpen(_ url: URL) throws -> OpaquePointer {
   var database: OpaquePointer?
   let code = sqlite3_open_v2(
-    try canonicalRepositoryRoot(url).path, &database,
-    SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW, nil)
+    try canonicalRepositoryRoot(url).path,
+    &database,
+    SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW,
+    nil
+  )
   guard code == SQLITE_OK, let database else { throw RepositoryInjectedFailure() }
   return database
 }
@@ -152,7 +163,9 @@ func sqliteFixtureOpen(_ url: URL) throws -> OpaquePointer {
 func sqliteFixtureExec(_ database: OpaquePointer, _ sql: String) throws {
   guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
     throw LocalPersistenceError.sqlite(
-      code: sqlite3_errcode(database), message: String(cString: sqlite3_errmsg(database)))
+      code: sqlite3_errcode(database),
+      message: String(cString: sqlite3_errmsg(database))
+    )
   }
 }
 

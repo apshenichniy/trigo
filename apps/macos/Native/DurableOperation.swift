@@ -25,7 +25,10 @@ public struct OperationIntent: Sendable, Equatable {
   public let payload: Data
 
   public init(
-    operationID: String, archiveID: String, callID: String, kind: OperationKind,
+    operationID: String,
+    archiveID: String,
+    callID: String,
+    kind: OperationKind,
     payload: Data = Data()
   ) {
     self.operationID = operationID

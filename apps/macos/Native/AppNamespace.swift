@@ -16,7 +16,9 @@ public struct AppNamespace: Sendable {
   public let preferences: String
   public let keychainService: String
   public init(
-    variant: AppVariant, worktree: String, support: URL,
+    variant: AppVariant,
+    worktree: String,
+    support: URL,
     localDevelopment: LocalDevelopmentConfiguration? = nil
   ) throws {
     guard !worktree.isEmpty,
@@ -44,8 +46,10 @@ extension AppNamespace {
     let variant: AppVariant =
       bundle.bundleIdentifier == AppVariant.dev.bundleIdentifier ? .dev : .personal
     let worktree = bundle.object(forInfoDictionaryKey: "TrigoWorktreeID") as? String ?? "local"
-    let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[
-      0]
+    let support =
+      FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[
+        0
+      ]
     var local: LocalDevelopmentConfiguration?
     let arguments = ProcessInfo.processInfo.arguments
     if let index = arguments.firstIndex(of: "--local-config") {
@@ -53,9 +57,16 @@ extension AppNamespace {
         throw LocalDevelopmentError.invalidConfiguration
       }
       local = try LocalDevelopmentConfiguration.load(
-        url: URL(fileURLWithPath: arguments[index + 1]), worktree: worktree, variant: variant)
+        url: URL(fileURLWithPath: arguments[index + 1]),
+        worktree: worktree,
+        variant: variant
+      )
     }
     return try AppNamespace(
-      variant: variant, worktree: worktree, support: support, localDevelopment: local)
+      variant: variant,
+      worktree: worktree,
+      support: support,
+      localDevelopment: local
+    )
   }
 }

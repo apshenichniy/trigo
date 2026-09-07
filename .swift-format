@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "lineLength": 100,
+  "indentation": { "spaces": 2 },
+  "maximumBlankLines": 1,
+  "respectsExistingLineBreaks": true,
+  "lineBreakBeforeEachArgument": true,
+  "lineBreakBeforeEachGenericRequirement": true,
+  "lineBreakAroundMultilineExpressionChainComponents": true,
+  "prioritizeKeepingFunctionOutputTogether": true,
+  "rules": {
+    "NoEmptyLinesOpeningClosingBraces": true,
+    "UseEarlyExits": true,
+    "UseWhereClausesInForLoops": true
+  }
+}

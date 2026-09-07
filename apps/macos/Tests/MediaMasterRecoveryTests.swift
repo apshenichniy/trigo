@@ -16,7 +16,8 @@ func mediaMasterSIGKILLChild() throws {
   let identity = masterFixtureIdentity()
   var operations = 0
   let writer = try RecoverableMediaMaster(
-    directory: root, identity: identity,
+    directory: root,
+    identity: identity,
     io: .init(event: { event in
       if event.rawValue == point {
         operations += 1
@@ -27,7 +28,8 @@ func mediaMasterSIGKILLChild() throws {
           while true { Darwin.pause() }
         }
       }
-    }))
+    })
+  )
   for _ in 0..<3 { try appendMasterSecond(writer) }
   _ = try writer.finish()
   Issue.record("Child must terminate at the selected real process-kill boundary")
@@ -48,7 +50,8 @@ func mediaMasterRealSIGKILLPreservesVerifiedPrefix(point: MediaMasterIOPoint) th
   ]
   child.environment = ProcessInfo.processInfo.environment.merging(
     ["TRIGO_MASTER_KILL_ROOT": root.path, "TRIGO_MASTER_KILL_POINT": point.rawValue],
-    uniquingKeysWith: { _, new in new })
+    uniquingKeysWith: { _, new in new }
+  )
   child.standardOutput = FileHandle.nullDevice
   child.standardError = FileHandle.nullDevice
   try child.run()
@@ -64,7 +67,10 @@ func mediaMasterRealSIGKILLPreservesVerifiedPrefix(point: MediaMasterIOPoint) th
   #expect(writer.discardedTailBytes == (3 - expectedSeconds) * 64000)
   let final = try writer.finish()
   let again = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: final.cursor)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: final.cursor
+  )
   #expect(try again.finish() == final)
   let audio = try AVAudioFile(forReading: again.mediaURL)
   #expect(audio.length == expectedSeconds * 16000)
@@ -80,7 +86,8 @@ func mediaMasterRealSIGKILLPreservesVerifiedPrefix(point: MediaMasterIOPoint) th
   var remaining: Int? = nil
   var writes = 0
   let writer = try RecoverableMediaMaster(
-    directory: root, identity: identity,
+    directory: root,
+    identity: identity,
     io: .init(write: { fd, bytes in
       if remaining == 0 { throw MasterInjectedFault() }
       let length = min(bytes.count, 701, remaining ?? Int.max)
@@ -88,7 +95,8 @@ func mediaMasterRealSIGKILLPreservesVerifiedPrefix(point: MediaMasterIOPoint) th
       writes += 1
       if let old = remaining, written > 0 { remaining = old - written }
       return written
-    }))
+    })
+  )
   try appendMasterSecond(writer)
   #expect(writes > 90)
   let confirmed = writer.cursor
@@ -100,7 +108,10 @@ func mediaMasterRealSIGKILLPreservesVerifiedPrefix(point: MediaMasterIOPoint) th
     try writer.readStableBytes(in: confirmed.stableBytes..<(confirmed.stableBytes + 1))
   }
   let reopened = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: confirmed)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: confirmed
+  )
   #expect(reopened.cursor == confirmed)
   #expect(reopened.discardedTailBytes == 12345)
   try appendMasterSecond(reopened)
@@ -115,21 +126,26 @@ func mediaMasterShortIndexTailIsNeverAConfirmedCursor(tailBytes: Int) throws {
   var enabled = false
   var available = 64000 + tailBytes
   let writer = try RecoverableMediaMaster(
-    directory: root, identity: identity,
+    directory: root,
+    identity: identity,
     io: .init(write: { fd, bytes in
       if enabled && available == 0 { throw MasterInjectedFault() }
       let size = enabled ? min(available, bytes.count) : bytes.count
       let written = Darwin.write(fd, bytes.baseAddress, size)
       if enabled && written > 0 { available -= written }
       return written
-    }))
+    })
+  )
   try appendMasterSecond(writer)
   let confirmed = writer.cursor
   enabled = true
   #expect(throws: MasterInjectedFault.self) { try appendMasterSecond(writer) }
   #expect(writer.cursor == confirmed)
   let recovered = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: confirmed)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: confirmed
+  )
   #expect(recovered.cursor == confirmed)
   #expect(recovered.discardedTailBytes == 64000)
 }
@@ -141,10 +157,12 @@ func mediaMasterUncommittedTailDamagePreservesCommittedAudio(damage: String) thr
   let identity = masterFixtureIdentity()
   var fail = false
   let writer = try RecoverableMediaMaster(
-    directory: root, identity: identity,
+    directory: root,
+    identity: identity,
     io: .init(event: { event in
       if fail && event == .afterMediaSync { throw MasterInjectedFault() }
-    }))
+    })
+  )
   for _ in 0..<2 { try appendMasterSecond(writer) }
   let confirmed = writer.cursor
   let prefix = try writer.readStableBytes(in: 0..<confirmed.stableBytes)
@@ -160,7 +178,10 @@ func mediaMasterUncommittedTailDamagePreservesCommittedAudio(damage: String) thr
   try media.synchronize()
   try media.close()
   let recovered = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: confirmed)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: confirmed
+  )
   #expect(recovered.cursor == confirmed)
   #expect(try recovered.readStableBytes(in: 0..<confirmed.stableBytes) == prefix)
   #expect(try AVAudioFile(forReading: recovered.mediaURL).length == 32000)
@@ -183,7 +204,10 @@ func mediaMasterUncommittedTailDamagePreservesCommittedAudio(damage: String) thr
   try media.close()
   #expect(throws: MediaMasterError.committedAudioCorruption(record: 1)) {
     try RecoverableMediaMaster(
-      reopening: root, expectedIdentity: identity, confirmed: writer.cursor)
+      reopening: root,
+      expectedIdentity: identity,
+      confirmed: writer.cursor
+    )
   }
   // Independent second resource tests an index rollback without modifying any private archive.
   let other = masterFixtureRoot()
@@ -195,10 +219,14 @@ func mediaMasterUncommittedTailDamagePreservesCommittedAudio(damage: String) thr
   try index.close()
   #expect(throws: MediaMasterError.confirmedCursorMissing) {
     try RecoverableMediaMaster(
-      reopening: other, expectedIdentity: identity, confirmed: intact.cursor)
+      reopening: other,
+      expectedIdentity: identity,
+      confirmed: intact.cursor
+    )
   }
   #expect(
-    try FileManager.default.attributesOfItem(atPath: intact.mediaURL.path)[.size] as? Int == 64068)
+    try FileManager.default.attributesOfItem(atPath: intact.mediaURL.path)[.size] as? Int == 64068
+  )
 }
 
 @Test func mediaMasterSyncedButUnacknowledgedCommitReconcilesWithoutChangingIdentity() throws {
@@ -207,17 +235,22 @@ func mediaMasterUncommittedTailDamagePreservesCommittedAudio(damage: String) thr
   let identity = masterFixtureIdentity()
   var fail = false
   let writer = try RecoverableMediaMaster(
-    directory: root, identity: identity,
+    directory: root,
+    identity: identity,
     io: .init(event: { point in
       if fail && point == .afterIndexSync { throw MasterInjectedFault() }
-    }))
+    })
+  )
   try appendMasterSecond(writer)
   let published = writer.cursor
   fail = true
   #expect(throws: MasterInjectedFault.self) { try appendMasterSecond(writer) }
   #expect(writer.cursor == published)  // No returned certificate followed the uncertain operation.
   let recovered = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: published)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: published
+  )
   #expect(recovered.cursor.frames == 32000 && recovered.cursor.commitCount == 2)
   #expect(recovered.identity == identity)
   #expect(recovered.cursor.integritySHA256 != published.integritySHA256)
@@ -235,7 +268,10 @@ func mediaMasterUncommittedTailDamagePreservesCommittedAudio(damage: String) thr
   try index.synchronize()
   try index.close()
   let recovered = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: final.cursor)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: final.cursor
+  )
   #expect(recovered.finalized == nil)
   #expect(try recovered.finish() == final)
   #expect(try recovered.finish() == final)
@@ -265,8 +301,10 @@ func mediaMasterCommittedDamageIsRejectedWithoutRepair(damage: String) throws {
     : damage == "index-corrupt" ? .corruptIndex(record: 1) : .identityMismatch
   #expect(throws: error) {
     try RecoverableMediaMaster(
-      reopening: root, expectedIdentity: damage == "identity" ? masterFixtureIdentity() : identity,
-      confirmed: writer.cursor)
+      reopening: root,
+      expectedIdentity: damage == "identity" ? masterFixtureIdentity() : identity,
+      confirmed: writer.cursor
+    )
   }
   #expect(try masterFileHash(target) == before)
 }
@@ -277,10 +315,12 @@ func mediaMasterCommittedDamageIsRejectedWithoutRepair(damage: String) throws {
   let identity = masterFixtureIdentity()
   var fail = false
   let writer = try RecoverableMediaMaster(
-    directory: root, identity: identity,
+    directory: root,
+    identity: identity,
     io: .init(event: { point in
       if fail && point == .beforeIndexSync { throw MasterInjectedFault() }
-    }))
+    })
+  )
   for _ in 0..<2 { try appendMasterSecond(writer) }
   let witness = writer.cursor
   let prefix = try writer.readStableBytes(in: 0..<witness.stableBytes)
@@ -295,7 +335,10 @@ func mediaMasterCommittedDamageIsRejectedWithoutRepair(damage: String) throws {
     try RecoverableMediaMaster(reopening: root, expectedIdentity: identity)
   }
   let recovered = try RecoverableMediaMaster(
-    reopening: root, expectedIdentity: identity, confirmed: witness)
+    reopening: root,
+    expectedIdentity: identity,
+    confirmed: witness
+  )
   #expect(recovered.cursor == witness)
   #expect(recovered.discardedTailBytes == 64000)
   #expect(try recovered.readStableBytes(in: 0..<witness.stableBytes) == prefix)

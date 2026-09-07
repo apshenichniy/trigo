@@ -74,14 +74,16 @@ function readJsonObject(path: string, description: string): Record<string, unkno
   } catch (error) {
     throw new Error(`${description} is missing or invalid JSON: ${path}`, { cause: error });
   }
-  if (typeof value !== "object" || value === null || Array.isArray(value))
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`${description} must be a JSON object: ${path}`);
+  }
   return value as Record<string, unknown>;
 }
 
 function accountId(value: unknown, field: string): string {
-  if (typeof value !== "string" || !/^[0-9a-f]{32}$/i.test(value))
+  if (typeof value !== "string" || !/^[0-9a-f]{32}$/i.test(value)) {
     throw new Error(`${field} must be exactly 32 hexadecimal characters`);
+  }
   return value.toLowerCase();
 }
 
@@ -97,24 +99,30 @@ export function readBootstrapInterruptionConfiguration(
     "protectedAccountIds",
   ]);
   const unexpected = Object.keys(value).filter((key) => !allowed.has(key));
-  if (unexpected.length > 0)
+  if (unexpected.length > 0) {
     throw new Error(`Unknown bootstrap interruption field: ${unexpected.join(", ")}`);
-  if (value.purpose !== PURPOSE) throw new Error(`purpose must be exactly ${PURPOSE}`);
+  }
+  if (value.purpose !== PURPOSE) {
+    throw new Error(`purpose must be exactly ${PURPOSE}`);
+  }
 
   const disposableAccountId = accountId(value.accountId, "accountId");
-  if (disposableAccountId !== APPROVED_DISPOSABLE_ACCOUNT_ID)
+  if (disposableAccountId !== APPROVED_DISPOSABLE_ACCOUNT_ID) {
     throw new Error(
       `accountId must be the approved Trigo Recovery Disposable account ${APPROVED_DISPOSABLE_ACCOUNT_ID}`,
     );
+  }
   if (
     typeof value.profile !== "string" ||
     !/^trigo-cloud-issue-29-interrupt-[a-z0-9][a-z0-9-]{5,31}$/.test(value.profile)
-  )
+  ) {
     throw new Error(
       "profile must be unique and match trigo-cloud-issue-29-interrupt-<6-32 lowercase characters>",
     );
-  if (value.profile === PLACEHOLDER_PROFILE)
+  }
+  if (value.profile === PLACEHOLDER_PROFILE) {
     throw new Error("Replace the example profile suffix with a unique one-use value");
+  }
   let stateStoreOrigin = PENDING_STATE_STORE_ORIGIN as string;
   if (value.stateStoreOrigin !== PENDING_STATE_STORE_ORIGIN) {
     let verifiedStateStoreOrigin: URL;
@@ -134,27 +142,33 @@ export function readBootstrapInterruptionConfiguration(
       verifiedStateStoreOrigin.search !== "" ||
       verifiedStateStoreOrigin.hash !== "" ||
       !STATE_STORE_HOSTNAME.test(verifiedStateStoreOrigin.hostname)
-    )
+    ) {
       throw new Error(STATE_STORE_ORIGIN_ERROR);
+    }
     stateStoreOrigin = verifiedStateStoreOrigin.origin;
-    if (stateStoreOrigin !== APPROVED_DISPOSABLE_STATE_STORE_ORIGIN)
+    if (stateStoreOrigin !== APPROVED_DISPOSABLE_STATE_STORE_ORIGIN) {
       throw new Error(
         `stateStoreOrigin must match the approved disposable account origin ${APPROVED_DISPOSABLE_STATE_STORE_ORIGIN}`,
       );
+    }
   }
-  if (!Array.isArray(value.protectedAccountIds))
+  if (!Array.isArray(value.protectedAccountIds)) {
     throw new Error("protectedAccountIds must be an array of Cloudflare account IDs");
+  }
   const protectedAccountIds = value.protectedAccountIds.map((id, index) =>
     accountId(id, `protectedAccountIds[${index}]`),
   );
-  if (!protectedAccountIds.includes(PROTECTED_DEV_ACCOUNT_ID))
+  if (!protectedAccountIds.includes(PROTECTED_DEV_ACCOUNT_ID)) {
     throw new Error(
       `protectedAccountIds must include working dev account ${PROTECTED_DEV_ACCOUNT_ID}`,
     );
-  if (new Set(protectedAccountIds).size !== protectedAccountIds.length)
+  }
+  if (new Set(protectedAccountIds).size !== protectedAccountIds.length) {
     throw new Error("protectedAccountIds must not contain duplicates");
-  if (protectedAccountIds.includes(disposableAccountId))
+  }
+  if (protectedAccountIds.includes(disposableAccountId)) {
     throw new Error("Disposable account must differ from every protected account");
+  }
 
   return {
     purpose: PURPOSE,
@@ -208,10 +222,11 @@ function expectedMarker(configuration: BootstrapInterruptionConfiguration): stri
 }
 
 function requireStateStoreOrigin(configuration: BootstrapInterruptionConfiguration): string {
-  if (configuration.stateStoreOrigin === PENDING_STATE_STORE_ORIGIN)
+  if (configuration.stateStoreOrigin === PENDING_STATE_STORE_ORIGIN) {
     throw new Error(
       "Resolve stateStoreOrigin after the owner initializes the workers.dev subdomain",
     );
+  }
   return configuration.stateStoreOrigin;
 }
 
@@ -220,20 +235,25 @@ function assertRuntimeIdentity(
   environment: BootstrapInterruptionEnvironment,
 ): void {
   const activeUmask = environment.umask ?? process.umask();
-  if ((activeUmask & 0o077) !== 0o077)
+  if ((activeUmask & 0o077) !== 0o077) {
     throw new Error("Set umask 077 before creating or reading bootstrap secrets");
-  if (environment.env.CLOUDFLARE_ACCOUNT_ID?.toLowerCase() !== configuration.accountId)
+  }
+  if (environment.env.CLOUDFLARE_ACCOUNT_ID?.toLowerCase() !== configuration.accountId) {
     throw new Error("CLOUDFLARE_ACCOUNT_ID does not match the disposable configuration");
-  if (!environment.env.CLOUDFLARE_API_TOKEN?.trim())
+  }
+  if (!environment.env.CLOUDFLARE_API_TOKEN?.trim()) {
     throw new Error("CLOUDFLARE_API_TOKEN is required for the disposable experiment");
-  if (environment.env.ALCHEMY_PROFILE !== configuration.profile)
+  }
+  if (environment.env.ALCHEMY_PROFILE !== configuration.profile) {
     throw new Error("ALCHEMY_PROFILE does not match the disposable configuration");
+  }
 }
 
 function assertPrivateMode(path: string, description: string): void {
   const mode = lstatSync(path).mode & 0o777;
-  if ((mode & 0o077) !== 0)
+  if ((mode & 0o077) !== 0) {
     throw new Error(`${description} must not be readable or writable by group/other: ${path}`);
+  }
 }
 
 function assertEnvironmentProfile(
@@ -249,18 +269,21 @@ function assertEnvironmentProfile(
     typeof profiles === "object" && profiles !== null
       ? Reflect.get(profiles, configuration.profile)
       : undefined;
-  if (typeof profile !== "object" || profile === null || Array.isArray(profile))
+  if (typeof profile !== "object" || profile === null || Array.isArray(profile)) {
     throw new Error(`Disposable Alchemy profile is not configured: ${configuration.profile}`);
+  }
   const providers = Object.keys(profile);
-  if (providers.length !== 1 || providers[0] !== "Cloudflare")
+  if (providers.length !== 1 || providers[0] !== "Cloudflare") {
     throw new Error("Disposable Alchemy profile must contain only the Cloudflare provider");
+  }
   const provider = Reflect.get(profile, "Cloudflare");
   if (
     typeof provider !== "object" ||
     provider === null ||
     Reflect.get(provider, "method") !== "env"
-  )
+  ) {
     throw new Error("Disposable Alchemy profile must use the env Cloudflare method");
+  }
 }
 
 function assertConfiguredIdentity(
@@ -285,14 +308,16 @@ function assertCleanInterruptionSeam(
   configuration: BootstrapInterruptionConfiguration,
   environment: BootstrapInterruptionEnvironment,
 ): BootstrapInterruptionSummary {
-  if (existsSync(credentialProfilePath(configuration, environment)))
+  if (existsSync(credentialProfilePath(configuration, environment))) {
     throw new Error(
       `Disposable credential profile path already exists: ${credentialProfilePath(configuration, environment)}`,
     );
-  if (existsSync(localStagePath(configuration, environment)))
+  }
+  if (existsSync(localStagePath(configuration, environment))) {
     throw new Error(
       `Disposable local bootstrap stage already exists: ${localStagePath(configuration, environment)}`,
     );
+  }
   return {
     accountId: configuration.accountId,
     profile: configuration.profile,
@@ -308,8 +333,9 @@ export function armBootstrapInterruption(
   requireStateStoreOrigin(configuration);
   const summary = assertCleanInterruptionSeam(configuration, environment);
   const collision = credentialPath(configuration, environment);
-  if (existsSync(collision))
+  if (existsSync(collision)) {
     throw new Error(`Experiment credential path already exists: ${collision}`);
+  }
   mkdirSync(collision, { recursive: true, mode: 0o700 });
   assertPrivateMode(
     credentialProfilePath(configuration, environment),
@@ -328,20 +354,23 @@ function assertArmedFixture(
   environment: BootstrapInterruptionEnvironment,
 ): void {
   const collision = credentialPath(configuration, environment);
-  if (!existsSync(collision) || !lstatSync(collision).isDirectory())
+  if (!existsSync(collision) || !lstatSync(collision).isDirectory()) {
     throw new Error(`Armed interruption fixture is missing: ${collision}`);
+  }
   assertPrivateMode(
     credentialProfilePath(configuration, environment),
     "Credential profile directory",
   );
   assertPrivateMode(collision, "Credential collision directory");
   const entries = readdirSync(collision);
-  if (entries.length !== 1 || entries[0] !== MARKER)
+  if (entries.length !== 1 || entries[0] !== MARKER) {
     throw new Error(`Armed interruption fixture contains unexpected entries: ${collision}`);
+  }
   if (
     readFileSync(markerPath(configuration, environment), "utf8") !== expectedMarker(configuration)
-  )
+  ) {
     throw new Error(`Armed interruption marker does not match the disposable target: ${collision}`);
+  }
   assertPrivateMode(markerPath(configuration, environment), "Armed interruption marker");
 }
 
@@ -352,52 +381,63 @@ function assertInterruptedBootstrapConfiguration(
   const stateStoreOrigin = requireStateStoreOrigin(configuration);
   assertArmedFixture(configuration, environment);
   const stagePath = localStagePath(configuration, environment);
-  if (!existsSync(stagePath) || !lstatSync(stagePath).isDirectory())
+  if (!existsSync(stagePath) || !lstatSync(stagePath).isDirectory()) {
     throw new Error(`Interrupted local bootstrap stage is missing: ${stagePath}`);
+  }
   assertPrivateMode(stagePath, "Interrupted local bootstrap stage");
   const entries = readdirSync(stagePath);
-  if (!entries.includes("__stack_output__.json"))
+  if (!entries.includes("__stack_output__.json")) {
     throw new Error(
       "Interrupted bootstrap did not reach the completed local stack output checkpoint",
     );
+  }
   const unexpectedEntries = entries.filter(
     (entry) => entry !== "__stack_output__.json" && !entry.endsWith(".json"),
   );
-  if (unexpectedEntries.length > 0)
+  if (unexpectedEntries.length > 0) {
     throw new Error(
       `Interrupted bootstrap checkpoint contains in-flight or unexpected files: ${unexpectedEntries.join(", ")}`,
     );
+  }
   const outputPath = resolve(stagePath, "__stack_output__.json");
   assertPrivateMode(outputPath, "Interrupted bootstrap stack output");
   const output = JSON.parse(readFileSync(outputPath, "utf8")) as unknown;
-  if (typeof output !== "object" || output === null || Array.isArray(output))
+  if (typeof output !== "object" || output === null || Array.isArray(output)) {
     throw new Error("Interrupted bootstrap stack output is not an object");
-  if (Reflect.get(output, "url") !== stateStoreOrigin)
+  }
+  if (Reflect.get(output, "url") !== stateStoreOrigin) {
     throw new Error("Interrupted bootstrap stack output has an unexpected state-store origin");
+  }
   const outputToken = Reflect.get(output, "authToken");
-  if (typeof outputToken !== "string" || outputToken.trim().length === 0)
+  if (typeof outputToken !== "string" || outputToken.trim().length === 0) {
     throw new Error("Interrupted bootstrap stack output has no bearer token");
+  }
 
   const resourceFiles = entries.filter(
     (entry) => entry.endsWith(".json") && entry !== "__stack_output__.json",
   );
-  if (resourceFiles.length === 0)
+  if (resourceFiles.length === 0) {
     throw new Error("Interrupted bootstrap checkpoint contains no resource state");
+  }
   const resources = resourceFiles.map((entry) => {
     const resourcePath = resolve(stagePath, entry);
     assertPrivateMode(resourcePath, "Interrupted bootstrap resource state");
     const value = JSON.parse(readFileSync(resourcePath, "utf8")) as unknown;
-    if (typeof value !== "object" || value === null || Array.isArray(value))
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
       throw new Error(`Invalid resource state file: ${entry}`);
+    }
     const logicalId = Reflect.get(value, "logicalId");
     const status = Reflect.get(value, "status");
     const fqn = Reflect.get(value, "fqn");
-    if (typeof logicalId !== "string" || typeof fqn !== "string" || typeof status !== "string")
+    if (typeof logicalId !== "string" || typeof fqn !== "string" || typeof status !== "string") {
       throw new Error(`Incomplete resource state file: ${entry}`);
-    if (`${fqn.replaceAll("/", "__")}.json` !== entry)
+    }
+    if (`${fqn.replaceAll("/", "__")}.json` !== entry) {
       throw new Error(`Resource state filename does not match its FQN: ${entry}`);
-    if (status !== "created" && status !== "updated")
+    }
+    if (status !== "created" && status !== "updated") {
       throw new Error(`Resource ${logicalId} is not settled at the interruption checkpoint`);
+    }
     return { logicalId, status };
   });
   const resourceLogicalIds = resources.map(({ logicalId }) => logicalId);
@@ -405,10 +445,15 @@ function assertInterruptedBootstrapConfiguration(
   const missing = EXPECTED_STATE_STORE_LOGICAL_IDS.filter((id) => !logicalIds.has(id));
   const expected = new Set<string>(EXPECTED_STATE_STORE_LOGICAL_IDS);
   const unexpected = resourceLogicalIds.filter((id) => !expected.has(id));
-  if (missing.length > 0 || unexpected.length > 0 || logicalIds.size !== resourceLogicalIds.length)
+  if (
+    missing.length > 0 ||
+    unexpected.length > 0 ||
+    logicalIds.size !== resourceLogicalIds.length
+  ) {
     throw new Error(
       `Interrupted bootstrap checkpoint resource identity mismatch (missing: ${missing.join(", ") || "none"}; unexpected: ${unexpected.join(", ") || "none"}; duplicates: ${logicalIds.size === resourceLogicalIds.length ? "none" : "present"})`,
     );
+  }
 
   return {
     accountId: configuration.accountId,
@@ -452,25 +497,30 @@ export function assertRecoveredBootstrap(
   const configuration = assertConfiguredIdentity(configPath, environment);
   const stateStoreOrigin = requireStateStoreOrigin(configuration);
   const stagePath = localStagePath(configuration, environment);
-  if (existsSync(stagePath))
+  if (existsSync(stagePath)) {
     throw new Error(`Recovered bootstrap left its local stage in place: ${stagePath}`);
+  }
   const cachePath = credentialPath(configuration, environment);
-  if (!existsSync(cachePath) || !lstatSync(cachePath).isFile())
+  if (!existsSync(cachePath) || !lstatSync(cachePath).isFile()) {
     throw new Error(`Recovered state credential cache is missing: ${cachePath}`);
+  }
   assertPrivateMode(
     credentialProfilePath(configuration, environment),
     "Credential profile directory",
   );
   assertPrivateMode(cachePath, "Recovered state credential cache");
   const cache = readJsonObject(cachePath, "Recovered state credential cache");
-  if (cache.accountId !== configuration.accountId)
+  if (cache.accountId !== configuration.accountId) {
     throw new Error("Recovered state credential cache belongs to a different account");
-  if (typeof cache.authToken !== "string" || cache.authToken.length === 0)
+  }
+  if (typeof cache.authToken !== "string" || cache.authToken.length === 0) {
     throw new Error("Recovered state credential cache has no bearer token");
-  if (cache.url !== stateStoreOrigin)
+  }
+  if (cache.url !== stateStoreOrigin) {
     throw new Error(
       "Recovered state credential cache does not match the verified state-store origin",
     );
+  }
 
   return {
     accountId: configuration.accountId,
@@ -491,12 +541,14 @@ function parseCommand(args: readonly string[]): { command: Command; configPath: 
     command !== "assert-interrupted" &&
     command !== "disarm" &&
     command !== "assert-recovered"
-  )
+  ) {
     throw new Error(
       "Expected action: preflight, arm, assert-interrupted, disarm, or assert-recovered",
     );
-  if (selector !== "--config" || !configPath || unexpected.length > 0)
+  }
+  if (selector !== "--config" || !configPath || unexpected.length > 0) {
     throw new Error("Pass exactly one --config <path> selector and no other arguments");
+  }
   return { command, configPath: resolve(configPath) };
 }
 

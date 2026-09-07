@@ -11,6 +11,7 @@ import {
   constants,
 } from "node:fs";
 import { dirname } from "node:path";
+
 import { validateStructure, type LocalDevelopmentBridge } from "../packages/contracts/src/index.ts";
 
 export type LocalConfiguration = LocalDevelopmentBridge;
@@ -26,8 +27,9 @@ export function readLocalConfiguration(path: string, worktreeId: string): LocalC
       stat.size > 8192 ||
       (stat.mode & 0o777) !== 0o600 ||
       (process.getuid && stat.uid !== process.getuid())
-    )
+    ) {
       throw new Error("Local configuration must be an owned regular file with mode 0600");
+    }
     let value: LocalConfiguration;
     try {
       value = decode(JSON.parse(readFileSync(fd, "utf8")));
@@ -41,8 +43,9 @@ export function readLocalConfiguration(path: string, worktreeId: string): LocalC
       port < 1024 ||
       port > 65535 ||
       value.serverURL !== `http://127.0.0.1:${port}`
-    )
+    ) {
       throw new Error("Local configuration does not match this worktree or loopback endpoint");
+    }
     return value;
   } finally {
     closeSync(fd);
@@ -56,16 +59,18 @@ export function localConfiguration(
 ): LocalConfiguration {
   if (existsSync(path)) {
     const value = readLocalConfiguration(path, worktreeId);
-    if (value.serverURL !== serverURL)
+    if (value.serverURL !== serverURL) {
       throw new Error(
         "Local endpoint changed; use the existing port or a new disposable local namespace",
       );
+    }
     return value;
   }
   const directory = dirname(path);
   mkdirSync(directory, { recursive: true, mode: 0o700 });
-  if (lstatSync(directory).isSymbolicLink())
+  if (lstatSync(directory).isSymbolicLink()) {
     throw new Error("Local configuration directory cannot be a symbolic link");
+  }
   const value = decode({
     formatVersion: 1,
     worktreeId,

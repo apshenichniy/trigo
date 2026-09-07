@@ -1,12 +1,14 @@
-import { expect, it } from "vitest";
 import { Schema } from "effect";
+import { expect, it } from "vitest";
+
+import { documentSchemas } from "../packages/contracts/src/document-schema.ts";
 import { assertExchangeSchema } from "./contract-schema.ts";
 import { generateSwift } from "./generate-swift.ts";
-import { documentSchemas } from "../packages/contracts/src/document-schema.ts";
 
 it("requires representable Effect structure and checks before generation", () => {
-  for (const schema of Object.values(documentSchemas))
+  for (const schema of Object.values(documentSchemas)) {
     expect(() => assertExchangeSchema(schema)).not.toThrow();
+  }
   expect(() =>
     assertExchangeSchema(Schema.declare((value): value is string => typeof value === "string")),
   ).toThrow("Unsupported Effect exchange schema node");

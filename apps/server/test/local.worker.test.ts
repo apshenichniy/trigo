@@ -1,10 +1,12 @@
 import { env } from "cloudflare:workers";
-import { expect, it } from "vitest";
 import { Effect } from "effect";
+import { expect, it } from "vitest";
+
+import { validateDocument } from "@trigo/contracts";
+
 import { fakeAsr } from "../src/asr.ts";
 import { noSpeechInput } from "../src/local-fixture.ts";
 import localWorker from "../src/local-worker.ts";
-import { validateDocument } from "@trigo/contracts";
 
 it("persists exact canonical fake adapter bytes in the real local R2 binding", async () => {
   const revision = await Effect.runPromise(fakeAsr.normalize(noSpeechInput));
@@ -20,11 +22,12 @@ it("denies external service access in the Workers runtime", async () => {
   expect((await fetch("https://api.cloudflare.com")).status).toBe(403);
 });
 it("does not ship the old fixture API or cloud-only acceptance route locally", async () => {
-  for (const path of ["/__local/transcriptions/no-speech", "/__trigo/asr-probe/live-model"])
+  for (const path of ["/__local/transcriptions/no-speech", "/__trigo/asr-probe/live-model"]) {
     expect(
       (await localWorker.fetch(new Request(`http://localhost${path}`, { method: "POST" }), env))
         .status,
     ).toBe(405);
+  }
 });
 it("rejects infrastructure probes without the local-run capability", async () => {
   expect(

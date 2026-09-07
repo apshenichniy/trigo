@@ -66,7 +66,9 @@ final class SQLiteDatabase: @unchecked Sendable {
     if let existing = registry[canonical.path]?.value {
       guard existing.archiveID == archiveID else {
         throw LocalPersistenceError.archiveIdentityMismatch(
-          expected: existing.archiveID, actual: archiveID)
+          expected: existing.archiveID,
+          actual: archiveID
+        )
       }
       try existing.checkPaths()
       return existing
@@ -82,15 +84,18 @@ final class SQLiteDatabase: @unchecked Sendable {
     self.archiveID = archiveID
     let files = FileManager.default
     try files.createDirectory(
-      at: root, withIntermediateDirectories: true,
-      attributes: [.posixPermissions: 0o700])
+      at: root,
+      withIntermediateDirectories: true,
+      attributes: [.posixPermissions: 0o700]
+    )
     try checkPaths()
     let url = root.appendingPathComponent(Self.filename)
     let existed = files.fileExists(atPath: url.path)
     if !existed {
       guard try files.contentsOfDirectory(atPath: root.path).isEmpty else {
         throw LocalPersistenceError.unsupportedStore(
-          "A nonempty archive requires explicit test cutover")
+          "A nonempty archive requires explicit test cutover"
+        )
       }
     }
     if existed {
@@ -135,13 +140,16 @@ final class SQLiteDatabase: @unchecked Sendable {
         try scalarInt("PRAGMA trusted_schema") == 0
       else {
         throw LocalPersistenceError.unsupportedStore(
-          "Required SQLite durability pragmas unavailable")
+          "Required SQLite durability pragmas unavailable"
+        )
       }
       if !existed {
         try transaction {
           for statement in repositorySchema { try execute(statement) }
           try execute(
-            "INSERT INTO repository_identity VALUES (?, ?)", [.text(archiveID), .text(root.path)])
+            "INSERT INTO repository_identity VALUES (?, ?)",
+            [.text(archiveID), .text(root.path)]
+          )
           try execute("PRAGMA application_id=\(Self.applicationID)")
           try execute("PRAGMA user_version=\(repositorySchemaVersion)")
         }
@@ -174,12 +182,14 @@ final class SQLiteDatabase: @unchecked Sendable {
       sql.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         .trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    let actual = try rows("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL").map {
-      normalized(try $0.string(0))
-    }
+    let actual = try rows("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL")
+      .map {
+        normalized(try $0.string(0))
+      }
     guard Set(actual) == Set(repositorySchema.map(normalized)) else {
       throw LocalPersistenceError.unsupportedStore(
-        "SQLite schema does not match its declared version")
+        "SQLite schema does not match its declared version"
+      )
     }
     guard try scalarString("PRAGMA quick_check") == "ok",
       try rows("PRAGMA foreign_key_check").isEmpty
@@ -191,9 +201,13 @@ final class SQLiteDatabase: @unchecked Sendable {
   private func validateRecoveredCopy(_ source: URL) throws {
     let files = FileManager.default
     let temporary = try canonicalRepositoryRoot(
-      files.temporaryDirectory.appendingPathComponent("trigo-sqlite-preflight-\(UUID())"))
+      files.temporaryDirectory.appendingPathComponent("trigo-sqlite-preflight-\(UUID())")
+    )
     try files.createDirectory(
-      at: temporary, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+      at: temporary,
+      withIntermediateDirectories: false,
+      attributes: [.posixPermissions: 0o700]
+    )
     defer { try? files.removeItem(at: temporary) }
     let originals = [source, root.appendingPathComponent(Self.filename + "-journal")]
     let fingerprints = try originals.map(fileFingerprint)
@@ -261,7 +275,8 @@ final class SQLiteDatabase: @unchecked Sendable {
   }
 
   func transaction<T>(
-    interruption: PersistenceInterruption = { _ in }, _ body: () throws -> T
+    interruption: PersistenceInterruption = { _ in },
+    _ body: () throws -> T
   ) throws -> T {
     try execute("BEGIN IMMEDIATE")
     let result: T
@@ -289,24 +304,29 @@ final class SQLiteDatabase: @unchecked Sendable {
       let code = sqlite3_step(statement)
       if code == SQLITE_DONE { return result }
       guard code == SQLITE_ROW else { throw failure(code) }
-      let values = try (0..<sqlite3_column_count(statement)).map { index -> SQLValue in
-        switch sqlite3_column_type(statement, index) {
-        case SQLITE_INTEGER: return .integer(sqlite3_column_int64(statement, index))
-        case SQLITE_FLOAT: return .real(sqlite3_column_double(statement, index))
-        case SQLITE_TEXT:
-          let count = Int(sqlite3_column_bytes(statement, index))
-          guard count <= 4096 else { throw invalidRow() }
-          let bytes = UnsafeBufferPointer(
-            start: sqlite3_column_text(statement, index), count: count)
-          return .text(String(decoding: bytes, as: UTF8.self))
-        case SQLITE_BLOB:
-          let count = Int(sqlite3_column_bytes(statement, index))
-          guard count <= 256 * 1024 else { throw invalidRow() }
-          return .blob(
-            count == 0 ? Data() : Data(bytes: sqlite3_column_blob(statement, index)!, count: count))
-        default: return .null
+      let values = try (0..<sqlite3_column_count(statement))
+        .map { index -> SQLValue in
+          switch sqlite3_column_type(statement, index) {
+          case SQLITE_INTEGER: return .integer(sqlite3_column_int64(statement, index))
+          case SQLITE_FLOAT: return .real(sqlite3_column_double(statement, index))
+          case SQLITE_TEXT:
+            let count = Int(sqlite3_column_bytes(statement, index))
+            guard count <= 4096 else { throw invalidRow() }
+            let bytes = UnsafeBufferPointer(
+              start: sqlite3_column_text(statement, index),
+              count: count
+            )
+            return .text(String(decoding: bytes, as: UTF8.self))
+          case SQLITE_BLOB:
+            let count = Int(sqlite3_column_bytes(statement, index))
+            guard count <= 256 * 1024 else { throw invalidRow() }
+            return .blob(
+              count == 0
+                ? Data() : Data(bytes: sqlite3_column_blob(statement, index)!, count: count)
+            )
+          default: return .null
+          }
         }
-      }
       result.append(SQLRow(values: values))
     }
   }
@@ -325,7 +345,11 @@ final class SQLiteDatabase: @unchecked Sendable {
 
   private func openHandle(_ url: URL, flags: Int32) throws {
     let code = sqlite3_open_v2(
-      url.path, &handle, flags | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW, nil)
+      url.path,
+      &handle,
+      flags | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_NOFOLLOW,
+      nil
+    )
     guard code == SQLITE_OK else { throw failure(code) }
     sqlite3_extended_result_codes(handle, 1)
     // External writers are unsupported while the app owns its instance lease. Still fail
@@ -372,14 +396,18 @@ final class SQLiteDatabase: @unchecked Sendable {
   private func failure(_ code: Int32) -> LocalPersistenceError {
     .sqlite(
       code: code,
-      message: handle.map { String(cString: sqlite3_errmsg($0)) } ?? "Cannot open SQLite")
+      message: handle.map { String(cString: sqlite3_errmsg($0)) } ?? "Cannot open SQLite"
+    )
   }
 
   private func checkPaths() throws {
     try requireSafePath(root, directory: true)
     for suffix in ["", "-journal", "-wal", "-shm"] {
       try requireSafePath(
-        root.appendingPathComponent(Self.filename + suffix), directory: false, mayBeAbsent: true)
+        root.appendingPathComponent(Self.filename + suffix),
+        directory: false,
+        mayBeAbsent: true
+      )
     }
   }
 }

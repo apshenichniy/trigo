@@ -16,14 +16,16 @@ import TrigoNative
     self.variant = variant
     self.namespace = namespace
     _application = StateObject(
-      wrappedValue: RecordingApplication(namespace: namespace, variant: variant))
+      wrappedValue: RecordingApplication(namespace: namespace, variant: variant)
+    )
   }
 
   var body: some Scene {
     Window("Archive connection", id: "connection") {
       if let coordinator = application.coordinator {
         ConnectionView(
-          appName: variant.appName, model: coordinator,
+          appName: variant.appName,
+          model: coordinator,
           localConfiguration: namespace.localDevelopment
         )
         .defaultAppStorage(UserDefaults(suiteName: namespace.preferences)!)

@@ -1,7 +1,9 @@
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+
 import { expect, it } from "vitest";
+
 import { nativeCacheIdentity } from "./native-cache.ts";
 
 it("invalidates restored native products on any lock, toolchain, or build configuration change", () => {
@@ -47,8 +49,9 @@ it("invalidates restored native products on any lock, toolchain, or build config
       { platform: "linux" },
       { architecture: "x64" },
       { toolchain: ["Xcode 26.6", "different SDK"] },
-    ])
+    ]) {
       expect(nativeCacheIdentity({ ...inputs, ...changed })).not.toBe(original);
+    }
     rmSync(join(root, "apps/macos/Locks/Package.resolved"));
     expect(() => nativeCacheIdentity(inputs)).toThrow();
   } finally {

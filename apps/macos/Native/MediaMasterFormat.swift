@@ -116,9 +116,10 @@ extension Data {
   }
 
   func integer<T: FixedWidthInteger>(at offset: Int, as type: T.Type) -> T {
-    subdata(in: offset..<(offset + MemoryLayout<T>.size)).withUnsafeBytes {
-      T(bigEndian: $0.loadUnaligned(as: T.self))
-    }
+    subdata(in: offset..<(offset + MemoryLayout<T>.size))
+      .withUnsafeBytes {
+        T(bigEndian: $0.loadUnaligned(as: T.self))
+      }
   }
 
   var masterSHA256: Data { Data(SHA256.hash(data: self)) }

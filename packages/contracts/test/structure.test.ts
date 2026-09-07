@@ -1,9 +1,10 @@
-import { expect, it } from "vitest";
-import { Schema, Struct } from "effect";
-import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import emitted from "../schema/v1.schema.json";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import { Schema, Struct } from "effect";
+import { expect, it } from "vitest";
+
 import corpus from "../fixtures/structure-cases.json";
+import emitted from "../schema/v1.schema.json";
 import { documentSchemas } from "../src/document-schema.ts";
 import { validateStructure } from "../src/index.ts";
 
@@ -18,21 +19,29 @@ const emittedValidators = Object.fromEntries(
   ]),
 );
 
-for (const fixture of corpus)
+for (const fixture of corpus) {
   it(`structural parity: ${fixture.name}`, () => {
     const name = kind(fixture.kind);
     const value: unknown = JSON.parse(fixture.json);
     const decode = () => validateStructure(name, value);
     const validator = emittedValidators[name];
-    if (validator === undefined) throw new Error("Missing emitted validator");
+    if (validator === undefined) {
+      throw new Error("Missing emitted validator");
+    }
     expect(validator(value)).toBe(fixture.valid);
-    if (fixture.valid) expect(decode()).toEqual(value);
-    else expect(decode).toThrow("structure");
+    if (fixture.valid) {
+      expect(decode()).toEqual(value);
+    } else {
+      expect(decode).toThrow("structure");
+    }
   });
+}
 
 it("rejects non-JSON numeric inputs in the Effect boundary", () => {
   const fixture = corpus.find((item) => item.kind === "CallDocument" && item.valid);
-  if (!fixture) throw new Error("Missing fixture");
+  if (!fixture) {
+    throw new Error("Missing fixture");
+  }
   for (const number of [NaN, Infinity, -Infinity]) {
     expect(() =>
       validateStructure("CallDocument", { ...JSON.parse(fixture.json), documentVersion: number }),

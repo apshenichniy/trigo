@@ -42,7 +42,8 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
   private let fileManager: FileManager
 
   init(
-    url: URL, fileManager: FileManager = .default,
+    url: URL,
+    fileManager: FileManager = .default,
     transportPolicy: ServerTransportPolicy = .httpsOnly
   ) {
     self.transportPolicy = transportPolicy
@@ -77,7 +78,8 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
     let temporary = directory.appending(
-      path: ".\(url.lastPathComponent).\(UUID().uuidString).tmp")
+      path: ".\(url.lastPathComponent).\(UUID().uuidString).tmp"
+    )
     defer { try? fileManager.removeItem(at: temporary) }
     try encoder.encode(metadata).write(to: temporary, options: .withoutOverwriting)
     try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: temporary.path)
@@ -120,7 +122,8 @@ actor FileConnectionMetadataStore: ConnectionMetadataStoring {
   private static func isCanonicalUUID(_ value: String) -> Bool {
     value.range(
       of: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-      options: .regularExpression) != nil
+      options: .regularExpression
+    ) != nil
   }
 }
 

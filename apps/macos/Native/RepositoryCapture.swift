@@ -3,7 +3,8 @@ import TrigoContracts
 
 extension LocalRepository {
   public func beginCapture(
-    _ session: CaptureArchiveSession, associatedWork: OperationIntent? = nil,
+    _ session: CaptureArchiveSession,
+    associatedWork: OperationIntent? = nil,
     interruption: @escaping PersistenceInterruption = { _ in }
   ) async throws -> PublicationResult {
     try requireArchiveIdentity(session.archiveID)
@@ -25,7 +26,8 @@ extension LocalRepository {
     }
     let document = try Contract.decode(
       CallDocument.self,
-      bytes: session.callBytes(media: nil, reason: nil, version: 1, reference: nil))
+      bytes: session.callBytes(media: nil, reason: nil, version: 1, reference: nil)
+    )
     try await stageCall(document)
     let result = try database.access(capture: true) {
       try database.transaction(interruption: { point in
@@ -33,9 +35,13 @@ extension LocalRepository {
         try interruption(point)
       }) {
         let result = try commitCall(document.value, hash: document.sha256, expected: nil)
-        if try !database.rows(
-          "SELECT call_id FROM sessions WHERE call_id=?", [.text(session.callID)]
-        ).isEmpty {
+        if try
+          !database.rows(
+            "SELECT call_id FROM sessions WHERE call_id=?",
+            [.text(session.callID)]
+          )
+          .isEmpty
+        {
           throw LocalPersistenceError.concurrentMutation
         }
         try database.execute(
@@ -46,7 +52,8 @@ extension LocalRepository {
             .text(session.audioManifestID), .text(session.masterID),
             .real(session.startedAt.timeIntervalSinceReferenceDate),
             .real(session.source.processLaunchDate.timeIntervalSinceReferenceDate),
-          ])
+          ]
+        )
         try commitSemanticWork("begin:\(session.callID)", operation: operation)
         return result
       }
@@ -63,8 +70,10 @@ extension LocalRepository {
           SELECT s.microphone_track_id,s.application_track_id,s.audio_manifest_id,s.master_id,
           s.started_reference,s.process_launch_reference,h.hash FROM sessions s JOIN snapshot_history h ON h.call_id=s.call_id AND h.version=1
           WHERE s.call_id=?
-          """, [.text(callID)]
-        ).first
+          """,
+          [.text(callID)]
+        )
+        .first
       })
     else { return nil }
     let call = try callValue(hash: row.string(6))
@@ -81,15 +90,24 @@ extension LocalRepository {
     try requireCanonicalIdentifier(masterID)
     try requireCanonicalIdentifier(manifestID)
     return try .init(
-      root: root, archiveID: archiveID, callID: callID,
-      microphoneTrackID: microphoneTrack.trackId, applicationTrackID: applicationTrack.trackId,
-      audioManifestID: manifestID, masterID: masterID,
+      root: root,
+      archiveID: archiveID,
+      callID: callID,
+      microphoneTrackID: microphoneTrack.trackId,
+      applicationTrackID: applicationTrack.trackId,
+      audioManifestID: manifestID,
+      masterID: masterID,
       startedAt: Date(timeIntervalSinceReferenceDate: row.real(4)),
       source: .init(
-        applicationName: call.source.applicationName, bundleID: call.source.bundleId,
-        processID: processID, windowID: windowID, windowTitle: call.source.windowTitle,
-        processLaunchDate: Date(timeIntervalSinceReferenceDate: row.real(5))),
-      microphone: microphoneTrack.inputDevice.map { .init(id: $0.id, name: $0.name) })
+        applicationName: call.source.applicationName,
+        bundleID: call.source.bundleId,
+        processID: processID,
+        windowID: windowID,
+        windowTitle: call.source.windowTitle,
+        processLaunchDate: Date(timeIntervalSinceReferenceDate: row.real(5))
+      ),
+      microphone: microphoneTrack.inputDevice.map { .init(id: $0.id, name: $0.name) }
+    )
   }
 
   /// Stop intent is an operational fact needed across the external media boundary. It is
@@ -99,16 +117,20 @@ extension LocalRepository {
     try database.access(capture: true) {
       try database.transaction(interruption: self.interruption) {
         guard
-          let row = try database.rows(
-            "SELECT stop_requested,stop_reason FROM sessions WHERE call_id=?", [.text(callID)]
-          ).first
+          let row =
+            try database.rows(
+              "SELECT stop_requested,stop_reason FROM sessions WHERE call_id=?",
+              [.text(callID)]
+            )
+            .first
         else {
           throw LocalPersistenceError.callNotFound(callID)
         }
         if try row.int(0) == 1 { return }
         try database.execute(
           "UPDATE sessions SET stop_requested=1,stop_reason=? WHERE call_id=?",
-          [.string(reason), .text(callID)])
+          [.string(reason), .text(callID)]
+        )
       }
     }
   }
@@ -117,7 +139,9 @@ extension LocalRepository {
     try database.access(capture: true) {
       try database.transaction {
         try database.execute(
-          "UPDATE sessions SET media_failure='media_write_failed' WHERE call_id=?", [.text(callID)])
+          "UPDATE sessions SET media_failure='media_write_failed' WHERE call_id=?",
+          [.text(callID)]
+        )
       }
     }
   }
@@ -125,16 +149,20 @@ extension LocalRepository {
   func captureMediaFailure(callID: String) throws -> String? {
     try database.access(capture: true) {
       try database.rows("SELECT media_failure FROM sessions WHERE call_id=?", [.text(callID)])
-        .first?.optionalString(0)
+        .first?
+        .optionalString(0)
     }
   }
 
   public func captureStopRequest(callID: String) throws -> CaptureStopRequest? {
     try database.access {
       guard
-        let row = try database.rows(
-          "SELECT stop_requested,stop_reason FROM sessions WHERE call_id=?", [.text(callID)]
-        ).first,
+        let row =
+          try database.rows(
+            "SELECT stop_requested,stop_reason FROM sessions WHERE call_id=?",
+            [.text(callID)]
+          )
+          .first,
         try row.int(0) == 1
       else { return nil }
       return try .init(reason: row.optionalString(1))
@@ -145,7 +173,9 @@ extension LocalRepository {
   /// caller-associated work. #53 supplies its selected-profile exchange snapshots here.
   /// An absent certificate is only valid for admission that never created any media.
   public func finalizeCapture(
-    callSnapshot: Data, audioManifest: Data, verifiedMaster: FinalizedMediaMaster? = nil,
+    callSnapshot: Data,
+    audioManifest: Data,
+    verifiedMaster: FinalizedMediaMaster? = nil,
     associatedWork: OperationIntent? = nil,
     interruption: @escaping PersistenceInterruption = { _ in }
   ) async throws -> LocalCallAggregate {
@@ -165,7 +195,9 @@ extension LocalRepository {
     else { throw ContractError.reference }
     try validateAudioManifest(audio.value, against: document.value)
     _ = try Contract.validateArchive(
-      callSnapshot, references: [session.audioManifestID: audioManifest])
+      callSnapshot,
+      references: [session.audioManifestID: audioManifest]
+    )
     try validateCaptureMaster(verifiedMaster, session: session)
     if let master = verifiedMaster {
       guard master.cursor.identity == session.mediaMasterIdentity,
@@ -192,17 +224,22 @@ extension LocalRepository {
     try validateCaptureIntervals(document.value, cursor: verifiedMaster?.cursor)
     let publication = try await prepareCapturePublication(
       callID: callID,
-      reason: document.value.interruptionReason, associatedWork: associatedWork)
+      reason: document.value.interruptionReason,
+      associatedWork: associatedWork
+    )
     guard document.value.interruptionReason == publication.reason else {
       throw LocalPersistenceError.immutableConflict("stop:\(callID)")
     }
     let operation = publication.operation
     if let reference = prior.audioManifest {
       let retained = try database.access {
-        try database.rows(
-          "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
-          [.text(callID), .int(document.value.documentVersion)]
-        ).first?.string(0)
+        try database
+          .rows(
+            "SELECT hash FROM snapshot_history WHERE call_id=? AND version=?",
+            [.text(callID), .int(document.value.documentVersion)]
+          )
+          .first?
+          .string(0)
       }
       guard retained == document.sha256, try documentBytes(document.sha256) == callSnapshot else {
         throw LocalPersistenceError.immutableConflict("\(callID):\(document.value.documentVersion)")
@@ -221,7 +258,11 @@ extension LocalRepository {
     try validatePublication(from: prior, to: document.value)
     try await stageDocument(audioManifest)
     try await stageEvidence(
-      hash: audio.sha256, kind: "audio", callID: callID, identity: audio.value.manifestId)
+      hash: audio.sha256,
+      kind: "audio",
+      callID: callID,
+      identity: audio.value.manifestId
+    )
     try await stageCall(document)
     try database.access(capture: true) {
       try database.transaction(interruption: { point in
@@ -229,7 +270,11 @@ extension LocalRepository {
         try interruption(point)
       }) {
         _ = try commitEvidence(
-          identity: session.audioManifestID, kind: "audio", callID: callID, hash: audio.sha256)
+          identity: session.audioManifestID,
+          kind: "audio",
+          callID: callID,
+          hash: audio.sha256
+        )
         _ = try commitCall(document.value, hash: document.sha256, expected: priorHash)
         if let verifiedMaster { try commitFinalMaster(verifiedMaster, callID: callID) }
         try commitSemanticWork("finalize:\(callID)", operation: operation)

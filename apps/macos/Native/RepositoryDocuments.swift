@@ -22,80 +22,99 @@ extension LocalRepository {
           .string(call.audioManifest?.manifestId), .string(call.audioManifest?.sha256),
           .string(call.activeRevisionId),
         ]
-      ])
+      ]
+    )
     try await stageRows(
       "INSERT OR IGNORE INTO call_tracks VALUES (?,?,?,?,?,?,?)",
-      call.tracks.enumerated().map { ordinal, track in
-        [
-          .text(hash), .int(ordinal), .text(track.trackId), .text(track.role),
-          .string(track.inputDevice?.id),
-          .string(track.inputDevice?.name), .text(track.mediaProfileId),
-        ]
-      })
+      call.tracks.enumerated()
+        .map { ordinal, track in
+          [
+            .text(hash), .int(ordinal), .text(track.trackId), .text(track.role),
+            .string(track.inputDevice?.id),
+            .string(track.inputDevice?.name), .text(track.mediaProfileId),
+          ]
+        }
+    )
     for (trackOrdinal, track) in call.tracks.enumerated() {
       try await stageRows(
         "INSERT OR IGNORE INTO track_intervals VALUES (?,?,?,?,?,?,?)",
-        track.intervals.enumerated().map { ordinal, span in
-          [
-            .text(hash), .int(trackOrdinal), .int(ordinal), .int(span.startMs), .int(span.endMs),
-            .text(span.state), .string(span.reason),
-          ]
-        })
+        track.intervals.enumerated()
+          .map { ordinal, span in
+            [
+              .text(hash), .int(trackOrdinal), .int(ordinal), .int(span.startMs), .int(span.endMs),
+              .text(span.state), .string(span.reason),
+            ]
+          }
+      )
     }
     try await stageRows(
       "INSERT OR IGNORE INTO call_revisions VALUES (?,?,?,?,?)",
-      call.revisions.enumerated().map { ordinal, revision in
-        [
-          .text(hash), .int(ordinal), .text(revision.revisionId), .text(revision.createdAt),
-          .text(revision.sha256),
-        ]
-      })
+      call.revisions.enumerated()
+        .map { ordinal, revision in
+          [
+            .text(hash), .int(ordinal), .text(revision.revisionId), .text(revision.createdAt),
+            .text(revision.sha256),
+          ]
+        }
+    )
     try await stageRows(
       "INSERT OR IGNORE INTO speaker_names VALUES (?,?,?,?)",
-      call.speakerNames.sorted(by: { $0.key < $1.key }).flatMap { revisionID, names in
-        names.sorted(by: { $0.key < $1.key }).map { speakerID, name in
-          [.text(hash), .text(revisionID), .text(speakerID), .text(name)]
+      call.speakerNames.sorted(by: { $0.key < $1.key })
+        .flatMap { revisionID, names in
+          names.sorted(by: { $0.key < $1.key })
+            .map { speakerID, name in
+              [.text(hash), .text(revisionID), .text(speakerID), .text(name)]
+            }
         }
-      })
+    )
     try interruption(.afterRepositoryStaging)
   }
 
   func stageRevision(_ document: StoredDocument<TranscriptRevision>) async throws {
     let hash = try await stageDocument(document.storedBytes)
     try await stageEvidence(
-      hash: hash, kind: "revision", callID: document.value.callId,
-      identity: document.value.revisionId)
+      hash: hash,
+      kind: "revision",
+      callID: document.value.callId,
+      identity: document.value.revisionId
+    )
     try await stageRows(
       "INSERT OR IGNORE INTO revision_speakers VALUES (?,?)",
       document.value.speakers.map {
         [.text(hash), .text($0.speakerId)]
-      })
+      }
+    )
     try await stageRows(
       "INSERT OR IGNORE INTO revision_turns VALUES (?,?,?,?,?,?,?,?)",
-      document.value.turns.enumerated().map { ordinal, turn in
-        [
-          .text(hash), .int(ordinal), .text(turn.turnId), .text(turn.trackId),
-          .string(turn.speakerId),
-          .int(turn.startMs), .int(turn.endMs), .text(turn.text),
-        ]
-      })
+      document.value.turns.enumerated()
+        .map { ordinal, turn in
+          [
+            .text(hash), .int(ordinal), .text(turn.turnId), .text(turn.trackId),
+            .string(turn.speakerId),
+            .int(turn.startMs), .int(turn.endMs), .text(turn.text),
+          ]
+        }
+    )
     for (turnOrdinal, turn) in document.value.turns.enumerated() where !turn.words.isEmpty {
       try await stageRows(
         "INSERT OR IGNORE INTO revision_words VALUES (?,?,?,?,?,?,?)",
-        turn.words.enumerated().map { ordinal, word in
-          [
-            .text(hash), .int(turnOrdinal), .int(ordinal), .text(word.text), .int(word.startMs),
-            .int(word.endMs),
-            word.confidence.map(SQLValue.real) ?? .null,
-          ]
-        })
+        turn.words.enumerated()
+          .map { ordinal, word in
+            [
+              .text(hash), .int(turnOrdinal), .int(ordinal), .text(word.text), .int(word.startMs),
+              .int(word.endMs),
+              word.confidence.map(SQLValue.real) ?? .null,
+            ]
+          }
+      )
     }
   }
 
   func stageEvidence(hash: String, kind: String, callID: String, identity: String) async throws {
     try await stageRows(
       "INSERT OR IGNORE INTO evidence_values VALUES (?,?,?,?)",
-      [[.text(hash), .text(kind), .text(callID), .text(identity)]])
+      [[.text(hash), .text(kind), .text(callID), .text(identity)]]
+    )
   }
 
   func stageRows(_ sql: String, _ rows: [[SQLValue]]) async throws {
@@ -128,13 +147,16 @@ extension LocalRepository {
   func callValue(hash: String) throws -> CallDocument {
     let storedRow = try database.access {
       guard
-        let row = try database.rows(
-          """
-          SELECT call_id,version,started_at,ended_at,duration_ms,capture_state,reason,
-          application_name,bundle_id,process_id,window_id,window_title,audio_id,audio_hash,active_revision_id
-          FROM call_values WHERE hash=?
-          """, [.text(hash)]
-        ).first
+        let row =
+          try database.rows(
+            """
+            SELECT call_id,version,started_at,ended_at,duration_ms,capture_state,reason,
+            application_name,bundle_id,process_id,window_id,window_title,audio_id,audio_hash,active_revision_id
+            FROM call_values WHERE hash=?
+            """,
+            [.text(hash)]
+          )
+          .first
       else { throw invalidRow() }
       return row
     }
@@ -149,14 +171,19 @@ extension LocalRepository {
         let page = try database.access {
           try database.rows(
             "SELECT ordinal,start_ms,end_ms,state,reason FROM track_intervals WHERE hash=? AND track_ordinal=? AND ordinal>? ORDER BY ordinal LIMIT 128",
-            [.text(hash), .int(ordinal), .int(cursor)])
+            [.text(hash), .int(ordinal), .int(cursor)]
+          )
         }
         for storedSpan in page {
           let span = try resolveTextValues(storedSpan)
           intervals.append(
             try .init(
-              startMs: span.int(1), endMs: span.int(2), state: span.string(3),
-              reason: span.optionalString(4)))
+              startMs: span.int(1),
+              endMs: span.int(2),
+              state: span.string(3),
+              reason: span.optionalString(4)
+            )
+          )
         }
         if page.count < 128 { break }
         cursor = try page.last!.int(0)
@@ -164,29 +191,53 @@ extension LocalRepository {
       let deviceID = try track.optionalString(4)
       audioTracks.append(
         try .init(
-          trackId: track.string(2), role: track.string(3),
+          trackId: track.string(2),
+          role: track.string(3),
           inputDevice: deviceID.map { .init(id: $0, name: try track.string(5)) },
-          mediaProfileId: track.string(6), intervals: intervals))
+          mediaProfileId: track.string(6),
+          intervals: intervals
+        )
+      )
     }
-    let revisions = try projectionRows("call_revisions", hash: hash).sorted {
-      try $0.int(1) < $1.int(1)
-    }.map {
-      try RevisionReference(revisionId: $0.string(2), createdAt: $0.string(3), sha256: $0.string(4))
-    }
+    let revisions = try projectionRows("call_revisions", hash: hash)
+      .sorted {
+        try $0.int(1) < $1.int(1)
+      }
+      .map {
+        try RevisionReference(
+          revisionId: $0.string(2),
+          createdAt: $0.string(3),
+          sha256: $0.string(4)
+        )
+      }
     var names: [String: [String: String]] = [:]
     for name in try projectionRows("speaker_names", hash: hash) {
       names[try name.string(1), default: [:]][try name.string(2)] = try name.string(3)
     }
     let audioID = try row.optionalString(12)
     return try .init(
-      schemaVersion: 1, archiveId: archiveID, callId: row.string(0), documentVersion: row.int(1),
-      startedAt: row.string(2), endedAt: row.optionalString(3), durationMs: row.optionalInt(4),
-      captureState: row.string(5), interruptionReason: row.optionalString(6),
+      schemaVersion: 1,
+      archiveId: archiveID,
+      callId: row.string(0),
+      documentVersion: row.int(1),
+      startedAt: row.string(2),
+      endedAt: row.optionalString(3),
+      durationMs: row.optionalInt(4),
+      captureState: row.string(5),
+      interruptionReason: row.optionalString(6),
       source: .init(
-        applicationName: row.string(7), bundleId: row.string(8), processId: row.int(9),
-        windowId: row.optionalInt(10), windowTitle: row.optionalString(11)), tracks: audioTracks,
+        applicationName: row.string(7),
+        bundleId: row.string(8),
+        processId: row.int(9),
+        windowId: row.optionalInt(10),
+        windowTitle: row.optionalString(11)
+      ),
+      tracks: audioTracks,
       audioManifest: audioID.map { .init(manifestId: $0, sha256: try row.string(13)) },
-      revisions: revisions, activeRevisionId: row.optionalString(14), speakerNames: names)
+      revisions: revisions,
+      activeRevisionId: row.optionalString(14),
+      speakerNames: names
+    )
   }
 
   /// Tables are fixed internal identifiers, never caller input. Content hashes pin immutable
@@ -198,12 +249,14 @@ extension LocalRepository {
       let page = try database.access {
         try database.rows(
           "SELECT rowid,* FROM \(table) WHERE hash=? AND rowid>? ORDER BY rowid LIMIT 128",
-          [.text(hash), .integer(cursor)])
+          [.text(hash), .integer(cursor)]
+        )
       }
       result.append(
         contentsOf: try page.map {
           try resolveTextValues(SQLRow(values: Array($0.values.dropFirst())))
-        })
+        }
+      )
       if page.count < 128 { return result }
       cursor = try page.last!.integer(0)
     }
@@ -235,7 +288,8 @@ extension LocalRepository {
         let bytes = try documentBytes(String(text.dropFirst(repositoryTextPrefix.count)))
         guard let decoded = String(data: bytes, encoding: .utf8) else { throw invalidRow() }
         return .text(decoded)
-      })
+      }
+    )
   }
 }
 

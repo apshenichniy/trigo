@@ -21,7 +21,10 @@ extension LocalRepository {
   func documentBytes(_ hash: String) throws -> Data {
     var result = Data()
     try forEachDocumentChunk(
-      hash: hash, prepare: { result.reserveCapacity($0) }, consume: { result.append($0) })
+      hash: hash,
+      prepare: { result.reserveCapacity($0) },
+      consume: { result.append($0) }
+    )
     return result
   }
 
@@ -33,11 +36,16 @@ extension LocalRepository {
     let complete = try database.access {
       try database.transaction {
         try database.execute(
-          "INSERT OR IGNORE INTO documents VALUES (?,?,0)", [.text(hash), .int(byteCount)])
+          "INSERT OR IGNORE INTO documents VALUES (?,?,0)",
+          [.text(hash), .int(byteCount)]
+        )
         guard
-          let row = try database.rows(
-            "SELECT byte_count,complete FROM documents WHERE hash=?", [.text(hash)]
-          ).first,
+          let row =
+            try database.rows(
+              "SELECT byte_count,complete FROM documents WHERE hash=?",
+              [.text(hash)]
+            )
+            .first,
           try row.int(0) == byteCount
         else { throw LocalPersistenceError.immutableConflict(hash) }
         return try row.int(1) == 1
@@ -56,13 +64,16 @@ extension LocalRepository {
           if !complete {
             try database.execute(
               "INSERT OR IGNORE INTO document_chunks VALUES (?,?,?)",
-              [.text(hash), .int(part), .blob(bytes)])
+              [.text(hash), .int(part), .blob(bytes)]
+            )
           }
           guard
-            let row = try database.rows(
-              "SELECT bytes FROM document_chunks WHERE hash=? AND part=?",
-              [.text(hash), .int(part)]
-            ).first,
+            let row =
+              try database.rows(
+                "SELECT bytes FROM document_chunks WHERE hash=? AND part=?",
+                [.text(hash), .int(part)]
+              )
+              .first,
             try row.data(0) == bytes
           else { throw LocalPersistenceError.immutableConflict(hash) }
         }
@@ -87,13 +98,18 @@ extension LocalRepository {
   /// Readers share completeness, chunk bounds, length and checksum validation. Only Data callers
   /// allocate the full result; streaming consumers retain one chunk and run outside SQL ownership.
   func forEachDocumentChunk(
-    hash: String, prepare: (Int) -> Void = { _ in }, consume: (Data) throws -> Void
+    hash: String,
+    prepare: (Int) -> Void = { _ in },
+    consume: (Data) throws -> Void
   ) throws {
     let size = try database.access {
       guard
-        let row = try database.rows(
-          "SELECT byte_count,complete FROM documents WHERE hash=?", [.text(hash)]
-        ).first,
+        let row =
+          try database.rows(
+            "SELECT byte_count,complete FROM documents WHERE hash=?",
+            [.text(hash)]
+          )
+          .first,
         try row.int(1) == 1, try row.int(0) >= 0
       else { throw invalidRow() }
       return try row.int(0)
@@ -105,9 +121,12 @@ extension LocalRepository {
     while count < size {
       let bytes = try database.access {
         guard
-          let row = try database.rows(
-            "SELECT bytes FROM document_chunks WHERE hash=? AND part=?", [.text(hash), .int(part)]
-          ).first
+          let row =
+            try database.rows(
+              "SELECT bytes FROM document_chunks WHERE hash=? AND part=?",
+              [.text(hash), .int(part)]
+            )
+            .first
         else { throw invalidRow() }
         return try row.data(0)
       }

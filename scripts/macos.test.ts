@@ -1,13 +1,15 @@
 import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { expect, it } from "vitest";
-import { restoreLock } from "./macos-lock.ts";
+
 import {
   assertSupportedReplacement,
   installationDestination,
   nativeSigning,
 } from "./macos-install.ts";
+import { restoreLock } from "./macos-lock.ts";
 
 it("requires an explicit installed signing mode while keeping CI credential-free", () => {
   expect(nativeSigning("build", undefined, false)).toEqual(["CODE_SIGNING_ALLOWED=NO"]);

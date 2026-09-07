@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+
 import { expect, it } from "vitest";
 it.each([
   "doctor",
@@ -105,7 +106,9 @@ it("local smoke refuses an occupied port before starting Alchemy", async () => {
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
   try {
     const address = server.address();
-    if (!address || typeof address === "string") throw new Error("No test port");
+    if (!address || typeof address === "string") {
+      throw new Error("No test port");
+    }
     const result = spawnSync("bun", ["run", "test:local"], {
       encoding: "utf8",
       env: { ...process.env, TRIGO_LOCAL_PORT: String(address.port) },

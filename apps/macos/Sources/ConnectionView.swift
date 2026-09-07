@@ -7,7 +7,8 @@ struct ConnectionView: View {
   @State private var serverURL = ""
   @State private var token = ""
   init(
-    appName: String, model: RecordingCoordinator,
+    appName: String,
+    model: RecordingCoordinator,
     localConfiguration: LocalDevelopmentConfiguration? = nil
   ) {
     self.appName = appName

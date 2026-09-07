@@ -28,14 +28,16 @@ extension LocalRepository {
   }
 
   func validateEvolution(
-    from current: CallDocument, to proposed: CallDocument,
+    from current: CallDocument,
+    to proposed: CallDocument,
     allowedSpeakerNameChange: SpeakerNameChange?
   ) throws {
     let currentRevisions = current.revisions
     let proposedRevisions = proposed.revisions
     guard proposedRevisions.count >= currentRevisions.count else {
       throw LocalPersistenceError.manifestWouldDiscardRevision(
-        currentRevisions[proposedRevisions.count].revisionId)
+        currentRevisions[proposedRevisions.count].revisionId
+      )
     }
     for (index, retained) in currentRevisions.enumerated() {
       guard retained == proposedRevisions[index] else {
@@ -55,19 +57,23 @@ extension LocalRepository {
     }
     let currentWithoutTarget = removingSpeakerName(
       revisionID: allowedSpeakerNameChange.revisionID,
-      speakerID: allowedSpeakerNameChange.speakerID, from: currentNames)
+      speakerID: allowedSpeakerNameChange.speakerID,
+      from: currentNames
+    )
     let proposedWithoutTarget = removingSpeakerName(
       revisionID: allowedSpeakerNameChange.revisionID,
-      speakerID: allowedSpeakerNameChange.speakerID, from: proposedNames)
+      speakerID: allowedSpeakerNameChange.speakerID,
+      from: proposedNames
+    )
     let proposedTarget = proposedNames[allowedSpeakerNameChange.revisionID]?[
-      allowedSpeakerNameChange.speakerID]
+      allowedSpeakerNameChange.speakerID
+    ]
     guard currentWithoutTarget == proposedWithoutTarget,
       proposedTarget == allowedSpeakerNameChange.name
     else {
       throw LocalPersistenceError.manifestWouldChangeSpeakerAnnotations
     }
   }
-
 }
 
 struct SpeakerNameChange {
@@ -77,7 +83,9 @@ struct SpeakerNameChange {
 }
 
 func removingSpeakerName(
-  revisionID: String, speakerID: String, from names: [String: [String: String]]
+  revisionID: String,
+  speakerID: String,
+  from names: [String: [String: String]]
 ) -> [String: [String: String]] {
   var result = names
   var revisionNames = result[revisionID] ?? [:]

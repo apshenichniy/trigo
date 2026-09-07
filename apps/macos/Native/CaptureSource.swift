@@ -8,7 +8,8 @@ public enum CapturePermission: String, Sendable {
   public var settingsURL: URL {
     URL(
       string: "x-apple.systempreferences:com.apple.preference.security?"
-        + (self == .screenAudio ? "Privacy_ScreenCapture" : "Privacy_Microphone"))!
+        + (self == .screenAudio ? "Privacy_ScreenCapture" : "Privacy_Microphone")
+    )!
   }
 }
 
@@ -28,11 +29,13 @@ public struct CapturePermissions: Equatable, Sendable {
     self.init(
       screenAudio: screenAudio,
       microphoneAuthorization: microphone ? .authorized : .notDetermined,
-      microphoneAvailable: true)
+      microphoneAvailable: true
+    )
   }
 
   public init(
-    screenAudio: Bool, microphoneAuthorization: MicrophoneAuthorization,
+    screenAudio: Bool,
+    microphoneAuthorization: MicrophoneAuthorization,
     microphoneAvailable: Bool
   ) {
     self.screenAudio = screenAudio
@@ -70,8 +73,12 @@ public struct CaptureSource: Codable, Equatable, Sendable {
   public let processLaunchDate: Date
 
   public init(
-    applicationName: String, bundleID: String, processID: Int32,
-    windowID: UInt32, windowTitle: String?, processLaunchDate: Date
+    applicationName: String,
+    bundleID: String,
+    processID: Int32,
+    windowID: UInt32,
+    windowTitle: String?,
+    processLaunchDate: Date
   ) {
     self.applicationName = applicationName
     self.bundleID = bundleID
@@ -89,7 +96,9 @@ public struct CaptureSource: Codable, Equatable, Sendable {
 public enum CaptureSourceResolver {
   /// Windows are ordered front-to-back by the OS adapter. Never falls back to a display/system source.
   public static func resolve(
-    permissions: CapturePermissions, frontmostPID: Int32?, ownPID: Int32,
+    permissions: CapturePermissions,
+    frontmostPID: Int32?,
+    ownPID: Int32,
     windows: [CaptureSource]
   ) throws -> CaptureSource {
     guard permissions.screenAudio else { throw CaptureStartFailure.screenAudioPermission }
@@ -115,7 +124,8 @@ public enum CaptureSourceResolver {
     return .init(
       screenAudio: CGPreflightScreenCaptureAccess(),
       microphoneAuthorization: authorization,
-      microphoneAvailable: AVCaptureDevice.default(for: .audio)?.isConnected == true)
+      microphoneAvailable: AVCaptureDevice.default(for: .audio)?.isConnected == true
+    )
   }
 
   /// Only the explicit setup/enable action calls this OS consent boundary. Never Start.
@@ -149,23 +159,35 @@ public enum CaptureSourceResolver {
         let name = app.localizedName, let launch = app.launchDate
       else { return nil }
       return .init(
-        applicationName: name, bundleID: bundleID, processID: pid, windowID: id,
-        windowTitle: info[kCGWindowName as String] as? String, processLaunchDate: launch)
+        applicationName: name,
+        bundleID: bundleID,
+        processID: pid,
+        windowID: id,
+        windowTitle: info[kCGWindowName as String] as? String,
+        processLaunchDate: launch
+      )
     }
     return try CaptureSourceResolver.resolve(
-      permissions: permission, frontmostPID: frontmost,
-      ownPID: ProcessInfo.processInfo.processIdentifier, windows: candidates)
+      permissions: permission,
+      frontmostPID: frontmost,
+      ownPID: ProcessInfo.processInfo.processIdentifier,
+      windows: candidates
+    )
   }
 
   static func filter(for source: CaptureSource) async throws -> SCContentFilter {
     guard let running = NSRunningApplication(processIdentifier: source.processID),
       !running.isTerminated,
       source.matches(
-        processID: running.processIdentifier, bundleID: running.bundleIdentifier,
-        launchDate: running.launchDate)
+        processID: running.processIdentifier,
+        bundleID: running.bundleIdentifier,
+        launchDate: running.launchDate
+      )
     else { throw CaptureStartFailure.sourceExited }
     let content = try await SCShareableContent.excludingDesktopWindows(
-      false, onScreenWindowsOnly: false)
+      false,
+      onScreenWindowsOnly: false
+    )
     guard
       let application = content.applications.first(where: {
         $0.processID == source.processID && $0.bundleIdentifier == source.bundleID

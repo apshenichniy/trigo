@@ -26,7 +26,9 @@ struct MediaMasterIO {
       var offset = 0
       while offset < bytes.count {
         let written = try write(
-          handle.fileDescriptor, UnsafeRawBufferPointer(rebasing: bytes[offset...]))
+          handle.fileDescriptor,
+          UnsafeRawBufferPointer(rebasing: bytes[offset...])
+        )
         if written < 0 && errno == EINTR { continue }
         guard written > 0 && written <= bytes.count - offset else {
           throw MediaMasterError.io(written < 0 ? errno : EIO)

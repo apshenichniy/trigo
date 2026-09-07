@@ -1,7 +1,10 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { Effect, Schema } from "effect";
+
 import { TranscriptRevision } from "@trigo/contracts";
+
 import { fakeAsr } from "./asr.ts";
+import { errorResponse } from "./http-errors.ts";
 import { noSpeechInput } from "./local-fixture.ts";
 import {
   applyOwnerOperation,
@@ -10,7 +13,6 @@ import {
   OwnerVerifierSha256,
 } from "./owner-state.ts";
 import { productFetch } from "./product-handler.ts";
-import { errorResponse } from "./http-errors.ts";
 
 export interface LocalEnv {
   LOCAL_ARCHIVE: R2Bucket;
@@ -62,13 +64,14 @@ const localProbe = Effect.fn("LocalWorker.probe")(function* (request: Request, e
   if (
     url.pathname.startsWith("/__local/probe") &&
     request.headers.get("x-trigo-local-run") !== env.LOCAL_RUN_ID
-  )
+  ) {
     return errorResponse(
       401,
       "local_probe_unauthorized",
       "after_correction",
       "Use the active local runner.",
     );
+  }
   if (url.pathname === "/__local/probe" && request.method === "POST") {
     const instance = yield* Effect.promise(() =>
       env.ARCHIVE_WORKFLOW.create({ id: env.LOCAL_RUN_ID, params: { runId: env.LOCAL_RUN_ID } }),
@@ -92,8 +95,9 @@ const localProbe = Effect.fn("LocalWorker.probe")(function* (request: Request, e
 
 export default {
   fetch(request: Request, env: LocalEnv): Promise<Response> {
-    if (new URL(request.url).pathname.startsWith("/v1/"))
+    if (new URL(request.url).pathname.startsWith("/v1/")) {
       return productFetch(request, { CATALOG: env.CATALOG, DEPLOYMENT_STAGE: "dev" });
+    }
     return Effect.runPromise(localProbe(request, env));
   },
 };
