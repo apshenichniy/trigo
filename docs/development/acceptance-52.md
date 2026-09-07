@@ -222,4 +222,25 @@ The completed worker commit is `b811b0c7dd7b8d4bc948b7d56d1c48065890108f`.
 It was integrated as `64e729f724e6900d9e03123020dccb35c803e747`; both have the
 exact tree `4499dd3f20bdc65728b8365bd69e2e62a0ed5439`. The scoped integration
 changed the same 35 files and passed `git diff --check`, with no conflicts or
-source changes after the worker's successful gates. Integrated CI is pending.
+source changes after the worker's successful gates.
+
+Both jobs passed in [integrated CI run 34068481006](https://github.com/apshenichniy/trigo/actions/runs/34068481006)
+on `4024dc2e5907399bf193c295fb10e42df2eabeb8`. The earlier run stopped on a
+parent-authored acceptance-table formatting error; the follow-up changed only
+that Markdown formatting. The [server job](https://github.com/apshenichniy/trigo/actions/runs/34068481006/job/101581398477)
+passed all 262 unit and 17 Workers tests. The [macOS job](https://github.com/apshenichniy/trigo/actions/runs/34068481006/job/101581398578)
+passed all eight contract and 135 native tests, both Debug app builds, the
+network-denied local smoke, nested-lock restoration and clean-tree checks.
+
+On that runner the full native test host took 85.874 s. The complete macOS check
+step took 251 s, including native compilation; app builds took 37.848 s and
+11.977 s, and local smoke took 6.836 s. The full one-hour source-relative drift
+was again 0.0 ms. The contention fixture completed all three imports, 12,000
+turns, 11,111,043 input bytes and 24 oversized typed reads while committing 388
+maximum-density media batches. Maximum complete service was 474.773708 ms,
+95th percentile was 44.564875 ms, and maximum one-second input plus service was
+1,474.773708 ms, within the two-second bound. These are observed runner results,
+separate from the local measurements above.
+
+The integrated raw evidence is `/tmp/trigo-epic-48/52-ci-fixed-jobs.json`,
+`52-ci-fixed-server.log`, `52-ci-fixed-macos.log` and `52-ci-fixed-watch.log`.
