@@ -144,7 +144,7 @@ extension LocalRepository {
     }
   }
 
-  func callValue(hash: String) throws -> CallDocument {
+  func callValue(hash: String, includeIntervals: Bool = true) throws -> CallDocument {
     let storedRow = try database.access {
       guard
         let row =
@@ -167,7 +167,7 @@ extension LocalRepository {
       let ordinal = try track.int(1)
       var cursor = -1
       var intervals: [TrackInterval] = []
-      while true {
+      while includeIntervals {
         let page = try database.access {
           try database.rows(
             "SELECT ordinal,start_ms,end_ms,state,reason FROM track_intervals WHERE hash=? AND track_ordinal=? AND ordinal>? ORDER BY ordinal LIMIT 128",

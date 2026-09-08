@@ -76,7 +76,7 @@ it.effect("verifies authenticated status without exposing the handoff token", ()
                   archive: "ready",
                   ownerAuthentication: "ready",
                   transcription: "not_verified",
-                  callOperations: "unavailable",
+                  callOperations: "ready",
                 },
                 errors: [
                   {
@@ -84,11 +84,6 @@ it.effect("verifies authenticated status without exposing the handoff token", ()
                     retry: "after_correction",
                     message:
                       "Nova-3 readiness has not been verified; complete issue #13 before transcription.",
-                  },
-                  {
-                    code: "call_operations_unavailable",
-                    retry: "after_correction",
-                    message: "Call operations are unavailable until issue #17.",
                   },
                 ],
               },
@@ -108,7 +103,7 @@ it.effect("verifies authenticated status without exposing the handoff token", ()
         archive: "ready",
         ownerAuthentication: "ready",
         transcription: "not_verified",
-        callOperations: "unavailable",
+        callOperations: "ready",
       },
       errors: [
         {
@@ -116,11 +111,6 @@ it.effect("verifies authenticated status without exposing the handoff token", ()
           retry: "after_correction",
           message:
             "Nova-3 readiness has not been verified; complete issue #13 before transcription.",
-        },
-        {
-          code: "call_operations_unavailable",
-          retry: "after_correction",
-          message: "Call operations are unavailable until issue #17.",
         },
       ],
     });

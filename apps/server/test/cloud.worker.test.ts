@@ -6,7 +6,7 @@ import cloudWorker from "../src/cloud-worker.ts";
 
 function cloudBindings() {
   return {
-    ARCHIVE: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
+    ARCHIVE: { get: vi.fn(), put: vi.fn(), head: vi.fn(), delete: vi.fn() },
     CATALOG: { prepare: vi.fn() },
     ARCHIVE_WORKFLOW: { create: vi.fn() },
     AI: { run: vi.fn() },

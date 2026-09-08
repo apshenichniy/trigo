@@ -28,8 +28,7 @@ enum ServerStatusDecoder {
   }
 }
 
-private final class RedirectRejectingDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable
-{
+final class RedirectRejectingDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
   func urlSession(
     _ session: URLSession,
     task: URLSessionTask,

@@ -655,6 +655,47 @@ struct ServerConnectionTests {
   }
 }
 
+extension ServerConnectionTests {
+  @Test func masterUploadAuthorityStaysBoundAndUsesRepairedCredentials() async throws {
+    let metadata = MemoryConnectionMetadataStore()
+    let credentials = MemoryCredentialStore()
+    let ready = ServerStatus.fixture(archiveId: archiveA, callOperations: .ready)
+    let status = StubStatusClient(responses: [
+      "first": .success(ready), "repaired": .success(ready),
+    ])
+    let connection = ServerConnection(
+      expectedStage: .dev,
+      metadataStore: metadata,
+      credentialStore: credentials,
+      statusClient: status
+    )
+    _ = await connection.connect(serverURL: "https://dev.example.test", token: "first")
+    let original = try await connection.masterUploadAuthorization(archiveID: archiveA)
+    await #expect(throws: MasterUploadError.remoteBlocked) {
+      try await connection.masterUploadAuthorization(archiveID: archiveB)
+    }
+    await connection.reportMasterUploadIssue(.unauthorized, authority: original)
+    #expect(await connection.snapshot().recordingEligibility == .eligible(archiveId: archiveA))
+    await #expect(throws: MasterUploadError.remoteBlocked) {
+      try await connection.masterUploadAuthorization(archiveID: archiveA)
+    }
+    _ = await connection.connect(serverURL: "https://new.example.test", token: "repaired")
+    let repaired = try await connection.masterUploadAuthorization(archiveID: archiveA)
+    #expect(
+      repaired.token == "repaired"
+        && repaired.binding.serverURL.absoluteString == "https://new.example.test"
+    )
+    await connection.reportMasterUploadIssue(.unauthorized, authority: original)
+    #expect(await connection.snapshot().serverOperationsAvailable)
+    await credentials.failNextLoad(ConnectionPersistenceError.keychain(errSecInteractionNotAllowed))
+    await #expect(throws: MasterUploadError.remoteBlocked) {
+      try await connection.masterUploadAuthorization(archiveID: archiveA)
+    }
+    #expect(await connection.snapshot().recordingEligibility == .eligible(archiveId: archiveA))
+    #expect(await credentials.values == ["repaired"])
+  }
+}
+
 private actor MemoryConnectionMetadataStore: ConnectionMetadataStoring {
   var value: ConnectionMetadata?
   private(set) var successfulSaves = 0
@@ -735,7 +776,11 @@ private actor StubStatusClient: ServerStatusFetching {
 private enum TestFailure: Error { case injected }
 
 extension ServerStatus {
-  fileprivate static func fixture(archiveId: String, stage: ServerStage = .dev) -> Self {
+  fileprivate static func fixture(
+    archiveId: String,
+    stage: ServerStage = .dev,
+    callOperations: CallOperationsReadiness = .unavailable
+  ) -> Self {
     ServerStatus(
       schemaVersion: 1,
       apiVersion: 1,
@@ -745,7 +790,7 @@ extension ServerStatus {
         archive: "ready",
         ownerAuthentication: "ready",
         transcription: .notVerified,
-        callOperations: .unavailable
+        callOperations: callOperations
       ),
       errors: []
     )

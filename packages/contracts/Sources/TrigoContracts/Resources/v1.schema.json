@@ -26,6 +26,24 @@
     },
     {
       "$ref": "#/$defs/ErrorEnvelope"
+    },
+    {
+      "$ref": "#/$defs/RegisterMasterUpload"
+    },
+    {
+      "$ref": "#/$defs/MasterUploadSession"
+    },
+    {
+      "$ref": "#/$defs/UploadPartDescriptor"
+    },
+    {
+      "$ref": "#/$defs/UploadPartReceipt"
+    },
+    {
+      "$ref": "#/$defs/FinalizeMasterUpload"
+    },
+    {
+      "$ref": "#/$defs/VerifiedMasterReceipt"
     }
   ],
   "$defs": {
@@ -909,6 +927,302 @@
         }
       },
       "required": ["schemaVersion", "error"],
+      "additionalProperties": false
+    },
+    "RegisterMasterUpload": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "uploadId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "masterId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callDocument": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8388608
+        }
+      },
+      "required": ["schemaVersion", "uploadId", "masterId", "callDocument"],
+      "additionalProperties": false
+    },
+    "MasterUploadSession": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "uploadId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "masterId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "partBytes": {
+          "type": "number",
+          "enum": [8388608]
+        },
+        "mediaProfileId": {
+          "type": "string",
+          "enum": ["caf-lpcm-s16le-16000-stereo-v1"]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "archiveId",
+        "callId",
+        "uploadId",
+        "masterId",
+        "partBytes",
+        "mediaProfileId"
+      ],
+      "additionalProperties": false
+    },
+    "UploadPartDescriptor": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 82
+        },
+        "byteOffset": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        }
+      },
+      "required": ["index", "byteOffset", "byteLength", "sha256"],
+      "additionalProperties": false
+    },
+    "UploadPartReceipt": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "uploadId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "masterId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 82
+        },
+        "byteOffset": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "receiptId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "archiveId",
+        "callId",
+        "uploadId",
+        "masterId",
+        "index",
+        "byteOffset",
+        "byteLength",
+        "sha256",
+        "receiptId"
+      ],
+      "additionalProperties": false
+    },
+    "UploadSourceStates": {
+      "type": "object",
+      "properties": {
+        "encoding": {
+          "type": "string",
+          "enum": ["source-states-2bit-ms-v1"]
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 7200000
+        }
+      },
+      "required": ["encoding", "data"],
+      "additionalProperties": false
+    },
+    "FinalizeMasterUpload": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "uploadId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "captureState": {
+          "type": "string",
+          "enum": ["stopped", "interrupted"]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10800000
+        },
+        "sourceStates": {
+          "$ref": "#/$defs/UploadSourceStates"
+        },
+        "audioManifest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "masterSHA256": {
+          "$ref": "#/$defs/SHA256Digest"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operationId",
+        "uploadId",
+        "captureState",
+        "durationMs",
+        "sourceStates",
+        "audioManifest",
+        "masterSHA256"
+      ],
+      "additionalProperties": false
+    },
+    "VerifiedMasterChannel": {
+      "type": "object",
+      "properties": {
+        "channelIndex": {
+          "type": "number",
+          "enum": [0, 1]
+        },
+        "trackId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        }
+      },
+      "required": ["channelIndex", "trackId"],
+      "additionalProperties": false
+    },
+    "VerifiedMasterReceipt": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "uploadId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "masterId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "receiptId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "verification": {
+          "type": "string",
+          "enum": ["complete-master-sha256-v1"]
+        },
+        "mediaProfileId": {
+          "type": "string",
+          "enum": ["caf-lpcm-s16le-16000-stereo-v1"]
+        },
+        "masterSHA256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "sourceStatesSHA256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 68,
+          "maximum": 691200068
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10800000
+        },
+        "channelMap": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VerifiedMasterChannel"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "audioManifest": {
+          "$ref": "#/$defs/AudioManifestReference"
+        },
+        "storedAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "archiveId",
+        "callId",
+        "uploadId",
+        "masterId",
+        "operationId",
+        "receiptId",
+        "verification",
+        "mediaProfileId",
+        "masterSHA256",
+        "sourceStatesSHA256",
+        "byteLength",
+        "durationMs",
+        "channelMap",
+        "audioManifest",
+        "storedAt"
+      ],
       "additionalProperties": false
     }
   }

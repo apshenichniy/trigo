@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { expect, it } from "vitest";
 
-import { documentSchemas } from "../packages/contracts/src/document-schema.ts";
+import { documentSchemas } from "../packages/contracts/src/schema-registry.ts";
 import { assertExchangeSchema } from "./contract-schema.ts";
 import { generateSwift } from "./generate-swift.ts";
 

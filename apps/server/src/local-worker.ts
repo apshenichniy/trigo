@@ -96,7 +96,11 @@ const localProbe = Effect.fn("LocalWorker.probe")(function* (request: Request, e
 export default {
   fetch(request: Request, env: LocalEnv): Promise<Response> {
     if (new URL(request.url).pathname.startsWith("/v1/")) {
-      return productFetch(request, { CATALOG: env.CATALOG, DEPLOYMENT_STAGE: "dev" });
+      return productFetch(request, {
+        CATALOG: env.CATALOG,
+        ARCHIVE: env.LOCAL_ARCHIVE,
+        DEPLOYMENT_STAGE: "dev",
+      });
     }
     return Effect.runPromise(localProbe(request, env));
   },

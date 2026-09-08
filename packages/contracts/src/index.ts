@@ -1,7 +1,7 @@
 import { Result, Schema } from "effect";
 
-import { documentSchemas, type Documents, type DocumentKind } from "./document-schema.ts";
 import { selectedMediaProfile } from "./media-profile.ts";
+import { documentSchemas, type Documents, type DocumentKind } from "./schema-registry.ts";
 import { validateCall, validateRevision, validateAudio } from "./semantics.ts";
 export {
   AsrProbeLanguage,
@@ -30,6 +30,8 @@ export type {
 } from "./media-profile.ts";
 import type { CallDocument, TranscriptRevision, AudioManifest } from "./document-schema.ts";
 export * from "./document-schema.ts";
+export * from "./schema-registry.ts";
+export * from "./upload-schema.ts";
 function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   const decode = Schema.decodeUnknownResult(schema, { onExcessProperty: "error" });
   return (value: unknown): S["Type"] => {
@@ -41,6 +43,12 @@ function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   };
 }
 const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
+  RegisterMasterUpload: decoder(documentSchemas.RegisterMasterUpload),
+  MasterUploadSession: decoder(documentSchemas.MasterUploadSession),
+  UploadPartDescriptor: decoder(documentSchemas.UploadPartDescriptor),
+  UploadPartReceipt: decoder(documentSchemas.UploadPartReceipt),
+  FinalizeMasterUpload: decoder(documentSchemas.FinalizeMasterUpload),
+  VerifiedMasterReceipt: decoder(documentSchemas.VerifiedMasterReceipt),
   LocalDevelopmentBridge: decoder(documentSchemas.LocalDevelopmentBridge),
   CaptureMasterProfile: decoder(documentSchemas.CaptureMasterProfile),
   CallDocument: decoder(documentSchemas.CallDocument),

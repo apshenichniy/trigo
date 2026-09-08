@@ -3,6 +3,55 @@ import Testing
 
 @testable import TrigoNative
 
+@Test @MainActor func successfulRecoveryRetryResumesDurableUploadsWithoutReconnecting() async throws
+{
+  let fixture = try RecordingControlFixture()
+  defer { fixture.cleanup() }
+  let session = try await CaptureArchiveSession.begin(
+    root: fixture.namespace.archive,
+    archiveID: fixture.status.archiveID,
+    source: fixture.os.source,
+    microphone: nil
+  )
+  let writer = try CaptureMediaWriter(session: session)
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
+  let blocker = fixture.namespace.archive.appendingPathComponent("linked-fixture")
+  try FileManager.default.createSymbolicLink(at: blocker, withDestinationURL: fixture.support)
+  let uploads = MasterUploadApplicationOwner(
+    namespace: fixture.namespace,
+    connection: fixture.connection
+  )
+  let coordinator = RecordingCoordinator(
+    connection: fixture.connection,
+    namespace: fixture.namespace,
+    capture: fixture.capture,
+    sources: .init(
+      permissions: { fixture.os.permissions },
+      frontmost: fixture.os.frontmost,
+      requestPermission: { _ in fixture.os.permissions }
+    ),
+    uploads: uploads
+  )
+  // The fixture's server reports call operations unavailable; no network request can run.
+  await coordinator.connect(serverURL: "https://dev.example.test", token: "fixture")
+  #expect(coordinator.canRetryLocalRecovery)
+  let repository = try LocalRepository(
+    root: fixture.namespace.archive,
+    archiveID: session.archiveID
+  )
+  #expect(try repository.masterUpload(callID: session.callID) == nil)
+  try FileManager.default.removeItem(at: blocker)
+  await coordinator.retryRecovery()
+  #expect(coordinator.recoveryReport.failures.isEmpty)
+  let deadline = ContinuousClock.now + .seconds(3)
+  while try repository.masterUpload(callID: session.callID) == nil && ContinuousClock.now < deadline
+  {
+    try await Task.sleep(for: .milliseconds(10))
+  }
+  await uploads.stop()
+  #expect(try repository.masterUpload(callID: session.callID) != nil)
+}
+
 @Test @MainActor func connectionMetadataRecoveryDoesNotOfferAnEnabledNoOpLocalRecovery()
   async throws
 {
