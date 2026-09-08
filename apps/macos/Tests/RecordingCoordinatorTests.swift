@@ -71,6 +71,8 @@ actor RecordingStatusFixture: ServerStatusFetching {
   var failsStart = false
   var failsAfterStart = false
   var suspendStart = false
+  var failsStop = false
+  private(set) var stopCalls = 0
   private(set) var startCalls = 0
   private var entered = false
   private var observers: [CheckedContinuation<Void, Never>] = []
@@ -94,7 +96,11 @@ actor RecordingStatusFixture: ServerStatusFetching {
     if failsAfterStart { throw Unavailable() }
     running = true
   }
-  func stopForRetirement() async throws { running = false }
+  func stopForRetirement() async throws {
+    stopCalls += 1
+    if failsStop { throw Unavailable() }
+    running = false
+  }
   func waitForStart() async {
     if entered { return }
     await withCheckedContinuation { observers.append($0) }

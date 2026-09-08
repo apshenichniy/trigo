@@ -48,12 +48,16 @@ public enum ScreenCapturePhase: Equatable, Sendable {
 @MainActor public final class ScreenCaptureRecording {
   public private(set) var session: CaptureArchiveSession?
   public private(set) var snapshot: CaptureRecordingSnapshot?
+  public private(set) var finalization = CaptureFinalizationState() {
+    didSet { onFinalizationChange?(finalization) }
+  }
   public private(set) var phase: ScreenCapturePhase = .idle {
     didSet { onPhaseChange?(phase) }
   }
   public var onPhaseChange: (@MainActor @Sendable (ScreenCapturePhase) -> Void)?
   public var onChange: (@MainActor @Sendable (CaptureRecordingSnapshot) -> Void)?
   public var onFailure: (@MainActor @Sendable (String) -> Void)?
+  public var onFinalizationChange: (@MainActor @Sendable (CaptureFinalizationState) -> Void)?
   private var applicationStream: (any CaptureTransport)?
   private var microphoneStream: (any CaptureTransport)?
   private var applicationDelegate: CaptureStreamDelegate?
@@ -65,12 +69,18 @@ public enum ScreenCapturePhase: Equatable, Sendable {
   private var pendingStart: CaptureStartAttempt?
   private var switchingMicrophone = false
   private var retiringMicrophone = false
+  private var nativeWorkWaiters: [CheckedContinuation<Void, Never>] = []
+  private var hasPendingNativeWork: Bool {
+    pendingStart != nil || switchingMicrophone || retiringMicrophone
+  }
   private var monitor: Timer?
   private var sleepObserver: NSObjectProtocol?
   private let retirement = CaptureStreamRetirement()
   private let system: CaptureSystem
+  private let persistence: CapturePersistence
 
   public init() {
+    persistence = .live
     system = .init(
       permissions: SystemCaptureSource.permissions,
       filter: SystemCaptureSource.filter,
@@ -79,30 +89,33 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     )
   }
 
-  init(system: CaptureSystem) { self.system = system }
+  init(system: CaptureSystem, persistence: CapturePersistence = .live) {
+    self.system = system
+    self.persistence = persistence
+  }
 
   /// Permissions and source are resolved before this method acknowledges Recording.
   /// Call SystemCaptureSource.requestPermission only from an explicit user action.
   public func start(root: URL, archiveID: String, source: CaptureSource) async throws {
-    guard phase == .idle, pendingStart == nil, !retirement.hasPending else {
+    guard phase == .idle, !hasPendingNativeWork, !retirement.hasPending else {
       throw CaptureStartFailure.alreadyRecording
     }
     let attempt = CaptureStartAttempt()
     pendingStart = attempt
+    session = nil
+    snapshot = nil
+    finalization = .init()
+    refreshFinalizationFacts()
     var allocated: CaptureArchiveSession?
     phase = .starting
     defer {
       if pendingStart === attempt {
         pendingStart = nil
         if phase == .starting {
+          if allocated != nil { finalization.localSave = .needsRecovery }
           phase = allocated.map { .needsRecovery(callID: $0.callID) } ?? .idle
-        } else if phase == .cancellingStart {
-          if retirement.hasPending, let allocated {
-            phase = .needsRecovery(callID: allocated.callID)
-          } else {
-            phase = .idle
-          }
         }
+        settlePendingNativeWork()
       }
     }
     let permission = system.permissions()
@@ -123,6 +136,8 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     )
     session = created
     allocated = created
+    finalization.callID = created.callID
+    finalization.localSave = .pending
     // Retain the identity before even the first durable preparation write.
     try await created.prepare()
     try checkStart(attempt)
@@ -159,6 +174,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     applicationDelegate = delegate
     let stream = system.stream(selectedFilter, CaptureStreamConfiguration.application(), delegate)
     applicationStream = stream
+    refreshFinalizationFacts()
     output.acceptApplicationStream(stream)
     do {
       try stream.addCaptureOutput(output, type: .audio, queue: output.callbackQueue)
@@ -212,11 +228,15 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     guard !stopping, let output = sink, let session else { return nil }
     phase = .stopping
     defer {
-      if phase == .stopping { phase = .needsRecovery(callID: session.callID) }
+      if phase == .stopping {
+        if finalization.localSave != .confirmed { finalization.localSave = .needsRecovery }
+        phase = .needsRecovery(callID: session.callID)
+      }
       sink = nil
       filter = nil
       applicationDelegate = nil
       microphoneDelegate = nil
+      refreshFinalizationFacts()
     }
     monitor?.invalidate()
     monitor = nil
@@ -230,6 +250,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     microphoneStream = nil
     if let microphone { try? await retirement.retire(microphone) }
     if let application { try? await retirement.retire(application) }
+    refreshFinalizationFacts()
     // Preserve a known stop cause before crossing the external media sealing boundary.
     try await session.requestStop(reason: reason)
     let result = try await output.finish(at: endedAt, reason: reason)
@@ -238,26 +259,80 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     filter = nil
     applicationDelegate = nil
     microphoneDelegate = nil
-    let aggregate = try await session.complete(
-      media: result.0,
-      interruptionReason: result.1.interruptionReason
-    )
+    let aggregate = try await persistence.complete(session, result.0, result.1.interruptionReason)
+    finalization.localSave = .confirmed
+    publishCompletion(aggregate)
     try await retirement.retryAll()
-    phase = pendingStart == nil ? .idle : .cancellingStart
+    refreshFinalizationFacts()
+    phase = hasPendingNativeWork ? .cancellingStart : .idle
     return aggregate
+  }
+
+  /// A replacement microphone can acknowledge native Start after Finish already
+  /// saved the call. Quit waits until that continuation retires its exact stream.
+  func waitForPendingNativeWork() async {
+    guard hasPendingNativeWork else { return }
+    await withCheckedContinuation { nativeWorkWaiters.append($0) }
+  }
+
+  private func settlePendingNativeWork() {
+    refreshFinalizationFacts()
+    guard !hasPendingNativeWork else { return }
+    if phase == .cancellingStart {
+      if retirement.hasPending, let session {
+        phase = .needsRecovery(callID: session.callID)
+      } else {
+        phase = .idle
+      }
+    }
+    let waiters = nativeWorkWaiters
+    nativeWorkWaiters = []
+    for waiter in waiters { waiter.resume() }
+  }
+
+  private func refreshFinalizationFacts() {
+    finalization.captureStopped =
+      applicationStream == nil && microphoneStream == nil && !retirement.hasPending
+    finalization.pendingNativeStart = pendingStart != nil || switchingMicrophone
+  }
+
+  private func publishCompletion(_ result: CaptureCompletion) {
+    publish(
+      .init(
+        state: result.call.captureState == .interrupted ? .interrupted : .stopped,
+        elapsedMs: result.call.durationMs ?? 0,
+        microphoneEnabled: snapshot?.microphoneEnabled ?? true,
+        microphone: snapshot?.microphone,
+        interruptionReason: result.call.interruptionReason
+      )
+    )
   }
 
   /// A failed finalization retains its session and blocks new capture until explicitly recovered.
   @discardableResult public func retryRecovery() async throws -> CaptureCompletion {
-    guard pendingStart == nil, case .needsRecovery(let callID) = phase,
+    guard !hasPendingNativeWork, case .needsRecovery(let callID) = phase,
       let session, session.callID == callID
     else {
       throw CaptureError.closed
     }
     phase = .stopping
-    defer { if phase == .stopping { phase = .needsRecovery(callID: callID) } }
-    try await retirement.retryAll()
-    let aggregate = try await session.recoverCompletion()
+    defer {
+      refreshFinalizationFacts()
+      if phase == .stopping { phase = .needsRecovery(callID: callID) }
+    }
+    var stopFailure: (any Error)?
+    do { try await retirement.retryAll() } catch { stopFailure = error }
+    refreshFinalizationFacts()
+    let aggregate: CaptureCompletion
+    do {
+      aggregate = try await persistence.recover(session)
+      finalization.localSave = .confirmed
+      publishCompletion(aggregate)
+    } catch {
+      finalization.localSave = .needsRecovery
+      throw error
+    }
+    if let stopFailure { throw stopFailure }
     phase = .idle
     return aggregate
   }
@@ -335,7 +410,11 @@ public enum ScreenCapturePhase: Equatable, Sendable {
       return
     }
     switchingMicrophone = true
-    defer { switchingMicrophone = false }
+    refreshFinalizationFacts()
+    defer {
+      switchingMicrophone = false
+      settlePendingNativeWork()
+    }
     let previous = microphoneStream
     microphoneStream = nil
     output.acceptMicrophoneStream(nil)
@@ -398,7 +477,10 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     sink.acceptMicrophoneStream(nil)
     // Keep ownership until stop completes; no replacement can overlap this retirement.
     retiringMicrophone = true
-    defer { retiringMicrophone = false }
+    defer {
+      retiringMicrophone = false
+      settlePendingNativeWork()
+    }
     if let failedStream { try? await retirement.retire(failedStream) }
     guard owns(sink) else { return }
     if let value = try? await sink.perform({ engine in

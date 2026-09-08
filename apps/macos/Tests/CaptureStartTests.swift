@@ -8,6 +8,7 @@ import Testing
   var pending: CheckedContinuation<Void, any Error>?
   var suspend = false
   var isRunning = false
+  private var startObservers: [CheckedContinuation<Void, Never>] = []
   func addCaptureOutput(
     _ output: any SCStreamOutput,
     type: SCStreamOutputType,
@@ -15,11 +16,19 @@ import Testing
   ) throws {}
   func startCapture() async throws {
     if suspend {
-      try await withCheckedThrowingContinuation { pending = $0 }
+      try await withCheckedThrowingContinuation {
+        pending = $0
+        for observer in startObservers { observer.resume() }
+        startObservers = []
+      }
     }
     isRunning = true
   }
   func stopForRetirement() async throws { isRunning = false }
+  func waitForPendingStart() async {
+    guard pending == nil else { return }
+    await withCheckedContinuation { startObservers.append($0) }
+  }
 }
 
 @Test(arguments: [false, true], [false, true]) @MainActor
@@ -59,10 +68,7 @@ func stoppedPendingStartCannotAffectTheNextRecording(
   )
   let archiveID = UUID().uuidString.lowercased()
   let attempt = Task { try await recorder.start(root: root, archiveID: archiveID, source: source) }
-  for _ in 0..<10_000 {
-    if first.pending != nil { break }
-    await Task.yield()
-  }
+  await first.waitForPendingStart()
   let pending = try #require(first.pending)
   let firstID = try #require(recorder.session?.callID)
   _ = try await recorder.stop()

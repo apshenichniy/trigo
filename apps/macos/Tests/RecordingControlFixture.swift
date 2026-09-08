@@ -43,7 +43,7 @@ import ScreenCaptureKit
   let capture: ScreenCaptureRecording
   let coordinator: RecordingCoordinator
 
-  init() throws {
+  init(persistence: CapturePersistence = .live) throws {
     support = FileManager.default.temporaryDirectory.appendingPathComponent(
       "trigo-coordinator-\(UUID())"
     )
@@ -69,7 +69,8 @@ import ScreenCaptureKit
         },
         audioQueue: { os.audioQueue },
         sourceIsAvailable: { _ in os.sourceAvailable }
-      )
+      ),
+      persistence: persistence
     )
     coordinator = RecordingCoordinator(
       connection: connection,

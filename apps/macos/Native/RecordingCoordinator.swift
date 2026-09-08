@@ -55,6 +55,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   @Published public private(set) var pinnedSource: CaptureSource?
   @Published public private(set) var callID: String?
   @Published public private(set) var recordingSnapshot: CaptureRecordingSnapshot?
+  @Published public private(set) var finalization = CaptureFinalizationState()
   @Published public private(set) var microphoneRecordingEnabled = true
   @Published public private(set) var isMicrophoneChanging = false
   @Published public private(set) var recoveryReport = RecordingRecoveryReport()
@@ -98,6 +99,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     self.uploads = uploads
     self.capturePermissions = sources.permissions()
     capture.onPhaseChange = { [weak self] phase in self?.capturePhase = phase }
+    capture.onFinalizationChange = { [weak self] state in self?.finalization = state }
     capture.onChange = { [weak self] snapshot in
       guard let self else { return }
       recordingSnapshot = snapshot
@@ -335,6 +337,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   public var canTerminateImmediately: Bool {
     capture.phase == .idle && attempt == nil && startTask == nil && stopTask == nil
       && recoveryTask == nil && !isRecovering && recoveryReport.failures.isEmpty
+      && finalization.isSettled
   }
 
   public func stop(reason: String? = nil) async {
@@ -363,6 +366,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     isTerminating = true
     await stop(reason: "application_termination")
     await startTask?.value
+    await capture.waitForPendingNativeWork()
     await recoveryTask?.value
     let safe = canTerminateImmediately
     if !safe {
