@@ -35,6 +35,48 @@ private struct LocalBridgeFixture: Decodable {
 }
 
 struct LocalDevelopmentTests {
+  @Test func playbackSourceAvailabilityErrorsKeepTheirSpecificMeaning() async throws {
+    for (status, code, expected) in [
+      (409, "playback_not_stored", CallPlaybackError.notStored),
+      (404, "playback_not_found", .notFound),
+      (503, "playback_catalog_invalid", .invalidMedia),
+      (409, "playback_no_audio", .noAudio),
+      (410, "playback_deleted", .deleted),
+    ] {
+      let body = String(
+        decoding: try Contract.encode(
+          ErrorEnvelope(
+            schemaVersion: 1,
+            error: .init(
+              code: code,
+              retry: "never",
+              message: "Fixture",
+              requestId: UUID().uuidString.lowercased()
+            )
+          )
+        ),
+        as: UTF8.self
+      )
+      let fixture = try await LoopbackResponse.start(status: status, body: body)
+      defer { fixture.stop() }
+      let url = try #require(fixture.url)
+      let support = try temporarySupport()
+      defer { try? FileManager.default.removeItem(at: support) }
+      let connection = try await localPlaybackConnection(url: url, support: support)
+      let transport = HTTPPlaybackTransport(
+        connection: connection,
+        archiveID: localNamespace,
+        timeout: 2
+      )
+      await #expect(throws: expected) {
+        try await transport.grant(
+          callID: playbackCallID,
+          operationID: UUID().uuidString.lowercased()
+        )
+      }
+    }
+  }
+
   @Test func playbackRejectsRedirectsAndOversizedBodiesThroughTheRealSession() async throws {
     let redirected = try await LoopbackResponse.start(status: 200, body: "{}")
     defer { redirected.stop() }

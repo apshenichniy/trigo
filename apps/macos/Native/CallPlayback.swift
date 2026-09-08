@@ -16,7 +16,8 @@ public struct CallPlaybackState: Equatable, Sendable {
 }
 
 public enum CallPlaybackError: Error, Equatable, Sendable {
-  case accessBlocked, grantExpired, invalidGrant, invalidMedia, noAudio, deleted, audioOutput
+  case accessBlocked, grantExpired, invalidGrant, invalidMedia, notStored, notFound, noAudio,
+    deleted, audioOutput
   case transport(code: String, retry: LifecycleRetryClassification)
 
   public var message: String {
@@ -24,6 +25,8 @@ public enum CallPlaybackError: Error, Equatable, Sendable {
     case .accessBlocked: "Reconnect to this archive to play its audio."
     case .grantExpired, .invalidGrant: "Playback access expired. Resume from this position."
     case .invalidMedia: "The retained audio could not be verified."
+    case .notStored: "The complete call audio has not reached the server yet."
+    case .notFound: "This call's retained audio is not available on the server."
     case .noAudio: "This call has no retained audio."
     case .deleted: "This call is no longer available."
     case .audioOutput: "Audio output is unavailable. Check your output device and try again."
@@ -33,6 +36,9 @@ public enum CallPlaybackError: Error, Equatable, Sendable {
   }
 
   var renewsGrant: Bool { self == .grantExpired || self == .invalidGrant }
+  var isUnavailable: Bool {
+    self == .notStored || self == .notFound || self == .noAudio || self == .deleted
+  }
 }
 
 /// A capability stays bound to the server/archive that issued it. No owner token is retained here.

@@ -125,6 +125,9 @@ public actor HTTPPlaybackTransport: CallPlaybackTransport {
       switch error?.code {
       case "playback_grant_expired": throw CallPlaybackError.grantExpired
       case "playback_grant_invalid": throw CallPlaybackError.invalidGrant
+      case "playback_not_stored": throw CallPlaybackError.notStored
+      case "playback_not_found": throw CallPlaybackError.notFound
+      case "playback_catalog_invalid": throw CallPlaybackError.invalidMedia
       case "playback_deleted": throw CallPlaybackError.deleted
       case "playback_no_audio": throw CallPlaybackError.noAudio
       default: break

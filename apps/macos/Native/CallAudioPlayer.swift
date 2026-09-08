@@ -218,7 +218,7 @@ import Foundation
     invalidate()
     wantsPlay = false
     state.failure = issue
-    state.phase = issue == .noAudio || issue == .deleted ? .unavailable : .error
+    state.phase = issue.isUnavailable ? .unavailable : .error
   }
 
   func updatePosition() {
