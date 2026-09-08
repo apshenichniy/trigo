@@ -39,6 +39,9 @@ _Avoid_: Message
 **Speaker**:
 A voice distinguished within a call. A speaker label does not by itself establish the person's identity.
 
+**Speaker group**:
+An owner-authored grouping of existing speaker labels within one transcript revision, with a shared display name. It records the owner's attribution without changing the original transcript evidence or establishing participant identity.
+
 **Participant**:
 A person taking part in a call. Identifying a participant and attributing particular turns to that person are separate claims.
 
