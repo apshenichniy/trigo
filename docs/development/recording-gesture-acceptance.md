@@ -76,6 +76,16 @@ The earlier fixture build failure remains failed evidence in
 `.local/ui-runs/2026-09-08T21-35-50.028Z-c0ba9d20`; its explicit closure annotation
 resolved a compiler diagnostic failure. Neither run is physical-key or TCC proof.
 
+The first complete four-scenario run on `ebcccd38c` failed its background-menu
+case in `.local/ui-runs/2026-09-08T21-43-01.388Z-d676ae81`: XCTest waited for a
+menu-open notification while its queried menu items had empty frames. Existence
+alone had accepted hidden menu nodes. The UI helper now requires a nonempty,
+hittable item and performs a real coordinate click, avoiding a second high-level
+menu traversal. The focused background-menu case passed in
+`.local/ui-runs/2026-09-08T21-48-13.453Z-b245d32f` (63.301 seconds). This is a
+test-interaction correction; no application dispatch or event handler is invoked
+directly by the UI test. The failed full run remains retained as failed evidence.
+
 ## Installed integration
 
 Use the [signed installed protocol](installed-capture-acceptance.md) in #24 with
