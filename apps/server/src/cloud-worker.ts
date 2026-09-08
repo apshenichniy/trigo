@@ -2,6 +2,7 @@ import { WorkflowEntrypoint } from "cloudflare:workers";
 import { Effect } from "effect";
 
 import { type AsrProbeEnvironment, AsrProbeError, asrProbeResponse } from "./asr-probe.ts";
+import { hostedAsrProbeResponse } from "./hosted-asr-probe.ts";
 import { errorResponse, ownerErrorResponses } from "./http-errors.ts";
 import { authenticateOwner } from "./owner-state.ts";
 import { productFetch } from "./product-handler.ts";
@@ -51,14 +52,19 @@ export default {
       return Effect.runPromise(infrastructureResponse(env));
     }
     const asrProbe = /^\/__trigo\/asr-probe\/([a-z0-9-]+)$/.exec(url.pathname);
-    if (asrProbe && env.DEPLOYMENT_STAGE === "dev") {
-      const fixture = asrProbe[1];
+    const hostedProbe = /^\/__trigo\/hosted-asr-probe\/([a-z0-9-]+)$/.exec(url.pathname);
+    if ((asrProbe || hostedProbe) && env.DEPLOYMENT_STAGE === "dev") {
+      const fixture = (asrProbe ?? hostedProbe)?.[1];
       if (fixture === undefined) {
         return new Response(null, { status: 404 });
       }
       return Effect.runPromise(
         authenticateOwner(env.CATALOG, request).pipe(
-          Effect.flatMap(() => asrProbeResponse(request, env, fixture)),
+          Effect.flatMap(() =>
+            hostedProbe
+              ? hostedAsrProbeResponse(request, env, fixture)
+              : asrProbeResponse(request, env, fixture),
+          ),
           Effect.catchTags({
             ...ownerErrorResponses,
             "AsrProbe.Error": (error: AsrProbeError) =>

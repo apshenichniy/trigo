@@ -501,7 +501,10 @@
         },
         "profileId": {
           "type": "string",
-          "enum": ["trigo-call-wav-s16le-16khz-stereo-60s-v1"]
+          "enum": [
+            "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+            "nova3-wav-s16le-16000-stereo-stream-v1"
+          ]
         },
         "requestedLanguage": {
           "type": "string"
