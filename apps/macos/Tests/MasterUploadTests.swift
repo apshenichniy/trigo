@@ -6,6 +6,105 @@ import TrigoContracts
 
 @Suite(.serialized)
 struct MasterUploadTests {
+  @Test func fragmentedCanonicalTimelineUsesBoundedLosslessFinalization() async throws {
+    let fixture = try await MasterUploadFixture.create(seconds: 0)
+    defer { try? FileManager.default.removeItem(at: fixture.root) }
+    for _ in 0..<120 { try fixture.appendSecond(denseStates: true) }
+    try await fixture.finish()
+    let completion = try #require(
+      try fixture.repository.captureCompletion(callID: fixture.session.callID)
+    )
+    #expect(completion.snapshotByteLength > MediaMasterProfile.maximumRequestBytes)
+    let server = MasterUploadTestServer()
+    let client = MasterUploadCoordinator(repository: fixture.repository, transport: server)
+    let report = try await client.runPass()
+    #expect(report.failures.isEmpty && report.cleanedCallIDs == [fixture.session.callID])
+    let request = try #require(await server.finalRequests.first)
+    #expect(try Contract.encode(request).count < 100_000)
+    let expected = Data(repeating: 0x90, count: 60_000)
+    #expect(Data(base64Encoded: request.sourceStates.data) == expected)
+    #expect(
+      try fixture.repository.verifiedMasterReceipt(callID: fixture.session.callID)?.value
+        .sourceStatesSHA256 == Contract.hash(expected)
+    )
+    #expect(
+      try fixture.repository.captureCompletion(callID: fixture.session.callID)?.snapshotSHA256
+        == completion.snapshotSHA256
+    )
+  }
+
+  @Test func laterMetadataCannotChangeAnUncertainFinalizationPayload() async throws {
+    let fixture = try await MasterUploadFixture.create()
+    defer { try? FileManager.default.removeItem(at: fixture.root) }
+    try await fixture.finish()
+    let originalHash = try fixture.repository.masterUploadSnapshotHash(
+      callID: fixture.session.callID
+    )
+    let server = MasterUploadTestServer(fault: .final)
+    let client = MasterUploadCoordinator(repository: fixture.repository, transport: server)
+    #expect(try await client.runPass().failures.count == 1)
+    let original = try #require(await server.finalRequests.first)
+    var later = try await fixture.repository.call(callID: fixture.session.callID)
+    later.documentVersion += 1
+    _ = try await fixture.repository.publishManifest(Contract.encode(later))
+    #expect(
+      try fixture.repository.captureCompletion(callID: fixture.session.callID)?.snapshotSHA256
+        != originalHash
+    )
+    #expect(
+      try fixture.repository.masterUploadSnapshotHash(callID: fixture.session.callID)
+        == originalHash
+    )
+    let reopened = try LocalRepository(root: fixture.root, archiveID: repositoryArchiveID)
+    let recovery = MasterUploadCoordinator(repository: reopened, transport: server)
+    #expect(try await recovery.runPass().cleanedCallIDs == [fixture.session.callID])
+    #expect(await server.finalRequests == [original, original])
+    #expect(try await reopened.call(callID: fixture.session.callID).documentVersion == 3)
+  }
+
+  @Test func sourceStatePackingHasStableChannelsPaddingAndThreeHourBound() throws {
+    var short = try MasterUploadSourceStates(durationMs: 3)
+    try short.append(.init(startMs: 0, endMs: 1, state: "muted", reason: "muted"), channel: 0)
+    try short.append(
+      .init(startMs: 1, endMs: 3, state: "unavailable", reason: "unavailable"),
+      channel: 0
+    )
+    try short.append(.init(startMs: 0, endMs: 1, state: "recorded", reason: nil), channel: 1)
+    try short.append(
+      .init(startMs: 1, endMs: 2, state: "unavailable", reason: "unavailable"),
+      channel: 1
+    )
+    #expect(throws: LocalPersistenceError.invalidMediaProgress) { try short.finish() }
+    try short.append(.init(startMs: 2, endMs: 3, state: "recorded", reason: nil), channel: 1)
+    #expect(try short.finish() == Data([0xa1, 0x02]))
+    var maximum = try MasterUploadSourceStates(durationMs: MediaMasterProfile.maximumDurationMs)
+    for channel in 0..<2 {
+      try maximum.append(
+        .init(
+          startMs: 0,
+          endMs: MediaMasterProfile.maximumDurationMs,
+          state: channel == 0 ? "muted" : "unavailable",
+          reason: nil
+        ),
+        channel: channel
+      )
+    }
+    let bytes = try maximum.finish()
+    #expect(bytes.count == 5_400_000 && bytes.allSatisfy { $0 == 0x99 })
+    #expect(bytes.base64EncodedString().utf8.count == 7_200_000)
+    let maximumRequest = FinalizeMasterUpload(
+      schemaVersion: 1,
+      operationId: "00000000-0000-4000-8000-000000000107",
+      uploadId: "00000000-0000-4000-8000-000000000104",
+      captureState: "stopped",
+      durationMs: MediaMasterProfile.maximumDurationMs,
+      sourceStates: .init(encoding: "source-states-2bit-ms-v1", data: bytes.base64EncodedString()),
+      audioManifest: "{}",
+      masterSHA256: String(repeating: "a", count: 64)
+    )
+    #expect(try Contract.encode(maximumRequest).count < MediaMasterProfile.maximumRequestBytes)
+  }
+
   @Test func activeCaptureUploadsOnlyFullStablePartsAndRetainsTwoSourceTimelineAfterCleanup()
     async throws
   {

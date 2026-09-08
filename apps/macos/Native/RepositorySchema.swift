@@ -70,6 +70,7 @@ let repositoryUploadSchema = [
     upload_id TEXT NOT NULL UNIQUE,
     operation_id TEXT NOT NULL UNIQUE REFERENCES operations(operation_id),
     finalize_operation_id TEXT NOT NULL UNIQUE,
+    source_states_hash TEXT,
     registration_receipt_hash TEXT REFERENCES documents(hash),
     storage_receipt_hash TEXT REFERENCES documents(hash),
     cleanup_complete INTEGER NOT NULL DEFAULT 0 CHECK(cleanup_complete IN (0,1)),

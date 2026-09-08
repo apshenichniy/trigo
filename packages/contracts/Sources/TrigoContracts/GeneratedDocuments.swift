@@ -1857,26 +1857,64 @@ public struct UploadPartReceipt: ContractDocument, Codable, Equatable, Sendable 
   }
 }
 
+public struct UploadSourceStates: Codable, Equatable, Sendable {
+  public var encoding: String
+  public var data: String
+  public init(
+    encoding: String,
+    data: String
+  ) {
+    self.encoding = encoding
+    self.data = data
+  }
+  enum CodingKeys: String, CodingKey {
+    case encoding
+    case data
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.encoding = try container.decode(
+      String.self,
+      forKey: .encoding
+    )
+    self.data = try container.decode(
+      String.self,
+      forKey: .data
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.encoding, forKey: .encoding)
+    try container.encode(self.data, forKey: .data)
+  }
+}
+
 public struct FinalizeMasterUpload: ContractDocument, Codable, Equatable, Sendable {
   public static let documentKind = "FinalizeMasterUpload"
   public var schemaVersion: Int
   public var operationId: ExchangeUUID
   public var uploadId: ExchangeUUID
-  public var callDocument: String
+  public var captureState: String
+  public var durationMs: Int
+  public var sourceStates: UploadSourceStates
   public var audioManifest: String
   public var masterSHA256: SHA256Digest
   public init(
     schemaVersion: Int,
     operationId: ExchangeUUID,
     uploadId: ExchangeUUID,
-    callDocument: String,
+    captureState: String,
+    durationMs: Int,
+    sourceStates: UploadSourceStates,
     audioManifest: String,
     masterSHA256: SHA256Digest
   ) {
     self.schemaVersion = schemaVersion
     self.operationId = operationId
     self.uploadId = uploadId
-    self.callDocument = callDocument
+    self.captureState = captureState
+    self.durationMs = durationMs
+    self.sourceStates = sourceStates
     self.audioManifest = audioManifest
     self.masterSHA256 = masterSHA256
   }
@@ -1884,7 +1922,9 @@ public struct FinalizeMasterUpload: ContractDocument, Codable, Equatable, Sendab
     case schemaVersion
     case operationId
     case uploadId
-    case callDocument
+    case captureState
+    case durationMs
+    case sourceStates
     case audioManifest
     case masterSHA256
   }
@@ -1902,9 +1942,17 @@ public struct FinalizeMasterUpload: ContractDocument, Codable, Equatable, Sendab
       ExchangeUUID.self,
       forKey: .uploadId
     )
-    self.callDocument = try container.decode(
+    self.captureState = try container.decode(
       String.self,
-      forKey: .callDocument
+      forKey: .captureState
+    )
+    self.durationMs = try container.decode(
+      Int.self,
+      forKey: .durationMs
+    )
+    self.sourceStates = try container.decode(
+      UploadSourceStates.self,
+      forKey: .sourceStates
     )
     self.audioManifest = try container.decode(
       String.self,
@@ -1920,7 +1968,9 @@ public struct FinalizeMasterUpload: ContractDocument, Codable, Equatable, Sendab
     try container.encode(self.schemaVersion, forKey: .schemaVersion)
     try container.encode(self.operationId, forKey: .operationId)
     try container.encode(self.uploadId, forKey: .uploadId)
-    try container.encode(self.callDocument, forKey: .callDocument)
+    try container.encode(self.captureState, forKey: .captureState)
+    try container.encode(self.durationMs, forKey: .durationMs)
+    try container.encode(self.sourceStates, forKey: .sourceStates)
     try container.encode(self.audioManifest, forKey: .audioManifest)
     try container.encode(self.masterSHA256, forKey: .masterSHA256)
   }
@@ -1970,6 +2020,7 @@ public struct VerifiedMasterReceipt: ContractDocument, Codable, Equatable, Senda
   public var verification: String
   public var mediaProfileId: String
   public var masterSHA256: SHA256Digest
+  public var sourceStatesSHA256: SHA256Digest
   public var byteLength: Int
   public var durationMs: Int
   public var channelMap: [VerifiedMasterChannel]
@@ -1986,6 +2037,7 @@ public struct VerifiedMasterReceipt: ContractDocument, Codable, Equatable, Senda
     verification: String,
     mediaProfileId: String,
     masterSHA256: SHA256Digest,
+    sourceStatesSHA256: SHA256Digest,
     byteLength: Int,
     durationMs: Int,
     channelMap: [VerifiedMasterChannel],
@@ -2002,6 +2054,7 @@ public struct VerifiedMasterReceipt: ContractDocument, Codable, Equatable, Senda
     self.verification = verification
     self.mediaProfileId = mediaProfileId
     self.masterSHA256 = masterSHA256
+    self.sourceStatesSHA256 = sourceStatesSHA256
     self.byteLength = byteLength
     self.durationMs = durationMs
     self.channelMap = channelMap
@@ -2019,6 +2072,7 @@ public struct VerifiedMasterReceipt: ContractDocument, Codable, Equatable, Senda
     case verification
     case mediaProfileId
     case masterSHA256
+    case sourceStatesSHA256
     case byteLength
     case durationMs
     case channelMap
@@ -2067,6 +2121,10 @@ public struct VerifiedMasterReceipt: ContractDocument, Codable, Equatable, Senda
       SHA256Digest.self,
       forKey: .masterSHA256
     )
+    self.sourceStatesSHA256 = try container.decode(
+      SHA256Digest.self,
+      forKey: .sourceStatesSHA256
+    )
     self.byteLength = try container.decode(
       Int.self,
       forKey: .byteLength
@@ -2100,6 +2158,7 @@ public struct VerifiedMasterReceipt: ContractDocument, Codable, Equatable, Senda
     try container.encode(self.verification, forKey: .verification)
     try container.encode(self.mediaProfileId, forKey: .mediaProfileId)
     try container.encode(self.masterSHA256, forKey: .masterSHA256)
+    try container.encode(self.sourceStatesSHA256, forKey: .sourceStatesSHA256)
     try container.encode(self.byteLength, forKey: .byteLength)
     try container.encode(self.durationMs, forKey: .durationMs)
     try container.encode(self.channelMap, forKey: .channelMap)

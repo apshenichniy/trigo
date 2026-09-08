@@ -24,14 +24,30 @@ struct MasterUploadFixture {
     return result
   }
 
-  func appendSecond() throws {
+  func appendSecond(denseStates: Bool = false) throws {
     let start = Int(writer.cursor.frames / 16)
     var samples = [Int16](repeating: 0, count: 32000)
     for frame in 0..<16000 { samples[frame * 2] = 321; samples[frame * 2 + 1] = -654 }
     let commit = try writer.append(
       interleaved: samples,
-      microphoneIntervals: [.init(startMs: start, endMs: start + 1000, state: .recorded)],
-      applicationIntervals: [.init(startMs: start, endMs: start + 1000, state: .recorded)]
+      microphoneIntervals: denseStates
+        ? (0..<1000)
+          .map {
+            .init(
+              startMs: start + $0,
+              endMs: start + $0 + 1,
+              state: $0 % 2 == 0 ? .recorded : .muted
+            )
+          } : [.init(startMs: start, endMs: start + 1000, state: .recorded)],
+      applicationIntervals: denseStates
+        ? (0..<1000)
+          .map {
+            .init(
+              startMs: start + $0,
+              endMs: start + $0 + 1,
+              state: $0 % 2 == 0 ? .recorded : .unavailable
+            )
+          } : [.init(startMs: start, endMs: start + 1000, state: .recorded)]
     )
     try repository.commitMediaProgress(commit)
   }
@@ -52,6 +68,7 @@ enum MasterUploadTransportFault: Sendable { case register, part, final, forgedRe
 /// Keeps the server's admitted operation state across replacement client coordinators.
 actor MasterUploadTestServer: MasterUploadTransport {
   private var registrations: [String: StoredDocument<MasterUploadSession>] = [:]
+  private var calls: [String: CallDocument] = [:]
   private var parts: [String: [Int: StoredDocument<UploadPartReceipt>]] = [:]
   private var finals: [String: StoredDocument<VerifiedMasterReceipt>] = [:]
   private var fault: MasterUploadTransportFault?
@@ -67,6 +84,7 @@ actor MasterUploadTestServer: MasterUploadTransport {
   {
     registerRequests.append(request)
     let call = try Contract.decode(CallDocument.self, bytes: Data(request.callDocument.utf8)).value
+    calls[request.uploadId] = call
     let receipt =
       try registrations[request.uploadId]
       ?? stored(
@@ -126,8 +144,10 @@ actor MasterUploadTestServer: MasterUploadTransport {
   ) async throws -> StoredDocument<VerifiedMasterReceipt> {
     finalRequests.append(request)
     let registration = try #require(registrations[request.uploadId]).value
-    let call = try Contract.decode(CallDocument.self, bytes: Data(request.callDocument.utf8)).value
-    let duration = try #require(call.durationMs)
+    let call = try #require(calls[request.uploadId])
+    let duration = request.durationMs
+    let audioBytes = Data(request.audioManifest.utf8)
+    let audio = try Contract.decode(AudioManifest.self, bytes: audioBytes)
     let receipt =
       try finals[request.uploadId]
       ?? stored(
@@ -142,12 +162,15 @@ actor MasterUploadTestServer: MasterUploadTransport {
           verification: "complete-master-sha256-v1",
           mediaProfileId: MediaMasterProfile.id,
           masterSHA256: request.masterSHA256,
+          sourceStatesSHA256: Contract.hash(
+            #require(Data(base64Encoded: request.sourceStates.data))
+          ),
           byteLength: duration * 64 + 68,
           durationMs: duration,
           channelMap: call.tracks.map {
             .init(channelIndex: $0.role == "microphone" ? 0 : 1, trackId: $0.trackId)
           },
-          audioManifest: #require(call.audioManifest),
+          audioManifest: .init(manifestId: audio.value.manifestId, sha256: audio.sha256),
           storedAt: "2026-09-08T12:00:00.000Z"
         )
       )

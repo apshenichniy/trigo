@@ -6,25 +6,45 @@ extension LocalRepository {
   /// Replaying this operation therefore uses the exact original metadata and audio evidence.
   public func prepareMasterFinalization(callID: String) async throws -> FinalizeMasterUpload {
     let state = try requiredMasterUpload(callID)
+    if let existing = try await operation(state.finalizeOperationID) {
+      return try Contract.decode(FinalizeMasterUpload.self, bytes: existing.payload).value
+    }
     guard let completion = try captureCompletion(callID: callID), let master = completion.master
     else {
       throw LocalPersistenceError.invalidMediaProgress
     }
-    let bytes = try documentBytes(completion.snapshotSHA256)
-    let call = try Contract.decode(CallDocument.self, bytes: bytes).value
+    let call = try callValue(
+      hash: masterUploadSnapshotHash(callID: callID),
+      includeIntervals: false
+    )
     guard let reference = call.audioManifest,
-      let callText = String(data: bytes, encoding: .utf8),
+      let audioSize = try database.access({
+        try database
+          .rows(
+            "SELECT byte_count FROM documents WHERE hash=? AND complete=1",
+            [.text(reference.sha256)]
+          )
+          .first?
+          .int(0)
+      }), audioSize <= 16_384,
       let audioText = try String(data: documentBytes(reference.sha256), encoding: .utf8)
     else { throw MasterUploadError.invalidReceipt }
+    let sourceStates = try await masterUploadSourceStates(callID: callID, master: master)
+    let sourceHash = Contract.hash(sourceStates)
     let input = FinalizeMasterUpload(
       schemaVersion: 1,
       operationId: state.finalizeOperationID,
       uploadId: state.uploadID,
-      callDocument: callText,
+      captureState: call.captureState,
+      durationMs: master.durationMs,
+      sourceStates: .init(
+        encoding: "source-states-2bit-ms-v1",
+        data: sourceStates.base64EncodedString()
+      ),
       audioManifest: audioText,
       masterSHA256: master.sha256
     )
-    let operation = try await recordIntent(
+    let prepared = try await prepareOperation(
       .init(
         operationID: state.finalizeOperationID,
         archiveID: archiveID,
@@ -33,7 +53,18 @@ extension LocalRepository {
         payload: Contract.encode(input)
       )
     )
-    return try Contract.decode(FinalizeMasterUpload.self, bytes: operation.payload).value
+    try database.access {
+      try database.transaction(interruption: interruption) {
+        try requireActiveMasterUpload(callID)
+        try commitOperation(prepared)
+        try database.execute(
+          "UPDATE master_uploads SET source_states_hash=? WHERE call_id=?",
+          [.text(sourceHash), .text(callID)]
+        )
+      }
+    }
+    try interruption(.afterJournalIntentPersisted)
+    return input
   }
 
   public func verifiedMasterReceipt(callID: String) throws -> StoredDocument<VerifiedMasterReceipt>?
@@ -143,12 +174,13 @@ extension LocalRepository {
     _ receipt: VerifiedMasterReceipt,
     state: MasterUploadState
   ) throws {
+    let snapshotHash = try masterUploadSnapshotHash(callID: state.callID)
     guard let completion = try captureCompletion(callID: state.callID),
       let master = completion.master,
       let row = try database.access({
         try database.rows(
-          "SELECT audio_id,audio_hash FROM call_values WHERE hash=?",
-          [.text(completion.snapshotSHA256)]
+          "SELECT c.audio_id,c.audio_hash,u.source_states_hash FROM call_values c JOIN master_uploads u ON u.call_id=c.call_id WHERE c.hash=?",
+          [.text(snapshotHash)]
         )
         .first
       })
@@ -162,6 +194,7 @@ extension LocalRepository {
       receipt.verification == "complete-master-sha256-v1",
       try receipt.audioManifest.manifestId == row.string(0),
       try receipt.audioManifest.sha256 == row.string(1),
+      try receipt.sourceStatesSHA256 == row.string(2),
       receipt.channelMap == [
         .init(channelIndex: 0, trackId: identity.microphoneTrackID.uuidString.lowercased()),
         .init(channelIndex: 1, trackId: identity.applicationTrackID.uuidString.lowercased()),

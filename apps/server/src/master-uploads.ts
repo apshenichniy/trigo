@@ -6,6 +6,7 @@ import {
   UploadPartDescriptor,
   UploadPartReceipt,
   parseStored,
+  maximumMasterBytes,
   uploadPartBytes,
   type VerifiedMasterReceipt,
 } from "@trigo/contracts";
@@ -16,6 +17,9 @@ import {
   executeUploadSQL,
   PartRow,
   requireUpload,
+  requireUploadOwner,
+  uploadOwnerFence,
+  uploadOwnerParameters,
   uploadRows,
   type UploadDatabase,
   type UploadRow,
@@ -50,9 +54,11 @@ function sessionReceipt(upload: UploadRow): MasterUploadSession {
 
 const registerMaster = Effect.fn("MasterUpload.register")(function* (
   db: UploadDatabase,
-  archiveId: string,
+  owner: OwnerContext,
   value: unknown,
 ) {
+  const { archiveId } = owner;
+  yield* requireUploadOwner(db, owner);
   const input = yield* decodeUpload(RegisterMasterUpload, value);
   const call = yield* Effect.try({
     try: () => parseStored("CallDocument", new TextEncoder().encode(input.callDocument)),
@@ -91,7 +97,7 @@ const registerMaster = Effect.fn("MasterUpload.register")(function* (
     db,
     `INSERT OR IGNORE INTO trigo_master_uploads
      (call_id,archive_id,upload_id,master_id,registration_hash,microphone_track_id,application_track_id,started_at,source_hash)
-     VALUES (?,?,?,?,?,?,?,?,?)`,
+     SELECT ?,?,?,?,?,?,?,?,? WHERE ${uploadOwnerFence}`,
     [
       call.callId,
       archiveId,
@@ -102,8 +108,10 @@ const registerMaster = Effect.fn("MasterUpload.register")(function* (
       application.trackId,
       call.startedAt,
       source,
+      ...uploadOwnerParameters(owner),
     ],
   );
+  yield* requireUploadOwner(db, owner);
   const upload = yield* requireUpload(db, archiveId, call.callId);
   if (upload.registration_hash !== hash) {
     return yield* uploadConflict(
@@ -130,16 +138,18 @@ function partReceipt(upload: UploadRow, part: PartRow): UploadPartReceipt {
 
 const putPart = Effect.fn("MasterUpload.putPart")(function* (
   env: MasterUploadEnvironment,
-  archiveId: string,
+  owner: OwnerContext,
   callId: string,
   uploadId: string,
   descriptor: unknown,
   body: ReadableStream<Uint8Array>,
 ) {
+  const { archiveId } = owner;
+  yield* requireUploadOwner(env.CATALOG, owner);
   const input = yield* decodeUpload(UploadPartDescriptor, descriptor);
   if (
     input.byteOffset !== input.index * uploadPartBytes ||
-    input.byteOffset + input.byteLength > 691_200_068
+    input.byteOffset + input.byteLength > maximumMasterBytes
   ) {
     return yield* invalidUpload("The range must use the registered fixed transport boundaries.");
   }
@@ -149,8 +159,16 @@ const putPart = Effect.fn("MasterUpload.putPart")(function* (
     env.CATALOG,
     `INSERT OR IGNORE INTO trigo_upload_parts (upload_id,part_index,byte_length,sha256,receipt_id)
      SELECT upload_id,?,?,?,? FROM trigo_master_uploads u WHERE upload_id=? AND deletion_state='active'
-     AND NOT EXISTS (SELECT 1 FROM trigo_master_finalizations f WHERE f.upload_id=u.upload_id)`,
-    [input.index, input.byteLength, input.sha256, receiptId, uploadId],
+     AND NOT EXISTS (SELECT 1 FROM trigo_master_finalizations f WHERE f.upload_id=u.upload_id)
+     AND ${uploadOwnerFence}`,
+    [
+      input.index,
+      input.byteLength,
+      input.sha256,
+      receiptId,
+      uploadId,
+      ...uploadOwnerParameters(owner),
+    ],
   );
   const [part] = yield* uploadRows(
     env.CATALOG,
@@ -159,6 +177,7 @@ const putPart = Effect.fn("MasterUpload.putPart")(function* (
     [uploadId, input.index],
   );
   if (!part || part.byte_length !== input.byteLength || part.sha256 !== input.sha256) {
+    yield* requireUploadOwner(env.CATALOG, owner);
     yield* requireUpload(env.CATALOG, archiveId, callId, uploadId);
     return yield* uploadConflict(
       "The part identity is sealed or already contains different content.",
@@ -177,6 +196,7 @@ const putPart = Effect.fn("MasterUpload.putPart")(function* (
     writer = yield* storeAdmittedWriter(
       env.CATALOG,
       env.ARCHIVE,
+      owner,
       upload,
       "part",
       input.index,
@@ -189,10 +209,12 @@ const putPart = Effect.fn("MasterUpload.putPart")(function* (
     yield* executeUploadSQL(
       env.CATALOG,
       `UPDATE trigo_upload_parts SET writer_id=? WHERE upload_id=? AND part_index=? AND writer_id IS NULL
-       AND EXISTS (SELECT 1 FROM trigo_master_uploads u WHERE u.upload_id=trigo_upload_parts.upload_id AND u.deletion_state='active')`,
-      [writer.writer_id, uploadId, input.index],
+       AND EXISTS (SELECT 1 FROM trigo_master_uploads u WHERE u.upload_id=trigo_upload_parts.upload_id AND u.deletion_state='active')
+       AND ${uploadOwnerFence}`,
+      [writer.writer_id, uploadId, input.index, ...uploadOwnerParameters(owner)],
     );
   }
+  yield* requireUploadOwner(env.CATALOG, owner);
   yield* requireUpload(env.CATALOG, archiveId, callId, uploadId);
   return partReceipt(upload, part);
 });
@@ -219,11 +241,10 @@ export const masterUploadsLayer = (env: MasterUploadEnvironment, owner: OwnerCon
     MasterUploads,
     Effect.sync(() => {
       return MasterUploads.of({
-        register: (input) => registerMaster(env.CATALOG, owner.archiveId, input),
+        register: (input) => registerMaster(env.CATALOG, owner, input),
         part: (callId, uploadId, descriptor, body) =>
-          putPart(env, owner.archiveId, callId, uploadId, descriptor, body),
-        finalize: (callId, input) =>
-          finalizeMaster(env.CATALOG, env.ARCHIVE, owner.archiveId, callId, input),
+          putPart(env, owner, callId, uploadId, descriptor, body),
+        finalize: (callId, input) => finalizeMaster(env.CATALOG, env.ARCHIVE, owner, callId, input),
       });
     }),
   );

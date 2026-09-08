@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-import { CaptureMasterProfile } from "./capture-master-profile.ts";
+import { CaptureMasterProfile, selectedCaptureMasterProfile } from "./capture-master-profile.ts";
 import {
   AudioManifestReference,
   ExchangeUUID,
@@ -10,9 +10,13 @@ import {
 } from "./document-schema.ts";
 
 /** Transport identity and boundaries never identify an ASR submission. */
-export const uploadPartBytes = 8_388_608;
-export const maximumMasterBytes = 691_200_068;
+export const uploadPartBytes = selectedCaptureMasterProfile.maxRangeBytes;
+export const maximumMasterBytes = selectedCaptureMasterProfile.maxMasterBytes;
 export const maximumUploadParts = Math.ceil(maximumMasterBytes / uploadPartBytes);
+export const maximumSourceStateBytes = Math.ceil(
+  selectedCaptureMasterProfile.maxCallDurationMs / 2,
+);
+export const maximumSourceStateCharacters = Math.ceil(maximumSourceStateBytes / 3) * 4;
 
 const MasterByteLength = Schema.Int.check(
   Schema.isBetween({ minimum: 68, maximum: maximumMasterBytes }),
@@ -64,12 +68,26 @@ export const UploadPartReceipt = Schema.Struct({
 }).annotate({ identifier: "UploadPartReceipt" });
 export interface UploadPartReceipt extends Schema.Schema.Type<typeof UploadPartReceipt> {}
 
+/** Two source states per millisecond, two milliseconds per byte. Codes: recorded=0,
+ * muted=1, unavailable=2; code 3 and application mute are invalid. Microphone occupies
+ * bits 0..1 / 4..5; application occupies bits 2..3 / 6..7. Odd-duration padding is zero.
+ * This lossless fixed bound is independent of canonical JSON interval fragmentation. */
+export const UploadSourceStates = Schema.Struct({
+  encoding: Schema.Literal("source-states-2bit-ms-v1"),
+  data: Schema.String.check(Schema.isMaxLength(maximumSourceStateCharacters)),
+}).annotate({ identifier: "UploadSourceStates" });
+export interface UploadSourceStates extends Schema.Schema.Type<typeof UploadSourceStates> {}
+
 export const FinalizeMasterUpload = Schema.Struct({
   schemaVersion: Schema.Literal(1),
   operationId: ExchangeUUID,
   uploadId: ExchangeUUID,
-  callDocument: DocumentBytes,
-  audioManifest: DocumentBytes,
+  captureState: Schema.Literals(["stopped", "interrupted"]),
+  durationMs: Schema.Int.check(
+    Schema.isBetween({ minimum: 0, maximum: selectedCaptureMasterProfile.maxCallDurationMs }),
+  ),
+  sourceStates: UploadSourceStates,
+  audioManifest: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(16_384)),
   masterSHA256: SHA256,
 }).annotate({ identifier: "FinalizeMasterUpload" });
 export interface FinalizeMasterUpload extends Schema.Schema.Type<typeof FinalizeMasterUpload> {}
@@ -88,6 +106,7 @@ export const VerifiedMasterReceipt = Schema.Struct({
   verification: Schema.Literal("complete-master-sha256-v1"),
   mediaProfileId: CaptureMasterProfile.fields.id,
   masterSHA256: SHA256,
+  sourceStatesSHA256: SHA256,
   byteLength: MasterByteLength,
   durationMs: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 10_800_000 })),
   channelMap: Schema.Array(VerifiedMasterChannel).check(

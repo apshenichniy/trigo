@@ -6,14 +6,17 @@ import {
   parseStored,
   storedByteHash,
   uploadPartBytes,
-  validateArchive,
   type CaptureSourceDocument,
 } from "@trigo/contracts";
 
+import type { OwnerContext } from "./owner-state.ts";
 import {
   executeUploadSQL,
   FinalizationRow,
   requireUpload,
+  requireUploadOwner,
+  uploadOwnerFence,
+  uploadOwnerParameters,
   uploadRows,
   WriterRow,
   type UploadDatabase,
@@ -27,6 +30,7 @@ import {
   uploadConflict,
   uploadStorage,
 } from "./upload-errors.ts";
+import { sourceStatesHash } from "./upload-source-states.ts";
 import { assembleMaster, type UploadBucket } from "./upload-streams.ts";
 import {
   newUploadIdentity,
@@ -59,34 +63,17 @@ const finalManifest = Effect.fn("MasterUpload.validateFinalManifest")(function* 
   upload: UploadRow,
   input: FinalizeMasterUpload,
 ) {
-  const callBytes = new TextEncoder().encode(input.callDocument);
   const audioBytes = new TextEncoder().encode(input.audioManifest);
   const audio = yield* Effect.try({
     try: () => parseStored("AudioManifest", audioBytes),
     catch: () => invalidUpload("The audio manifest is invalid."),
   });
-  const archive = yield* Effect.tryPromise({
-    try: () => validateArchive(callBytes, new Map([[audio.manifestId, audioBytes]])),
-    catch: () => invalidUpload("The closed call and audio manifest do not agree."),
-  });
-  const call = archive.call;
-  const microphone = call.tracks.find((track) => track.role === "microphone");
-  const application = call.tracks.find((track) => track.role === "application");
-  const source = yield* sourceHash(call.source);
+  // The registered immutable call already owns source and track identities. Closing it
+  // supplies only bounded duration/state evidence, never the fragmented canonical JSON.
   if (
-    call.archiveId !== upload.archive_id ||
-    call.callId !== upload.call_id ||
-    call.captureState === "recording" ||
-    call.durationMs === null ||
-    !call.endedAt ||
-    call.startedAt !== upload.started_at ||
-    source !== upload.source_hash ||
-    microphone?.trackId !== upload.microphone_track_id ||
-    application?.trackId !== upload.application_track_id ||
-    call.revisions.length !== 0 ||
-    call.activeRevisionId !== null ||
-    audio.mediaProfileId !== "caf-lpcm-s16le-16000-stereo-v1" ||
-    Date.parse(call.endedAt) - Date.parse(call.startedAt) !== call.durationMs
+    audio.callId !== upload.call_id ||
+    audio.durationMs !== input.durationMs ||
+    audio.mediaProfileId !== "caf-lpcm-s16le-16000-stereo-v1"
   ) {
     return yield* invalidUpload(
       "Finalization must retain the registered call, sources and actual closed duration.",
@@ -94,16 +81,25 @@ const finalManifest = Effect.fn("MasterUpload.validateFinalManifest")(function* 
   }
   const object = audio.objects[0];
   if (
-    call.durationMs > 0 &&
-    (!object || object.objectId !== upload.master_id || object.sha256 !== input.masterSHA256)
+    input.durationMs > 0 &&
+    (!object ||
+      object.objectId !== upload.master_id ||
+      object.sha256 !== input.masterSHA256 ||
+      !object.channelMap.some(
+        (channel) => channel.channelIndex === 0 && channel.trackId === upload.microphone_track_id,
+      ) ||
+      !object.channelMap.some(
+        (channel) => channel.channelIndex === 1 && channel.trackId === upload.application_track_id,
+      ))
   ) {
     return yield* invalidUpload(
       "The audio manifest must identify the complete registered master and checksum.",
     );
   }
   return {
-    durationMs: call.durationMs,
-    byteLength: 68 + call.durationMs * 64,
+    durationMs: input.durationMs,
+    byteLength: 68 + input.durationMs * 64,
+    sourceStatesSHA256: yield* sourceStatesHash(input),
     audioManifest: { manifestId: audio.manifestId, sha256: yield* textHash(input.audioManifest) },
   };
 });
@@ -149,10 +145,12 @@ const completedRanges = Effect.fn("MasterUpload.completedRanges")(function* (
 export const finalizeMaster = Effect.fn("MasterUpload.finalize")(function* (
   db: UploadDatabase,
   bucket: UploadBucket,
-  archiveId: string,
+  owner: OwnerContext,
   callId: string,
   value: unknown,
 ) {
+  const { archiveId } = owner;
+  yield* requireUploadOwner(db, owner);
   const input = yield* decodeUpload(FinalizeMasterUpload, value);
   const upload = yield* requireUpload(db, archiveId, callId, input.uploadId);
   const manifest = yield* finalManifest(upload, input);
@@ -187,13 +185,15 @@ export const finalizeMaster = Effect.fn("MasterUpload.finalize")(function* (
       db,
       `INSERT OR IGNORE INTO trigo_master_finalizations
        (upload_id,operation_id,request_hash,audio_manifest,receipt)
-       SELECT upload_id,?,?,?,? FROM trigo_master_uploads WHERE upload_id=? AND deletion_state='active'`,
+       SELECT upload_id,?,?,?,? FROM trigo_master_uploads WHERE upload_id=? AND deletion_state='active'
+       AND ${uploadOwnerFence}`,
       [
         input.operationId,
         requestHash,
         input.audioManifest,
         yield* encodeUploadJSON(receipt),
         upload.upload_id,
+        ...uploadOwnerParameters(owner),
       ],
     );
     [finalization] = yield* uploadRows(
@@ -203,6 +203,7 @@ export const finalizeMaster = Effect.fn("MasterUpload.finalize")(function* (
       [upload.upload_id],
     );
   }
+  yield* requireUploadOwner(db, owner);
   yield* requireUpload(db, archiveId, callId, input.uploadId);
   if (
     !finalization ||
@@ -222,6 +223,7 @@ export const finalizeMaster = Effect.fn("MasterUpload.finalize")(function* (
     writer = yield* storeAdmittedWriter(
       db,
       bucket,
+      owner,
       upload,
       "master",
       null,
@@ -237,9 +239,16 @@ export const finalizeMaster = Effect.fn("MasterUpload.finalize")(function* (
   yield* executeUploadSQL(
     db,
     `UPDATE trigo_master_finalizations SET writer_id=?,receipt=? WHERE upload_id=? AND writer_id IS NULL
-     AND EXISTS (SELECT 1 FROM trigo_master_uploads u WHERE u.upload_id=trigo_master_finalizations.upload_id AND u.deletion_state='active')`,
-    [writer.writer_id, yield* encodeUploadJSON(receipt), upload.upload_id],
+     AND EXISTS (SELECT 1 FROM trigo_master_uploads u WHERE u.upload_id=trigo_master_finalizations.upload_id AND u.deletion_state='active')
+     AND ${uploadOwnerFence}`,
+    [
+      writer.writer_id,
+      yield* encodeUploadJSON(receipt),
+      upload.upload_id,
+      ...uploadOwnerParameters(owner),
+    ],
   );
+  yield* requireUploadOwner(db, owner);
   const stored = yield* storedMaster(db, archiveId, callId);
   return stored.receipt;
 });

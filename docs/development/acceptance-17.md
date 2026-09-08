@@ -25,8 +25,8 @@ hashing and a checked CAF header. An ETag is never the master checksum.
 See the [R2 upload limits](https://developers.cloudflare.com/r2/objects/upload-objects/)
 and [Workers R2 API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/).
 
-Finalization binds the original call, source, two track identities, exact closed
-recording metadata, audio-manifest hash, final duration, complete byte length,
+Finalization binds the original call, source, two track identities, closed
+capture state, source-state map, audio-manifest hash, final duration, complete byte length,
 ordered parts and whole-master SHA-256. The complete verified receipt, upload
 `stored` state and both operation acknowledgements commit in one local SQLite
 transaction. Only that validated durable receipt authorizes deletion of
@@ -34,15 +34,30 @@ transaction. Only that validated durable receipt authorizes deletion of
 preserves other files. Capture, transcription, import and replica state remain
 independent.
 
+The final request uses a lossless two-bit source state per millisecond, with
+both sources packed into half a byte. Its maximum three-hour representation is
+5,400,000 raw bytes / 7,200,000 base64 characters, within the 8-MiB HTTP envelope.
+It is built from bounded durable capture commits without materializing canonical
+interval JSON. The first closed capture snapshot supplies immutable scalar/audio
+references. Once journaled, finalization reuses its original payload even after
+later annotations or revision imports. The raw source-map hash is persisted with
+that intent and must match the verified receipt before local cleanup. Exact
+canonical intervals remain local; publishing their replica is #19.
+
+Owner credential generation and call deletion state are checked in the same D1
+statements that admit and publish work. A revoke or rotation during R2 writing
+prevents the old request from publishing a receipt. Completed or uncertain writer
+rows remain available for authenticated replay and later deletion draining.
+
 The local repository adds two upload tables through an atomic migration from
 the exact prior version-2 schema. Identity/integrity/schema checks precede
 migration; unsupported, foreign and corrupt stores remain rejected.
 
 ## Evidence and executable checks
 
-The focused server suite contains 15 upload cases. The native upload and
-authority selection contains 10 tests, including parameterized failure cases.
-Their focused runs passed before full acceptance; final source identity, full
+The focused server suite contains 20 upload cases. The native upload and
+authority selection contains 13 tests, including parameterized failure cases.
+Final source identity, focused and full
 gate results, timings and CI URLs belong in the PR and CI artifacts.
 
 | Requirement                                                                    | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -55,6 +70,16 @@ gate results, timings and CI URLs belong in the PR and CI artifacts.
 | Deletion can account for late writers                                          | Part and final writer tests fence the call while R2 PUT is in flight, lose its acknowledgement, inspect the retained uncertain row, recover the checksum-matching completed object, and still reject final publication. Missing HEAD results do not prove a writer stopped.                                                                                                                                                                                                                                                     |
 | Same archive after credential repair                                           | `masterUploadAuthorityStaysBoundAndUsesRepairedCredentials` covers wrong-archive rejection, blocked work with retained recording eligibility, repaired endpoint/token, stale failure reports and credential-access errors.                                                                                                                                                                                                                                                                                                      |
 | Actual native/server boundary                                                  | `LocalDevelopmentTests` uses real URLSession against the selected local Worker, uploads/finalizes synthetic media, interrupts the local receipt commit, restores the connection, replays finalization, and verifies cleanup. This belongs to the mandatory native/local Worker smoke.                                                                                                                                                                                                                                           |
+
+The focused review regressions additionally cover a two-minute recording whose
+two sources change state every millisecond: its canonical snapshot exceeds 8 MiB,
+while its complete finalization request stays below 100,000 bytes. Packing tests
+check channel order, missing coverage, odd-duration padding and the three-hour
+bound. Worker tests pass the maximum map through the real bounded HTTP decoder
+and reject invalid/noncanonical maps. A later-metadata/lost-acknowledgement test
+proves exact operation replay and cleanup without reverting newer metadata.
+Credential tests revoke or rotate during final PUT, reject its late publication,
+and recover the same object with the current token without another PUT.
 
 Required full commands for the completed candidate are `bun run check:server`
 and `bun run check:macos`. The latter includes both Debug app builds, every
@@ -78,8 +103,8 @@ runner's unhandled-error gate remain enabled.
   idempotent after restored binding/local recovery; repair and capture stop wake
   the service. Tests may inject an owner explicitly. Idle process exit remains
   safe through the durable journal; Quit does not wait for remote completion.
-  Combining the two lanes requires preserving #71's throwing fixture/bundle
-  guards and the small connection/termination additions in this candidate.
+  #71 is integrated from main `f92dfb293`; its throwing fixture/bundle guards
+  and this candidate's connection/termination additions are both retained.
 - **#18 / #73:** `storedMaster(db, archiveId, callId)` returns the verified
   receipt, server-resolved private object key and exact audio-manifest bytes.
   It refuses incomplete or deletion-fenced calls. Consumers may pin the
@@ -92,7 +117,8 @@ runner's unhandled-error gate remain enabled.
   evidence. Deletion orchestration/cleanup and opaque tombstones belong to #22.
 - **#19:** This upload receipt does not publish a canonical replica, import a
   transcript or claim synchronization completion. Exact finalized capture
-  metadata is an immutable upload input; later annotations do not rewrite it.
+  metadata remains local. Upload uses bounded capture evidence from its first
+  closed snapshot; later annotations do not rewrite a journaled final request.
 
 The PR remains scoped to #17, and the issue remains open until its normal merge
 lifecycle. Merge and deployment require the owner's instruction.

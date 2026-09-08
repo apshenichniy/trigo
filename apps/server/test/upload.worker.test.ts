@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { Data, DateTime, Deferred, Effect } from "effect";
+import { Data, Deferred, Effect } from "effect";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import {
@@ -13,6 +13,7 @@ import migration from "../migrations/0001_owner_identity.sql?raw";
 import uploadMigration from "../migrations/0002_master_uploads.sql?raw";
 import localWorker from "../src/local-worker.ts";
 import { storedMaster } from "../src/master-finalization.ts";
+import { MasterUploads, masterUploadsLayer } from "../src/master-uploads.ts";
 import {
   applyOwnerOperation,
   ArchiveId,
@@ -21,6 +22,7 @@ import {
   OwnerToken,
 } from "../src/owner-state.ts";
 import { fenceMasterUploads, inspectUploadWriters } from "../src/upload-catalog.ts";
+import { sourceStatesHash } from "../src/upload-source-states.ts";
 import { cafMasterHeader } from "../src/upload-streams.ts";
 import { reconcileWriter } from "../src/upload-writers.ts";
 
@@ -168,30 +170,16 @@ async function finalInput(bytes: Uint8Array, durationMs: number): Promise<Finali
             },
           ],
   });
-  const closed = {
-    ...call,
-    documentVersion: 2,
-    endedAt: DateTime.formatIso(DateTime.makeUnsafe(Date.parse(call.startedAt) + durationMs)),
-    durationMs,
-    captureState: "interrupted",
-    interruptionReason: "application_terminated",
-    tracks: call.tracks.map((track) => ({
-      ...track,
-      intervals:
-        durationMs === 0
-          ? []
-          : [{ startMs: 0, endMs: durationMs, state: "recorded", reason: null }],
-    })),
-    audioManifest: {
-      manifestId: id(109),
-      sha256: await storedByteHash(new TextEncoder().encode(audioManifest)),
-    },
-  };
   return {
     schemaVersion: 1,
     uploadId: registration.uploadId,
     operationId: id(107),
-    callDocument: JSON.stringify(closed),
+    captureState: "interrupted",
+    durationMs,
+    sourceStates: {
+      encoding: "source-states-2bit-ms-v1",
+      data: btoa("\0".repeat(Math.ceil(durationMs / 2))),
+    },
     audioManifest,
     masterSHA256: sha256,
   };
@@ -461,20 +449,16 @@ it("retains an in-flight final writer after deletion fencing and never publishes
   expect((await writers()).filter((writer) => writer.state === "stored")).toHaveLength(2);
 });
 
-it("rejects changed sources, closed duration and channel mapping before sealing finalization", async () => {
+it("rejects source replacement, closed duration and channel mapping before sealing finalization", async () => {
   await register();
   const bytes = masterBytes(2);
   expect((await put(0, bytes)).status).toBe(200);
   const input = await finalInput(bytes, 2);
-  const closed = validateDocument("CallDocument", JSON.parse(input.callDocument));
   expect(
     (
       await finalize(
         Object.assign({}, input, {
-          callDocument: JSON.stringify({
-            ...closed,
-            source: { ...closed.source, bundleId: "changed.source" },
-          }),
+          source: { ...call.source, bundleId: "changed.source" },
         }),
       )
     ).status,
@@ -483,7 +467,7 @@ it("rejects changed sources, closed duration and channel mapping before sealing 
     (
       await finalize(
         Object.assign({}, input, {
-          callDocument: JSON.stringify({ ...closed, endedAt: "2026-09-08T00:00:00.003Z" }),
+          durationMs: 3,
         }),
       )
     ).status,
@@ -504,13 +488,6 @@ it("rejects changed sources, closed duration and channel mapping before sealing 
       await finalize(
         Object.assign({}, input, {
           audioManifest: swappedAudio,
-          callDocument: JSON.stringify({
-            ...closed,
-            audioManifest: {
-              manifestId: audio.manifestId,
-              sha256: await storedByteHash(new TextEncoder().encode(swappedAudio)),
-            },
-          }),
         }),
       )
     ).status,
@@ -526,6 +503,148 @@ it("does not certify a completed part whose immutable object is missing", async 
   await env.LOCAL_ARCHIVE.delete(writer.object_key);
   expect((await finalize(await finalInput(bytes, 2))).status).not.toBe(200);
   await expect(stored()).rejects.toThrow();
+});
+
+it.each(["rotate", "revoke"] as const)(
+  "fences an in-flight final writer when owner credentials %s",
+  async (kind) => {
+    await register();
+    const bytes = masterBytes(2);
+    expect((await put(0, bytes)).status).toBe(200);
+    const input = await finalInput(bytes, 2);
+    const entered = Deferred.makeUnsafe<void>();
+    const release = Deferred.makeUnsafe<void>();
+    const original = env.LOCAL_ARCHIVE.put.bind(env.LOCAL_ARCHIVE);
+    const putSpy = vi
+      .spyOn(env.LOCAL_ARCHIVE, "put")
+      .mockImplementationOnce((key, value, options) =>
+        Effect.runPromise(
+          Effect.gen(function* () {
+            yield* Deferred.succeed(entered, undefined);
+            yield* Deferred.await(release);
+            return yield* Effect.promise(() => original(key, value, options));
+          }),
+        ),
+      );
+    const completing = finalize(input);
+    await Effect.runPromise(Deferred.await(entered));
+    const replacement = OwnerToken.make(`trigo_v1_${"2".repeat(64)}`);
+    const operation = {
+      operationId: OwnerOperationId.make(id(501)),
+      expectedGeneration: 1,
+      now: "2026-09-08T00:01:00.000Z",
+    };
+    await Effect.runPromise(
+      applyOwnerOperation(
+        env.CATALOG,
+        kind === "rotate"
+          ? {
+              ...operation,
+              kind,
+              verifierSha256: await Effect.runPromise(hashOwnerToken(replacement)),
+            }
+          : { ...operation, kind },
+      ),
+    );
+    await Effect.runPromise(Deferred.succeed(release, undefined));
+    expect((await completing).status).toBe(401);
+    await expect(stored()).rejects.toThrow();
+    expect(
+      (await writers()).filter((writer) => writer.kind === "master" && writer.state === "stored"),
+    ).toHaveLength(1);
+    if (kind === "revoke") {
+      await Effect.runPromise(
+        applyOwnerOperation(env.CATALOG, {
+          kind: "rotate",
+          operationId: OwnerOperationId.make(id(502)),
+          expectedGeneration: 2,
+          verifierSha256: await Effect.runPromise(hashOwnerToken(replacement)),
+          now: "2026-09-08T00:02:00.000Z",
+        }),
+      );
+    }
+    expect(
+      (await jsonRequest(`/v1/calls/${call.callId}/finalize`, input, `Bearer ${replacement}`))
+        .status,
+    ).toBe(200);
+    expect(putSpy).toHaveBeenCalledTimes(1);
+    expect((await stored()).receipt.masterSHA256).toBe(input.masterSHA256);
+  },
+);
+
+it("rejects stale authenticated context before registration admission", async () => {
+  await Effect.runPromise(
+    applyOwnerOperation(env.CATALOG, {
+      kind: "revoke",
+      operationId: OwnerOperationId.make(id(501)),
+      expectedGeneration: 1,
+      now: "2026-09-08T00:01:00.000Z",
+    }),
+  );
+  const result = await Effect.runPromise(
+    Effect.gen(function* () {
+      const uploads = yield* MasterUploads;
+      return yield* uploads.register(registration).pipe(Effect.flip);
+    }).pipe(
+      Effect.provide(
+        masterUploadsLayer(
+          { CATALOG: env.CATALOG, ARCHIVE: env.LOCAL_ARCHIVE },
+          { archiveId, credentialGeneration: 1 },
+        ),
+      ),
+    ),
+  );
+  expect(result.code).toBe("upload_owner_changed");
+  expect(await env.CATALOG.prepare("SELECT * FROM trigo_master_uploads").all()).toMatchObject({
+    results: [],
+  });
+});
+
+it("validates a complete three-hour source map inside the bounded HTTP envelope", async () => {
+  await register();
+  const small = await finalInput(masterBytes(2), 2);
+  const audio = validateDocument("AudioManifest", JSON.parse(small.audioManifest));
+  const durationMs = 10_800_000;
+  const input: FinalizeMasterUpload = Object.assign({}, small, {
+    durationMs,
+    sourceStates: {
+      encoding: "source-states-2bit-ms-v1",
+      data: btoa("\x99".repeat(durationMs / 2)),
+    },
+    audioManifest: JSON.stringify({
+      ...audio,
+      durationMs,
+      objects: audio.objects.map((object) => ({
+        ...object,
+        endMs: durationMs,
+        byteLength: 691_200_068,
+      })),
+    }),
+  });
+  expect(new TextEncoder().encode(JSON.stringify(input)).length).toBeLessThan(uploadPartBytes);
+  const response = await finalize(input);
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({ error: { code: "upload_incomplete" } });
+  expect(await Effect.runPromise(sourceStatesHash(input))).toBe(
+    await storedByteHash(new Uint8Array(durationMs / 2).fill(0x99)),
+  );
+});
+
+it("rejects invalid, truncated and noncanonical state maps without sealing the upload", async () => {
+  await register();
+  const bytes = masterBytes(1);
+  expect((await put(0, bytes)).status).toBe(200);
+  const input = await finalInput(bytes, 1);
+  for (const data of ["", "AAA=", "AA", "AA==\n", "Aw==", "BA==", "EA==", "AB=="]) {
+    expect(
+      (await finalize(Object.assign({}, input, { sourceStates: { ...input.sourceStates, data } })))
+        .status,
+    ).toBe(400);
+  }
+  expect((await finalize(input)).status).toBe(200);
+  expect((await stored()).receipt.sourceStatesSHA256).toBe(
+    await storedByteHash(new Uint8Array([0])),
+  );
 });
 
 it("authenticates all upload routes before reading or admitting media", async () => {

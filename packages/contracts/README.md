@@ -1,6 +1,7 @@
 # Shared v1 contracts
 
-`src/document-schema.ts` is the structural source of truth: JSON-compatible Effect
+`src/schema-registry.ts` gathers the structural sources of truth, including
+`src/document-schema.ts` and `src/upload-schema.ts`. Their JSON-compatible Effect
 Schema definitions derive TypeScript types and runtime decoding, the emitted
 `schema/v1.schema.json` (draft 2020-12), and Swift `GeneratedDocuments.swift`.
 `bun run contracts:generate` updates these artifacts; `contracts:check` compares
@@ -46,6 +47,20 @@ channel 1. Its integrity commits, upload byte ranges and ASR extraction interval
 are independent. Both languages load the same checked resource. The
 [capture master interface](../../docs/development/capture-master-interface.md)
 defines final identity, byte limits, extraction provenance and retention.
+
+The upload commands register the original call, admit fixed master byte ranges,
+and finalize the complete stored CAF. Finalization references the registration
+and carries closed capture state, actual duration, exact AudioManifest bytes and
+a lossless source-state map. The map encodes both source states for every integer
+millisecond in two bits per source (`recorded=0`, `muted=1`, `unavailable=2`). Each
+byte contains microphone/application in its low nibble for the even millisecond
+and high nibble for the odd millisecond. Application mute, code 3 and nonzero
+unused padding are invalid. Canonical base64 requires at most 7,200,000 characters
+for three hours, independent of canonical interval fragmentation. The server
+validates the map and includes its raw-byte SHA-256 in `VerifiedMasterReceipt`;
+the canonical interval document remains local until the separate replica step.
+The original finalization operation is retained for exact replay after later
+metadata changes. A part receipt or ETag cannot authorize local media cleanup.
 
 The independent `schema/media-profile.v1.json` WAVE profile remains the #13
 provider-probe input, including its 60-second object and provider-assembly rules.

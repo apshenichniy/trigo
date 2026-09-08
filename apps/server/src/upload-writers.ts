@@ -1,8 +1,12 @@
 import { DateTime, Effect } from "effect";
 
+import type { OwnerContext } from "./owner-state.ts";
 import {
   executeUploadSQL,
   requireUpload,
+  requireUploadOwner,
+  uploadOwnerFence,
+  uploadOwnerParameters,
   uploadRows,
   WriterRow,
   type UploadDatabase,
@@ -69,6 +73,7 @@ export const recoverStoredWriter = Effect.fn("UploadWriter.recover")(function* (
 export const storeAdmittedWriter = Effect.fn("UploadWriter.store")(function* (
   db: UploadDatabase,
   bucket: UploadBucket,
+  owner: OwnerContext,
   upload: UploadRow,
   kind: "part" | "master",
   index: number | null,
@@ -84,13 +89,26 @@ export const storeAdmittedWriter = Effect.fn("UploadWriter.store")(function* (
     `INSERT INTO trigo_upload_writers
      (writer_id,upload_id,kind,part_index,object_key,byte_length,sha256,state,admitted_at)
      SELECT ?,upload_id,?,?,?,?,?,'admitted',? FROM trigo_master_uploads u
-     WHERE upload_id=? AND deletion_state='active' AND (
+     WHERE upload_id=? AND deletion_state='active' AND ${uploadOwnerFence} AND (
        (?='part' AND NOT EXISTS (SELECT 1 FROM trigo_master_finalizations f WHERE f.upload_id=u.upload_id)) OR
        (?='master' AND EXISTS (SELECT 1 FROM trigo_master_finalizations f WHERE f.upload_id=u.upload_id AND f.writer_id IS NULL))
      )`,
-    [writerId, kind, index, key, byteLength, sha256, admittedAt, upload.upload_id, kind, kind],
+    [
+      writerId,
+      kind,
+      index,
+      key,
+      byteLength,
+      sha256,
+      admittedAt,
+      upload.upload_id,
+      ...uploadOwnerParameters(owner),
+      kind,
+      kind,
+    ],
   );
   if (result.meta.changes !== 1) {
+    yield* requireUploadOwner(db, owner);
     yield* requireUpload(db, upload.archive_id, upload.call_id, upload.upload_id);
     return yield* uploadConflict(
       "Finalization has already sealed this upload. Replay its existing operation.",

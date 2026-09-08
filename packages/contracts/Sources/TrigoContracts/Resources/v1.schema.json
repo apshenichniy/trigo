@@ -1063,6 +1063,21 @@
       ],
       "additionalProperties": false
     },
+    "UploadSourceStates": {
+      "type": "object",
+      "properties": {
+        "encoding": {
+          "type": "string",
+          "enum": ["source-states-2bit-ms-v1"]
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 7200000
+        }
+      },
+      "required": ["encoding", "data"],
+      "additionalProperties": false
+    },
     "FinalizeMasterUpload": {
       "type": "object",
       "properties": {
@@ -1076,15 +1091,22 @@
         "uploadId": {
           "$ref": "#/$defs/ExchangeUUID"
         },
-        "callDocument": {
+        "captureState": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 8388608
+          "enum": ["stopped", "interrupted"]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10800000
+        },
+        "sourceStates": {
+          "$ref": "#/$defs/UploadSourceStates"
         },
         "audioManifest": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 8388608
+          "maxLength": 16384
         },
         "masterSHA256": {
           "$ref": "#/$defs/SHA256Digest"
@@ -1094,7 +1116,9 @@
         "schemaVersion",
         "operationId",
         "uploadId",
-        "callDocument",
+        "captureState",
+        "durationMs",
+        "sourceStates",
         "audioManifest",
         "masterSHA256"
       ],
@@ -1150,6 +1174,9 @@
         "masterSHA256": {
           "$ref": "#/$defs/SHA256Digest"
         },
+        "sourceStatesSHA256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
         "byteLength": {
           "type": "integer",
           "minimum": 68,
@@ -1186,6 +1213,7 @@
         "verification",
         "mediaProfileId",
         "masterSHA256",
+        "sourceStatesSHA256",
         "byteLength",
         "durationMs",
         "channelMap",

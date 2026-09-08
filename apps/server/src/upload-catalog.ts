@@ -2,10 +2,44 @@ import { Effect, Schema } from "effect";
 
 import { ExchangeUUID, SHA256 } from "@trigo/contracts";
 
+import type { OwnerContext } from "./owner-state.ts";
 import { fencedUpload, UploadError, uploadStorage } from "./upload-errors.ts";
 
 export type UploadDatabase = Pick<D1Database, "prepare">;
 type Parameter = string | number | null;
+
+/** Include this predicate in the same SQL statement that admits or publishes work. */
+export const uploadOwnerFence = `EXISTS (
+  SELECT 1 FROM trigo_archive_identity i
+  JOIN trigo_owner_credential_state s USING (singleton)
+  WHERE i.singleton=1 AND i.archive_id=? AND s.generation=? AND s.revoked=0
+)`;
+
+export const uploadOwnerParameters = (owner: OwnerContext) => [
+  owner.archiveId,
+  owner.credentialGeneration,
+];
+
+export const requireUploadOwner = Effect.fn("UploadCatalog.requireOwner")(function* (
+  db: UploadDatabase,
+  owner: OwnerContext,
+) {
+  const rows = yield* uploadRows(
+    db,
+    Schema.Struct({ current: Schema.Int }),
+    `SELECT 1 AS current WHERE ${uploadOwnerFence}`,
+    uploadOwnerParameters(owner),
+  );
+  if (rows.length !== 1) {
+    return yield* new UploadError({
+      status: 401,
+      code: "upload_owner_changed",
+      retry: "after_correction",
+      message:
+        "Owner access changed while this operation was running. Retry with the current credential.",
+    });
+  }
+});
 
 export const UploadRow = Schema.Struct({
   call_id: ExchangeUUID,
