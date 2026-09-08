@@ -63,13 +63,16 @@ retries; interruption after those retries remains visible and can resume through
 the original command. D1 admission is authoritative even if Workflow history is
 replayed, restarted or loses an acknowledgement. Owner-generation changes, call
 deletion fences, a newer operation and a newer attempt prevent new side effects
-and publication. A queued request invalidated by owner rotation becomes a visible
+and publication. A restarted Workflow resolves the latest admitted attempt from
+D1 before continuing, even when its platform history was cleared. A queued request
+invalidated by owner rotation becomes a visible
 failure and releases its active slot.
 
 ## Evidence and resource bounds
 
 The extractor reads the immutable CAF master in bounded ranges, preserves both
-source channels, and records source/master hashes, frame ranges, WAV hashes and
+source channels, verifies the exact retained audio-manifest bytes against the
+master receipt, and records source/master hashes, frame ranges, WAV hashes and
 call-time offsets. Provider transport must witness consumer EOF for the complete
 input and a complete successful response. Reported provider duration and channels
 must match the submitted interval before another paid interval is started.
@@ -111,3 +114,41 @@ Dev deployment and paid request set to be authorized separately. Final source,
 local/CI results, hosted request identities and accounting are recorded in the PR
 handoff. #21's explicit user retry/re-transcribe and #22's user deletion workflow
 remain deferred by the first daily-use amendment.
+
+## Prepared hosted service probe
+
+The operator command uses `TRIGO_ASR_OPERATOR_TOKEN` as a redacted environment
+input and never discovers desktop credentials. Supply the token without printing
+it or saving it in the prepared directory. Prepare separate English and Russian
+directories before requesting authorization:
+
+```sh
+bun scripts/transcription-service-probe.ts prepare --stage dev \
+  --config /absolute/path/to/dev.json --language en \
+  --directory /absolute/path/to/prepared-en
+```
+
+Preparation reads authenticated status and creates a local synthetic 60-second
+stereo master and immutable `plan.json`. It neither uploads nor invokes ASR. The
+plan fixes call, upload, finalization, operation and revision identities, the
+requested language and exact master hash. Repeating preparation preserves it.
+
+After the exact Dev deployment and paid request set are authorized:
+
+```sh
+bun scripts/transcription-service-probe.ts run --stage dev \
+  --config /absolute/path/to/dev.json --language en \
+  --directory /absolute/path/to/prepared-en --allow-paid
+```
+
+Execution uses the production registration, chunk, finalization and transcription
+routes; polls the durable operation; repeats its command to verify idempotence;
+and checks exact revision/provenance hashes and speech on both source tracks.
+It retains the master receipt, operation and returned immutable bytes alongside
+the plan. A rerun uses the same identities and refuses to overwrite different
+evidence. One directory admits at most an original and one replacement attempt
+for its one-minute call. This command selects Dev explicitly and rejects Personal.
+
+The deployment adds D1 tables and indexes through `0003_transcriptions.sql`, keeps
+the existing Workflow resource/class name, and raises its step limit for bounded
+recovery. It does not rewrite existing archive rows or delete stored objects.

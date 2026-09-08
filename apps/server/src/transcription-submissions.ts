@@ -70,6 +70,12 @@ export const loadTranscriptionMaster = Effect.fn("Transcription.loadMaster")(fun
   operation: TranscriptionRow,
 ) {
   const stored = yield* requireStoredMaster(env, operation.archive_id, operation.call_id);
+  const manifestHash = yield* Effect.promise(() =>
+    storedByteHash(new TextEncoder().encode(stored.audioManifest)),
+  );
+  if (manifestHash !== stored.receipt.audioManifest.sha256) {
+    return yield* transcriptionError("asr_catalog_invalid", "after_correction", 503);
+  }
   if (stored.receipt.durationMs === 0) {
     return { ...stored, master: null };
   }

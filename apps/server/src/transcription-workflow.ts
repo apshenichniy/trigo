@@ -7,7 +7,7 @@ import {
   failTranscriptionAttempt,
   recoverTranscriptionAttempt,
 } from "./transcription-attempts.ts";
-import { readTranscription } from "./transcription-catalog.ts";
+import { AttemptRow, readTranscription, transcriptionRows } from "./transcription-catalog.ts";
 import { transcriptionError } from "./transcription-errors.ts";
 import { type TranscriptionExecutionEnvironment } from "./transcription-submissions.ts";
 
@@ -26,7 +26,26 @@ const workflowProgram = Effect.fn("Transcription.workflow")(function* (
   step: WorkflowStep,
 ) {
   const run = Effect.runPromiseWith(yield* Effect.context<never>());
+  // restart() clears Workflow history. The latest D1 attempt remains authoritative;
+  // revisiting a superseded original would stop before its admitted replacement.
+  const resumeIndex = yield* Effect.tryPromise({
+    try: () =>
+      step.do("resolve-durable-attempt", storageStep, () =>
+        run(
+          transcriptionRows(
+            env.CATALOG,
+            AttemptRow,
+            "SELECT * FROM trigo_transcription_attempts WHERE operation_id=? ORDER BY attempt_index DESC LIMIT 1",
+            [operationId],
+          ).pipe(Effect.map((attempts) => attempts[0]?.attempt_index ?? 0)),
+        ),
+      ),
+    catch: () => transcriptionError("asr_storage_unavailable", "retryable", 503),
+  });
   for (const index of [0, 1] as const) {
+    if (index < resumeIndex) {
+      continue;
+    }
     const attemptId = yield* Effect.tryPromise({
       try: () =>
         step.do(`admit-attempt-${index}`, storageStep, () =>
