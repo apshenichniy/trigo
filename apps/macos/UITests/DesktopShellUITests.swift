@@ -36,7 +36,7 @@ import XCTest
     XCTAssertEqual(try state()["activationPolicy"] as? Int, 1)
     openMenu()
     XCTAssertTrue(app.menuItems["menu-start-recording"].isEnabled)
-    app.menuItems["menu-open-library"].click()
+    clickMenuItem("menu-open-library")
     XCTAssertTrue(library.waitForExistence(timeout: 5))
     XCTAssertTrue(library.staticTexts["No recordings yet"].exists)
     XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
@@ -47,10 +47,13 @@ import XCTest
     wait(library, "exists == false")
     XCTAssertTrue(waitState { $0["activationPolicy"] as? Int == 1 })
     openMenu()
-    app.menuItems["menu-open-library"].click()
+    clickMenuItem("menu-open-library")
     XCTAssertTrue(library.waitForExistence(timeout: 5))
     app.typeKey(",", modifierFlags: .command)
     XCTAssertTrue(settings.waitForExistence(timeout: 5))
+    XCTAssertTrue(settings.staticTexts["Double Left Control"].exists)
+    XCTAssertTrue(settings.staticTexts["Control–Option–Command–R"].exists)
+    XCTAssertFalse(settings.buttons["gesture-enable"].exists)
     capture("shell-settings-general", settings)
     settings.switches["launch-at-login"].click()
     wait(settings.switches["launch-at-login"], "value == 1")
@@ -70,30 +73,30 @@ import XCTest
     XCTAssertFalse(library.exists)
     XCTAssertTrue(try (state()["callIds"] as? [String] ?? []).isEmpty)
     openMenu()
-    app.menuItems["menu-open-library"].click()
+    clickMenuItem("menu-open-library")
     XCTAssertTrue(library.waitForExistence(timeout: 5))
   }
 
   func testRealCoordinatorStartMuteFinishAndBackgroundQuit() throws {
     try launch()
     openMenu()
-    app.menuItems["menu-start-recording"].click()
+    clickMenuItem("menu-start-recording")
     XCTAssertTrue(waitState { $0["phase"] as? String == "recording" })
     XCTAssertTrue(panel.waitForExistence(timeout: 5))
     XCTAssertEqual(try state()["source"] as? String, "Synthetic conversation")
     capture("shell-recording-started", panel)
     openMenu()
-    app.menuItems["menu-microphone"].click()
+    clickMenuItem("menu-microphone")
     XCTAssertTrue(waitState { $0["microphoneEnabled"] as? Bool == false })
     openMenu()
-    app.menuItems["menu-finish-recording"].click()
+    clickMenuItem("menu-finish-recording")
     XCTAssertTrue(
       waitState { $0["canStart"] as? Bool == true && ($0["callIds"] as? [String])?.count == 1 }
     )
     wait(panel, "exists == false")
     XCTAssertFalse(library.exists)
     openMenu()
-    app.menuItems["menu-quit"].click()
+    clickMenuItem("menu-quit")
     XCTAssertTrue(app.wait(for: .notRunning, timeout: 10))
   }
 
@@ -101,12 +104,39 @@ import XCTest
     try launch(scenario: "denied")
     openMenu()
     XCTAssertFalse(app.menuItems["menu-start-recording"].isEnabled)
-    app.menuItems["menu-settings"].click()
+    clickMenuItem("menu-settings")
     XCTAssertTrue(settings.waitForExistence(timeout: 5))
     settings.radioButtons["settings-diagnostics-tab"].click()
     capture("shell-denied-capture-access", settings)
     XCTAssertFalse(panel.exists)
     XCTAssertTrue(try (state()["callIds"] as? [String] ?? []).isEmpty)
+  }
+
+  func testGestureSetupDenialKeepsMenuStartAvailable() throws {
+    try launch(scenario: "gesture")
+    openMenu()
+    clickMenuItem("menu-settings")
+    XCTAssertTrue(settings.waitForExistence(timeout: 5))
+    XCTAssertTrue(settings.buttons["gesture-enable"].exists)
+    capture("shell-gesture-disabled", settings)
+    settings.buttons["gesture-enable"].click()
+    XCTAssertTrue(waitState { $0["gestureState"] as? String == "denied" })
+    XCTAssertTrue(settings.buttons["gesture-open-settings"].exists)
+    XCTAssertTrue(settings.staticTexts["Control–Option–Command–R"].exists)
+    capture("shell-gesture-denied", settings)
+    settings.buttons["gesture-refresh"].click()
+    XCTAssertTrue(waitState { $0["gestureState"] as? String == "denied" })
+    settings.buttons["gesture-disable"].click()
+    XCTAssertTrue(waitState { $0["gestureState"] as? String == "disabled" })
+    settings.buttons["_XCUI:CloseWindow"].click()
+    openMenu()
+    clickMenuItem("menu-start-recording")
+    XCTAssertTrue(waitState { $0["phase"] as? String == "recording" })
+    openMenu()
+    clickMenuItem("menu-finish-recording")
+    XCTAssertTrue(
+      waitState { ($0["callIds"] as? [String])?.count == 1 && $0["canStart"] as? Bool == true }
+    )
   }
 
   private func launch(scenario: String = "empty") throws {
@@ -132,7 +162,10 @@ import XCTest
     XCTAssertEqual(evidence["bundleId"] as? String, "io.github.apshenichniy.trigo.fixture.desktop")
     XCTAssertEqual(evidence["credentialAdapter"] as? String, "memory-fixture")
     XCTAssertEqual(evidence["statusAdapter"] as? String, "in-process-fixture")
-    XCTAssertEqual(evidence["globalShortcut"] as? String, "disabled")
+    XCTAssertEqual(
+      evidence["globalShortcut"] as? String,
+      scenario == "gesture" ? "in-process-fixture" : "disabled"
+    )
     let archive = try XCTUnwrap(evidence["archiveRoot"] as? String)
     XCTAssertTrue(
       URL(fileURLWithPath: archive).resolvingSymlinksInPath().path
@@ -143,8 +176,30 @@ import XCTest
   private func openMenu() {
     let item = app.statusItems["trigo-status-item"]
     XCTAssertTrue(item.waitForExistence(timeout: 5))
-    item.click()
-    XCTAssertTrue(app.menuItems["menu-open-library"].waitForExistence(timeout: 5))
+    item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+    waitForVisibleMenuItem(app.menuItems["menu-open-library"])
+  }
+
+  private func clickMenuItem(_ identifier: String) {
+    let item = app.menuItems[identifier]
+    waitForVisibleMenuItem(item)
+    XCTAssertTrue(item.isEnabled)
+    // A real pointer click avoids XCTest's separate menu traversal/activation,
+    // which can close a status menu while waiting for another open notification.
+    item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+  }
+
+  private func waitForVisibleMenuItem(_ item: XCUIElement) {
+    let predicate = NSPredicate { _, _ in
+      item.exists && !item.frame.isEmpty && item.isHittable
+    }
+    XCTAssertEqual(
+      XCTWaiter.wait(
+        for: [XCTNSPredicateExpectation(predicate: predicate, object: nil)],
+        timeout: 5
+      ),
+      .completed
+    )
   }
 
   private func state() throws -> [String: Any] {

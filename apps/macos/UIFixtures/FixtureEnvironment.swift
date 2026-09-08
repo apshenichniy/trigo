@@ -10,8 +10,31 @@ import ScreenCaptureKit
   let microphone = FixtureCaptureTransport()
   let queue = DispatchQueue(label: "trigo.ui-fixture.audio")
   private var coordinator: RecordingCoordinator?
+  private(set) var shortcut: GlobalRecordingShortcut?
 
   init(configuration: FixtureConfiguration) { self.configuration = configuration }
+
+  func makeShortcut(_ shell: DesktopShell) -> GlobalRecordingShortcut {
+    var preferences = RecordingGesturePreferences()
+    let shortcut = GlobalRecordingShortcut(
+      system: .init(register: { _ in RecordingShortcutLease {} }),
+      gestureSystem: .init(
+        loadPreferences: { preferences },
+        savePreferences: { preferences = $0 },
+        environment: {
+          .init(permission: false, secureInput: false, sessionActive: true, neutral: true)
+        },
+        requestPermission: {},
+        openSettings: {},
+        acquireOwnership: { throw FixtureFailure.forbiddenAdapter },
+        listen: { _ in throw FixtureFailure.forbiddenAdapter },
+        observe: { _ in RecordingShortcutLease {} }
+      ),
+      action: { [weak shell] in shell?.startOrReveal(from: .keyboard) }
+    )
+    self.shortcut = shortcut
+    return shortcut
+  }
 
   func makeServices(_ namespace: AppNamespace) throws -> any DesktopRecordingServices {
     guard namespace.fixtureIdentifier == FixtureConfiguration.bundleID, namespace.variant == nil

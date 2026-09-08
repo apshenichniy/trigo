@@ -14,14 +14,26 @@ import TrigoDesktop
         support: root,
         makeServices: environment.makeServices
       )
+      let makeShortcut: ((DesktopShell) -> GlobalRecordingShortcut)?
+      if configuration.scenario == .gesture {
+        makeShortcut = { shell in environment.makeShortcut(shell) }
+      } else {
+        makeShortcut = nil
+      }
       let delegate = try DesktopAppDelegate(
         fixture: composition,
         loginService: FixtureLoginService(),
-        reader: .empty
+        reader: .empty,
+        makeShortcut: makeShortcut
       )
       let application = NSApplication.shared
       application.delegate = delegate
-      let evidence = FixtureEvidence(root: root, composition: composition, shell: delegate.shell!)
+      let evidence = FixtureEvidence(
+        root: root,
+        composition: composition,
+        shell: delegate.shell!,
+        shortcut: environment.shortcut
+      )
       withExtendedLifetime((delegate, environment, evidence)) { application.run() }
     } catch {
       fputs("Fixture launch rejected: configuration or isolated adapters are invalid.\n", stderr)

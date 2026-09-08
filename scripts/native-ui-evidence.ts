@@ -26,6 +26,12 @@ export const shellTestAttachments: Readonly<Record<string, readonly string[]>> =
     "fixture-final-state.txt",
     "shell-denied-capture-access.png",
   ],
+  testGestureSetupDenialKeepsMenuStartAvailable: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-gesture-disabled.png",
+    "shell-gesture-denied.png",
+  ],
 };
 
 export type UIAttachment = { test: string; file: string; sha256: string; byteLength: number };

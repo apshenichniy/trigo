@@ -35,7 +35,8 @@ Run `bun run test:ui --suite shell` in an unlocked macOS GUI session. It builds
 the dedicated `Trigo UI` scheme and runs the shared production shell, views and
 recording coordinator through XCUITest. `--filter <regular expression>` selects
 named tests and rejects an empty selection. `--suite all` currently includes the
-same core scenarios; reader, measured-panel and gesture tests extend this suite
+same core scenarios, including injected gesture setup denial and the retained
+menu fallback. Reader, measured-panel and further gesture tests extend this suite
 as those components arrive.
 
 The fixture has its own bundle identity, per-test temporary SQLite namespace,
