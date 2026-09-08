@@ -448,5 +448,12 @@
     "document": "invalid-master-range-sized-object.json",
     "references": {},
     "expected": "semantics"
+  },
+  {
+    "name": "valid-master-stream-revision",
+    "kind": "TranscriptRevision",
+    "document": "valid-master-stream-revision.json",
+    "references": {},
+    "expected": null
   }
 ]

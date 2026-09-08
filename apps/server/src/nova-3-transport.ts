@@ -171,7 +171,10 @@ export const submitNova3Stream = Effect.fn("Nova3.submitStream")(function* (
         }
         const status = result.status;
         const requestId = result.headers.get("cf-ai-req-id") ?? "";
-        const captured = yield* captureBoundedBody(result.body, 4_000_000);
+        const captured = yield* captureBoundedBody(
+          result.body,
+          nova3StreamProfile.maxRawResponseBytes,
+        );
         return {
           status,
           requestId,

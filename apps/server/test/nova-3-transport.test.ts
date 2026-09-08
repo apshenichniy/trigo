@@ -3,6 +3,7 @@ import { expect, it } from "@effect/vitest";
 import { Effect, Stream } from "effect";
 import { vi } from "vitest";
 
+import { nova3StreamProfile } from "../../../packages/contracts/src/asr-profile.ts";
 import { submitNova3Stream } from "../src/nova-3-transport.ts";
 
 function audioBody(input: Record<string, unknown>): ReadableStream<Uint8Array> {
@@ -149,7 +150,7 @@ it.effect("distinguishes the local response cap from an unknown provider acknowl
   Effect.gen(function* () {
     const run = vi.fn(async (_model: string, values: Record<string, unknown>) => {
       await new Response(audioBody(values)).arrayBuffer();
-      return new Response(new Uint8Array(4_000_001), {
+      return new Response(new Uint8Array(nova3StreamProfile.maxRawResponseBytes + 1), {
         status: 200,
         headers: { "cf-ai-req-id": "bounded-response" },
       });
@@ -161,7 +162,7 @@ it.effect("distinguishes the local response cap from an unknown provider acknowl
       "en",
       64,
     );
-    expect(result.bytes.byteLength).toBe(4_000_000);
+    expect(result.bytes.byteLength).toBe(nova3StreamProfile.maxRawResponseBytes);
     expect(result.responseBodyComplete).toBe(false);
     expect(result.requestId).toBe("bounded-response");
     expect(result.responseBodyProblem).toContain("only a prefix");

@@ -5,6 +5,7 @@ import { Clock, DateTime, Effect, Schema, Stream } from "effect";
 
 import { AsrProbeLanguage, storedByteHash } from "@trigo/contracts";
 
+import { nova3StreamProfile } from "../../../packages/contracts/src/asr-profile.ts";
 import { AsrExtractionEvidence, extractMasterWave, r2MasterSource } from "./asr-master.ts";
 import { AsrProbeError, type AsrProbeEnvironment } from "./asr-probe.ts";
 import {
@@ -306,7 +307,7 @@ const normalize = Effect.fn("HostedMasterProbe.normalize")(function* (
       const extraction = yield* Schema.decodeUnknownEffect(AsrExtractionEvidence)(
         yield* readJson(env, part.input),
       ).pipe(Effect.mapError(() => failure(409, "Stored extraction evidence is invalid")));
-      const rawBytes = yield* readBoundedBody(raw.body, 4_000_000);
+      const rawBytes = yield* readBoundedBody(raw.body, nova3StreamProfile.maxRawResponseBytes);
       const rawHash = yield* Effect.promise(() => storedByteHash(rawBytes));
       if (rawHash !== raw.customMetadata.sha256) {
         return yield* failure(409, "Raw evidence hash does not match the retained receipt");

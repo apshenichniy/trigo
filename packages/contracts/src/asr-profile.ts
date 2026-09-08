@@ -19,4 +19,10 @@ export const nova3StreamProfile = {
   punctuate: true,
   smart_format: true,
   speakerScope: "submission-channel",
+  /** Hosted on 2026-09-08: a 2h interval succeeds; a single 3h input is not complete. */
+  maxSubmissionDurationMs: 7_200_000,
+  maxSubmissionByteLength: 460_800_044,
+  verifiedLanguages: ["en", "ru"],
+  /** Local retention bound, not a claimed provider limit; incomplete prefixes never normalize. */
+  maxRawResponseBytes: 8_000_000,
 } as const;
