@@ -30,6 +30,10 @@ execution. The final full server run includes both regressions. Runtime diagnost
 from explicitly disconnected streams and Workflow restart are retained in the
 test output; the associated fault tests pass.
 
+The first native contract run exposed a missing test-dispatch registration for the
+three new generated Swift document types. All three now participate in typed
+decoding/encoding and the shared structural rejection corpus.
+
 ## Hosted evidence boundary
 
 The existing Dev status endpoint was read successfully with its current operator
