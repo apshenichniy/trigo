@@ -1,0 +1,471 @@
+{
+  "schemaVersion": 1,
+  "observedDate": "2026-09-08",
+  "hostedSource": "860f491af6959b31acce3c21a90cc2e1d866148e",
+  "legacyMasterProbeSource": "dab8f86296f447ee10175dcb44c5b37bf2273766",
+  "model": "@cf/deepgram/nova-3",
+  "profileId": "nova3-wav-s16le-16000-stereo-stream-v1",
+  "selectedMaxIntervalMs": 7200000,
+  "rangeReadMaxBytes": 2097152,
+  "hostedRawResponseLimitBytes": 4000000,
+  "finalLocalRawResponseLimitBytes": 8000000,
+  "fixtures": [
+    {
+      "acceptance": {
+        "schemaVersion": 1,
+        "fixture": "20260908-master-en-1",
+        "language": "en",
+        "masterSha256": "0a39a0734ce21ec41ffe7c9aec772ccaa8b737fbdfac53d02b06f1105a49ada4",
+        "masterBytes": 7680068,
+        "durationMs": 120000,
+        "allConsumerEOFVerified": false,
+        "sourceEvents": 18,
+        "words": 174,
+        "wordsOutside500MsSpeechWindows": 0,
+        "maximumEventStartErrorMs": 150,
+        "maximumEventEndErrorMs": 339.375,
+        "normalizedSpeakers": 6,
+        "normalizedScopes": 4,
+        "submissions": [
+          {
+            "submissionId": "ee657762-8e08-4974-8f26-ebd6e0897655",
+            "startMs": 0,
+            "endMs": 60000,
+            "rawSha256": "7d6d7db04aef41a21b4087189613f5ada70e2e3e1babe535bf4ac105c43e6bcc",
+            "rawBytes": 18154,
+            "neurons": 472.73,
+            "deliveryWitness": "legacy-producer-hash-v1",
+            "channels": [
+              {
+                "channel": 0,
+                "words": 27,
+                "labels": ["0"],
+                "lastWordEndMs": 45105
+              },
+              {
+                "channel": 1,
+                "words": 60,
+                "labels": ["0", "1"],
+                "lastWordEndMs": 56205
+              }
+            ]
+          },
+          {
+            "submissionId": "836a144b-d793-4da2-b27e-6687a8b50b71",
+            "startMs": 60000,
+            "endMs": 120000,
+            "rawSha256": "2a889acbc57a69743b181a59d205d224f734def7b62c5ed0615de44ab1119ca0",
+            "rawBytes": 18155,
+            "neurons": 472.73,
+            "deliveryWitness": "legacy-producer-hash-v1",
+            "channels": [
+              {
+                "channel": 0,
+                "words": 27,
+                "labels": ["0"],
+                "lastWordEndMs": 105105
+              },
+              {
+                "channel": 1,
+                "words": 60,
+                "labels": ["0", "1"],
+                "lastWordEndMs": 116315
+              }
+            ]
+          }
+        ]
+      },
+      "normalized": {
+        "bytes": 17667,
+        "sha256": "807ff044a906a03c517b1c2de655064ac7b95e03a5297b63bb28b8a614d32bbd",
+        "clientLatencyMs": 1526,
+        "counts": {
+          "turns": 14,
+          "speakers": 6,
+          "scopes": 4
+        }
+      },
+      "submissions": [
+        {
+          "index": 0,
+          "providerRequestId": "6aaf508b-3fe2-465e-ad85-9e8acab95f8c",
+          "httpStatus": 200,
+          "inputBytes": 3840044,
+          "inputSHA256": "14e35b7df576e2f8d07660925c801fe1e72000c2590cc3ac28c4b925c11f3ab2",
+          "extractionMs": 1899,
+          "providerMs": 2636,
+          "clientLatencyMs": 5816,
+          "rawArtifactKey": "acceptance/issue-13/hosted-masters/20260908-master-en-1/submissions/0/raw.json"
+        },
+        {
+          "index": 1,
+          "providerRequestId": "4bb27011-f147-49cd-bf55-ad9edf498728",
+          "httpStatus": 200,
+          "inputBytes": 3840044,
+          "inputSHA256": "caf4329c22b6c4ebaa415f58cb62f034edf384eae06b4e2397f5841e014631a5",
+          "extractionMs": 2004,
+          "providerMs": 1836,
+          "clientLatencyMs": 4995,
+          "rawArtifactKey": "acceptance/issue-13/hosted-masters/20260908-master-en-1/submissions/1/raw.json"
+        }
+      ]
+    },
+    {
+      "acceptance": {
+        "schemaVersion": 1,
+        "fixture": "20260908-master-ru-1",
+        "language": "ru",
+        "masterSha256": "26db845661117894887ec61e3b407d22e1917107bab07bd971e97b227087f8b1",
+        "masterBytes": 3840068,
+        "durationMs": 60000,
+        "allConsumerEOFVerified": false,
+        "sourceEvents": 9,
+        "words": 72,
+        "wordsOutside500MsSpeechWindows": 9,
+        "maximumEventStartErrorMs": 1000,
+        "maximumEventEndErrorMs": 1013.5625,
+        "normalizedSpeakers": 2,
+        "normalizedScopes": 2,
+        "submissions": [
+          {
+            "submissionId": "fe40a9f9-29a8-4ca8-9fe2-39a4449f874e",
+            "startMs": 0,
+            "endMs": 60000,
+            "rawSha256": "589165be73b96ca86a0567fda8479a9c3d2c80fec10c1e8cbab9c33a3b9626ed",
+            "rawBytes": 19970,
+            "neurons": 472.73,
+            "deliveryWitness": "legacy-producer-hash-v1",
+            "channels": [
+              {
+                "channel": 0,
+                "words": 24,
+                "labels": ["0"],
+                "lastWordEndMs": 45565
+              },
+              {
+                "channel": 1,
+                "words": 48,
+                "labels": ["0"],
+                "lastWordEndMs": 57005
+              }
+            ]
+          }
+        ]
+      },
+      "normalized": {
+        "bytes": 7937,
+        "sha256": "ec5ec25a586b3c9ca734d691e86d439d388f550389189651c8391c5acc785814",
+        "clientLatencyMs": 1199,
+        "counts": {
+          "turns": 2,
+          "speakers": 2,
+          "scopes": 2
+        }
+      },
+      "submissions": [
+        {
+          "index": 0,
+          "providerRequestId": "b9e22df1-c989-4fc8-8831-d78ab64481e3",
+          "httpStatus": 200,
+          "inputBytes": 3840044,
+          "inputSHA256": "9db7d3f9e6494d52b33ced25d0b20142cf37ca85cdf44132472ca6b13570678c",
+          "extractionMs": 2422,
+          "providerMs": 2263,
+          "clientLatencyMs": 5966,
+          "rawArtifactKey": "acceptance/issue-13/hosted-masters/20260908-master-ru-1/submissions/0/raw.json"
+        }
+      ]
+    },
+    {
+      "acceptance": {
+        "schemaVersion": 1,
+        "fixture": "20260908-master-silence-1",
+        "language": "en",
+        "masterSha256": "14f4c7206ba95c23a01459c30146b24706ebd114efcac7236c1193cff0efc1a6",
+        "masterBytes": 3840068,
+        "durationMs": 60000,
+        "allConsumerEOFVerified": false,
+        "sourceEvents": 0,
+        "words": 0,
+        "wordsOutside500MsSpeechWindows": 0,
+        "maximumEventStartErrorMs": 0,
+        "maximumEventEndErrorMs": 0,
+        "normalizedSpeakers": 0,
+        "normalizedScopes": 0,
+        "submissions": [
+          {
+            "submissionId": "2f4da15a-e2df-4129-b1ac-e10661ec5b68",
+            "startMs": 0,
+            "endMs": 60000,
+            "rawSha256": "75c8de3238074245d1075364d7d83fec830b31cac0c173cda489df4c9250be1c",
+            "rawBytes": 427,
+            "neurons": 472.73,
+            "deliveryWitness": "legacy-producer-hash-v1",
+            "channels": [
+              {
+                "channel": 0,
+                "words": 0,
+                "labels": [],
+                "lastWordEndMs": null
+              },
+              {
+                "channel": 1,
+                "words": 0,
+                "labels": [],
+                "lastWordEndMs": null
+              }
+            ]
+          }
+        ]
+      },
+      "normalized": {
+        "bytes": 723,
+        "sha256": "a6bbedb58e57040ddfff5845a5c10a12ee98a471bda3a0e9a57506e0b674a344",
+        "clientLatencyMs": 1209,
+        "counts": {
+          "turns": 0,
+          "speakers": 0,
+          "scopes": 0
+        }
+      },
+      "submissions": [
+        {
+          "index": 0,
+          "providerRequestId": "69dfeb12-3597-4484-bb6d-8b00c306b480",
+          "httpStatus": 200,
+          "inputBytes": 3840044,
+          "inputSHA256": "03fb86c86f3f88471f3eb0bfa2be021a349d632ab224119c00b7e6aff6f617bc",
+          "extractionMs": 1892,
+          "providerMs": 1374,
+          "clientLatencyMs": 4431,
+          "rawArtifactKey": "acceptance/issue-13/hosted-masters/20260908-master-silence-1/submissions/0/raw.json"
+        }
+      ]
+    },
+    {
+      "acceptance": {
+        "schemaVersion": 1,
+        "fixture": "20260908-master-1h-full-1",
+        "language": "en",
+        "masterSha256": "6388434597ce5a0dca31e91646f70be28c74d867b692f95b8c4c5fedcb4727f3",
+        "masterBytes": 230400068,
+        "durationMs": 3600000,
+        "allConsumerEOFVerified": true,
+        "sourceEvents": 540,
+        "words": 5220,
+        "wordsOutside500MsSpeechWindows": 0,
+        "maximumEventStartErrorMs": 150,
+        "maximumEventEndErrorMs": 338.5,
+        "normalizedSpeakers": 3,
+        "normalizedScopes": 2,
+        "submissions": [
+          {
+            "submissionId": "4ebb5871-b444-412f-a02a-3aa3ae403896",
+            "startMs": 0,
+            "endMs": 3600000,
+            "rawSha256": "e7e2a17eeb816265a27a6d92af0a1fdd013a39025cac81fbbd88cb403d4df64f",
+            "rawBytes": 1087330,
+            "neurons": 28363.8,
+            "deliveryWitness": "consumer-eof-v1",
+            "channels": [
+              {
+                "channel": 0,
+                "words": 1620,
+                "labels": ["0"],
+                "lastWordEndMs": 3585140
+              },
+              {
+                "channel": 1,
+                "words": 3600,
+                "labels": ["0", "1"],
+                "lastWordEndMs": 3596315
+              }
+            ]
+          }
+        ]
+      },
+      "normalized": {
+        "bytes": 480875,
+        "sha256": "38fbd24899ec05815bca5da37e01ddccc0b6f26271d93e1bedc417704b5e0627",
+        "clientLatencyMs": 1998,
+        "counts": {
+          "turns": 361,
+          "speakers": 3,
+          "scopes": 2
+        }
+      },
+      "submissions": [
+        {
+          "index": 0,
+          "providerRequestId": "996f43b7-cf10-45a0-9f25-ef3a09d0af73",
+          "httpStatus": 200,
+          "inputBytes": 230400044,
+          "inputSHA256": "d8756fbbbc89662bc5e7e4fca1d3af32fb81f07ed641ddad326f72fd187df289",
+          "extractionMs": 26671,
+          "providerMs": 39786,
+          "clientLatencyMs": 67880,
+          "rawArtifactKey": "acceptance/issue-13/hosted-masters/20260908-master-1h-full-1/submissions/0/raw.json"
+        }
+      ],
+      "normalization": {
+        "normalizationMs": 308,
+        "rawTotalBytes": 1087330
+      }
+    },
+    {
+      "acceptance": {
+        "schemaVersion": 1,
+        "fixture": "20260908-master-3h-split-1",
+        "language": "en",
+        "masterSha256": "4bcd43883c0465a39d0a57dad1171b261021dddab44453fea287275bb550865a",
+        "masterBytes": 691200068,
+        "durationMs": 10800000,
+        "allConsumerEOFVerified": true,
+        "sourceEvents": 1620,
+        "words": 15660,
+        "wordsOutside500MsSpeechWindows": 0,
+        "maximumEventStartErrorMs": 150,
+        "maximumEventEndErrorMs": 338.5,
+        "normalizedSpeakers": 6,
+        "normalizedScopes": 4,
+        "submissions": [
+          {
+            "submissionId": "438e5ab5-e7f6-4c41-8ea4-6eafae963a92",
+            "startMs": 0,
+            "endMs": 7200000,
+            "rawSha256": "d0638d7128e26745a5461aad14eb81b146b0fb75af05b3b25a778c0379f7d0a0",
+            "rawBytes": 2180485,
+            "neurons": 56727.6,
+            "deliveryWitness": "consumer-eof-v1",
+            "channels": [
+              {
+                "channel": 0,
+                "words": 3240,
+                "labels": ["0"],
+                "lastWordEndMs": 7185140
+              },
+              {
+                "channel": 1,
+                "words": 7200,
+                "labels": ["0", "1"],
+                "lastWordEndMs": 7196205
+              }
+            ]
+          },
+          {
+            "submissionId": "47f78061-4451-4097-995c-1de2102408b4",
+            "startMs": 7200000,
+            "endMs": 10800000,
+            "rawSha256": "fda5d61dbfc537bc6a7034000a91d74e722c76bd2c28fbdf88c943794b56c244",
+            "rawBytes": 1087238,
+            "neurons": 28363.8,
+            "deliveryWitness": "consumer-eof-v1",
+            "channels": [
+              {
+                "channel": 0,
+                "words": 1620,
+                "labels": ["0"],
+                "lastWordEndMs": 10785140
+              },
+              {
+                "channel": 1,
+                "words": 3600,
+                "labels": ["0", "1"],
+                "lastWordEndMs": 10796315
+              }
+            ]
+          }
+        ]
+      },
+      "normalized": {
+        "bytes": 1449954,
+        "sha256": "836436b76dfcf8a44754b9f002144f666f9bf3e51fab51c6e3c930b7d6a29036",
+        "clientLatencyMs": 2208,
+        "counts": {
+          "turns": 1082,
+          "speakers": 6,
+          "scopes": 4
+        }
+      },
+      "submissions": [
+        {
+          "index": 0,
+          "providerRequestId": "8070adbc-62fb-4b95-a5d3-47908c7f3505",
+          "httpStatus": 200,
+          "inputBytes": 460800044,
+          "inputSHA256": "d12a227d88d6dc4587e9cb1af5a6ed44039fd5c6cbab3838c995a65192827bb3",
+          "extractionMs": 53795,
+          "providerMs": 104762,
+          "clientLatencyMs": 160350,
+          "rawArtifactKey": "acceptance/issue-13/hosted-masters/20260908-master-3h-split-1/submissions/0/raw.json"
+        },
+        {
+          "index": 1,
+          "providerRequestId": "8f6910a8-365d-4148-a954-f28b28fdb520",
+          "httpStatus": 200,
+          "inputBytes": 230400044,
+          "inputSHA256": "65ee9276b20cdc06bfb806ba271f0c20ae2b5bd9a325c9501170df3f4d7a2c87",
+          "extractionMs": 26615,
+          "providerMs": 37607,
+          "clientLatencyMs": 65716,
+          "rawArtifactKey": "acceptance/issue-13/hosted-masters/20260908-master-3h-split-1/submissions/1/raw.json"
+        }
+      ],
+      "normalization": {
+        "normalizationMs": 312,
+        "rawTotalBytes": 3267723
+      }
+    }
+  ],
+  "ukrainian": [
+    {
+      "fixture": "20260908-master-uk-1",
+      "status": 400,
+      "requestId": "edc02dd9-2164-4ca8-ad78-03aba3efd418",
+      "description": "Failed to handle request.",
+      "inputBytes": 3840044,
+      "inputSHA256": "614acec873b43e19d0ef4aee539c6c3448d36b8e5b10a6d8519832e16c3d7890",
+      "rawBytes": 241,
+      "rawSHA256": "122ae0b2e19cee0e0fed2a7d2eb9ea8e58441bccd0b55a9f52c27d7145835d04",
+      "returnedUsage": null
+    },
+    {
+      "fixture": "20260908-master-uk-repeat-1",
+      "status": 400,
+      "requestId": "f9b8e222-aec7-42c2-af33-da3c3de51101",
+      "description": "Bad Request: No such model/language/tier combination found.",
+      "inputBytes": 3840044,
+      "inputSHA256": "614acec873b43e19d0ef4aee539c6c3448d36b8e5b10a6d8519832e16c3d7890",
+      "rawBytes": 309,
+      "rawSHA256": "3e45d5c59d9d7fec9cbe61bcadd4b8d2ceab7ccd15de4b32f0f1728dc58af190",
+      "returnedUsage": null
+    }
+  ],
+  "rejectedFullThreeHour": {
+    "fixture": "20260908-master-3h-full-1",
+    "expectedInputBytes": 691200044,
+    "inputSHA256": "9793411729f481c4a6e6ce37323f8d1a4584e8f4b68e80c1be4f9bf11913731d",
+    "received": {
+      "index": 0,
+      "state": "retained",
+      "rawKey": "acceptance/issue-13/hosted-masters/20260908-master-3h-full-1/submissions/0/raw.json",
+      "httpStatus": "200",
+      "providerRequestId": "7968bef5-04c4-47dd-a935-3e41b61ad56f",
+      "sha256": "150207c844c008fb89d3eedb0ebbd40a250eb4b6b30111e3ba3fc40e23170c92",
+      "byteLength": "2570471",
+      "extractionMs": "97885",
+      "providerMs": "99399",
+      "fullyConsumed": "false",
+      "deliveryWitness": "consumer-eof-v1",
+      "deliveredByteLength": "536870956",
+      "responseBodyComplete": "true",
+      "responseBodyProblem": ""
+    },
+    "returnedNeurons": 66090.42,
+    "normalizationHTTPStatus": 409,
+    "finalCharlieMarkers": 0,
+    "lastWordEndSeconds": [8385.167, 8389.647]
+  },
+  "cloudflareConservativeLedgerEUR": 9.7,
+  "billingQualification": "Conservative safety accounting; returned neurons are observed usage, invoice charges not read. Separate owner-authorized research is recorded in later issue ledger comments."
+}
