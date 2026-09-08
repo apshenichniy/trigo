@@ -5,8 +5,8 @@ import { expect, it } from "vitest";
 
 import corpus from "../fixtures/structure-cases.json";
 import emitted from "../schema/v1.schema.json";
-import { documentSchemas } from "../src/document-schema.ts";
 import { validateStructure } from "../src/index.ts";
+import { documentSchemas } from "../src/schema-registry.ts";
 
 const kind = Schema.decodeUnknownSync(Schema.Literals(Struct.keys(documentSchemas)));
 const ajv = new Ajv2020({ strict: true, allErrors: true });

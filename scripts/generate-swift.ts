@@ -19,6 +19,7 @@ const supported = new Set([
   "minimum",
   "maximum",
   "minLength",
+  "maxLength",
   "minItems",
   "maxItems",
   "items",

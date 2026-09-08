@@ -246,18 +246,3 @@ export const LocalDevelopmentBridge = Schema.Struct({
   ownerToken: Schema.String.check(Schema.isPattern(/^trigo_v1_[0-9a-f]{64}$/)),
 }).annotate({ identifier: "LocalDevelopmentBridge" });
 export interface LocalDevelopmentBridge extends Schema.Schema.Type<typeof LocalDevelopmentBridge> {}
-
-export const documentSchemas = {
-  LocalDevelopmentBridge,
-  CaptureMasterProfile,
-  CallDocument,
-  TranscriptRevision,
-  AudioManifest,
-  StatusResponse,
-  CommandIdentity,
-  ErrorEnvelope,
-};
-export type Documents = {
-  [K in keyof typeof documentSchemas]: Schema.Schema.Type<(typeof documentSchemas)[K]>;
-};
-export type DocumentKind = keyof Documents;
