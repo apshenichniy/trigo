@@ -156,7 +156,7 @@ async function status() {
     response.status !== 200 ||
     value.archiveId !== configuration.namespaceId ||
     value.stage !== "dev" ||
-    value.readiness.callOperations !== "unavailable"
+    value.readiness.callOperations !== "ready"
   ) {
     throw new Error("Local product status differs");
   }

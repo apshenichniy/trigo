@@ -12,18 +12,22 @@
     {
       "method": "POST",
       "path": "/v1/calls",
-      "documentSchema": "v1.schema.json#/$defs/CallDocument",
+      "documentSchema": "v1.schema.json#/$defs/RegisterMasterUpload",
+      "receiptSchema": "v1.schema.json#/$defs/MasterUploadSession",
       "ownerIssue": 17
     },
     {
       "method": "PUT",
       "path": "/v1/calls/{callId}/uploads/{uploadId}/chunks/{index}",
+      "descriptorSchema": "v1.schema.json#/$defs/UploadPartDescriptor",
+      "receiptSchema": "v1.schema.json#/$defs/UploadPartReceipt",
       "ownerIssue": 17
     },
     {
       "method": "POST",
       "path": "/v1/calls/{callId}/finalize",
-      "documentSchema": "v1.schema.json#/$defs/AudioManifest",
+      "documentSchema": "v1.schema.json#/$defs/FinalizeMasterUpload",
+      "receiptSchema": "v1.schema.json#/$defs/VerifiedMasterReceipt",
       "ownerIssue": 17
     },
     { "method": "POST", "path": "/v1/calls/{callId}/transcriptions", "ownerIssue": 18 },

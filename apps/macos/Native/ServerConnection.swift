@@ -302,6 +302,51 @@ public actor ServerConnection {
 
   public func snapshot() -> ConnectionSnapshot { current }
 
+  /// Internal transport authority. UI clients never receive the token or credential account.
+  func masterUploadAuthorization(archiveID: String) async throws -> MasterUploadAuthorization {
+    guard current.serverOperationsAvailable, let committed = metadata.committed,
+      committed.archiveId == archiveID, current.binding == committed.binding,
+      transportPolicy.canonicalURL(committed.serverURL.absoluteString) == committed.serverURL
+    else { throw MasterUploadError.remoteBlocked }
+    let token: String
+    do {
+      guard let stored = try await credentialStore.load(account: committed.credentialAccount) else {
+        throw ConnectionIssue.credentialMissing
+      }
+      token = stored
+    } catch {
+      let issue: ConnectionIssue
+      if let connectionIssue = error as? ConnectionIssue {
+        issue = connectionIssue
+      } else {
+        issue = .credentialAccess(credentialAccessFailure(error))
+      }
+      if metadata.committed?.credentialAccount == committed.credentialAccount,
+        current.binding == committed.binding
+      {
+        current = .init(binding: committed.binding, health: .blocked(issue), lastAttemptIssue: nil)
+      }
+      throw MasterUploadError.remoteBlocked
+    }
+    // Credentials may suspend. A settings change in that interval invalidates this authority.
+    guard current.serverOperationsAvailable,
+      metadata.committed?.credentialAccount == committed.credentialAccount,
+      current.binding == committed.binding
+    else { throw MasterUploadError.remoteBlocked }
+    return .init(
+      binding: committed.binding,
+      credentialAccount: committed.credentialAccount,
+      token: token
+    )
+  }
+
+  func reportMasterUploadIssue(_ issue: ConnectionIssue, authority: MasterUploadAuthorization) {
+    guard metadata.committed?.credentialAccount == authority.credentialAccount,
+      current.binding == authority.binding
+    else { return }
+    current = .init(binding: authority.binding, health: .blocked(issue), lastAttemptIssue: nil)
+  }
+
   public func restore(
     onBindingRestored: @Sendable (ConnectionSnapshot) async -> Void = { _ in }
   ) async -> ConnectionSnapshot {

@@ -301,10 +301,52 @@ struct LocalServerAcceptanceTests {
       Issue.record("Local status did not authenticate")
       return
     }
-    #expect(status.readiness.callOperations == .unavailable)
+    #expect(status.readiness.callOperations == .ready)
     let restored = await connection().restore()
     #expect(restored.binding == paired.binding)
     #expect(restored.health == paired.health)
+    let capture = try repositorySession(namespace.archive, archiveID: config.namespaceId)
+    try await capture.prepare()
+    let repository = try LocalRepository(root: namespace.archive, archiveID: config.namespaceId)
+    let writer = try RecoverableMediaMaster(
+      directory: capture.mediaDirectory,
+      identity: capture.mediaMasterIdentity
+    )
+    try repository.commitMediaProgress(appendRepositorySecond(writer))
+    let master = try writer.finish()
+    _ = try await repository.completeCapture(capture, master: master, reason: "process_terminated")
+    let fault = MasterUploadFault(.beforeReceiptCommit)
+    let uploads = MasterUploadCoordinator(
+      repository: repository,
+      transport: HTTPMasterUploadTransport(connection: first, archiveID: config.namespaceId),
+      interruption: fault.callAsFunction
+    )
+    #expect(try await uploads.runPass().failures.count == 1)
+    #expect(try repository.verifiedMasterReceipt(callID: capture.callID) == nil)
+    #expect(
+      FileManager.default.fileExists(
+        atPath: capture.mediaDirectory.appendingPathComponent("master.caf").path
+      )
+    )
+    let resumedConnection = connection()
+    _ = await resumedConnection.restore()
+    let resumed = MasterUploadCoordinator(
+      repository: try LocalRepository(root: namespace.archive, archiveID: config.namespaceId),
+      transport: HTTPMasterUploadTransport(
+        connection: resumedConnection,
+        archiveID: config.namespaceId
+      )
+    )
+    #expect(try await resumed.runPass().storedCallIDs == [capture.callID])
+    #expect(
+      try repository.verifiedMasterReceipt(callID: capture.callID)?.value.masterSHA256
+        == master.sha256
+    )
+    #expect(
+      !FileManager.default.fileExists(
+        atPath: capture.mediaDirectory.appendingPathComponent("master.caf").path
+      )
+    )
     let rejected = await first.connect(serverURL: config.serverURL.absoluteString, token: "invalid")
     #expect(rejected.binding == paired.binding)
     #expect(rejected.lastAttemptIssue == .unauthorized)
@@ -320,7 +362,7 @@ struct LocalServerAcceptanceTests {
       try await FileConnectionMetadataStore(url: namespace.connection).load()
     }
     print(
-      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + first pairing + unauthorized + unavailable operations + file restore + isolated namespace passed"
+      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + authenticated upload/finalization + lost local receipt commit + replay + verified cleanup + isolated namespace passed"
     )
   }
 }

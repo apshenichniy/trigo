@@ -26,7 +26,7 @@ function token(): OwnerTokenType {
 
 function cloudBindings(): CloudEnvironmentProbe {
   return {
-    ARCHIVE: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
+    ARCHIVE: { get: vi.fn(), put: vi.fn(), head: vi.fn(), delete: vi.fn() },
     CATALOG: env.CATALOG,
     ARCHIVE_WORKFLOW: { create: vi.fn() },
     AI: { run: vi.fn() },
@@ -253,7 +253,7 @@ it.effect("authenticates status with the current owner token and returns the sha
         archive: "ready",
         ownerAuthentication: "ready",
         transcription: "not_verified",
-        callOperations: "unavailable",
+        callOperations: "ready",
       },
       errors: [
         {
@@ -261,11 +261,6 @@ it.effect("authenticates status with the current owner token and returns the sha
           retry: "after_correction",
           message:
             "Nova-3 readiness has not been verified; complete issue #13 before transcription.",
-        },
-        {
-          code: "call_operations_unavailable",
-          retry: "after_correction",
-          message: "Call operations are unavailable until issue #17.",
         },
       ],
     });
@@ -371,15 +366,21 @@ it.effect("rejects rotated and revoked tokens without caching authorization resu
     expect((yield* status(replacementToken)).status).toBe(200);
 
     const unauthenticatedOperation = yield* fetchWorker(
-      new Request("https://trigo.invalid/v1/calls", { method: "POST" }),
+      new Request(
+        "https://trigo.invalid/v1/calls/00000000-0000-4000-8000-000000000017/transcriptions",
+        { method: "POST" },
+      ),
       bindings,
     );
     expect(unauthenticatedOperation.status).toBe(401);
     const unavailableOperation = yield* fetchWorker(
-      new Request("https://trigo.invalid/v1/calls", {
-        method: "POST",
-        headers: { authorization: `Bearer ${replacementToken}` },
-      }),
+      new Request(
+        "https://trigo.invalid/v1/calls/00000000-0000-4000-8000-000000000017/transcriptions",
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${replacementToken}` },
+        },
+      ),
       bindings,
     );
     expect(unavailableOperation.status).toBe(501);

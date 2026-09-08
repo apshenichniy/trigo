@@ -1,13 +1,53 @@
+import { Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 
-import { ErrorEnvelopeSchema, StatusResponse } from "@trigo/contracts";
+import {
+  ErrorEnvelopeSchema,
+  ExchangeUUID,
+  FinalizeMasterUpload,
+  MasterUploadSession,
+  RegisterMasterUpload,
+  SHA256,
+  StatusResponse,
+  UploadPartReceipt,
+  VerifiedMasterReceipt,
+} from "@trigo/contracts";
 
-/** The supported product surface; upload/transcription/sync remain unavailable. */
+const uploadErrors = [400, 401, 404, 409, 410, 413, 503].map((httpApiStatus) =>
+  ErrorEnvelopeSchema.annotate({ httpApiStatus }),
+);
+
+/** Shared authenticated product handlers; transcription and sync remain separate tasks. */
 export const ProductApi = HttpApi.make("trigo").add(
   HttpApiGroup.make("owner").add(
     HttpApiEndpoint.get("status", "/v1/status", {
       success: StatusResponse,
       error: [401, 503].map((httpApiStatus) => ErrorEnvelopeSchema.annotate({ httpApiStatus })),
+    }),
+  ),
+  HttpApiGroup.make("uploads").add(
+    HttpApiEndpoint.post("registerMaster", "/v1/calls", {
+      payload: RegisterMasterUpload,
+      success: MasterUploadSession,
+      error: uploadErrors,
+    }),
+    HttpApiEndpoint.put("uploadPart", "/v1/calls/:callId/uploads/:uploadId/chunks/:index", {
+      params: { callId: ExchangeUUID, uploadId: ExchangeUUID, index: Schema.Int },
+      headers: {
+        "content-length": Schema.String.check(Schema.isPattern(/^[0-9]+$/)),
+        "content-type": Schema.Literal("application/octet-stream"),
+        "x-trigo-byte-offset": Schema.String.check(Schema.isPattern(/^[0-9]+$/)),
+        "x-trigo-content-sha256": SHA256,
+      },
+      // The handler admits and streams this binary body; it never uses JSON body decoding.
+      success: UploadPartReceipt,
+      error: uploadErrors,
+    }),
+    HttpApiEndpoint.post("finalizeMaster", "/v1/calls/:callId/finalize", {
+      params: { callId: ExchangeUUID },
+      payload: FinalizeMasterUpload,
+      success: VerifiedMasterReceipt,
+      error: uploadErrors,
     }),
   ),
 );

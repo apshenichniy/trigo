@@ -153,6 +153,14 @@ final class SQLiteDatabase: @unchecked Sendable {
           try execute("PRAGMA application_id=\(Self.applicationID)")
           try execute("PRAGMA user_version=\(repositorySchemaVersion)")
         }
+      } else if try scalarInt("PRAGMA user_version") == 2 {
+        // Identity, exact old schema and integrity were validated read-only before admission.
+        // Add upload metadata atomically; every existing document and media row is retained.
+        try transaction {
+          for statement in repositoryUploadSchema { try execute(statement) }
+          try execute("PRAGMA user_version=\(repositorySchemaVersion)")
+        }
+        try validateExistingStore()
       }
     } catch {
       sqlite3_close(handle)
@@ -164,8 +172,9 @@ final class SQLiteDatabase: @unchecked Sendable {
   deinit { sqlite3_close(handle) }
 
   private func validateExistingStore() throws {
+    let version = try scalarInt("PRAGMA user_version")
     guard try scalarInt("PRAGMA application_id") == Self.applicationID,
-      try scalarInt("PRAGMA user_version") == repositorySchemaVersion,
+      version == 2 || version == repositorySchemaVersion,
       try scalarString("PRAGMA journal_mode") == "delete"
     else {
       throw LocalPersistenceError.unsupportedStore("Unsupported SQLite identity, schema or journal")
@@ -186,7 +195,8 @@ final class SQLiteDatabase: @unchecked Sendable {
       .map {
         normalized(try $0.string(0))
       }
-    guard Set(actual) == Set(repositorySchema.map(normalized)) else {
+    let expectedSchema = version == 2 ? repositorySchemaV2 : repositorySchema
+    guard Set(actual) == Set(expectedSchema.map(normalized)) else {
       throw LocalPersistenceError.unsupportedStore(
         "SQLite schema does not match its declared version"
       )

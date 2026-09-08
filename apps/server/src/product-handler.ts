@@ -5,11 +5,12 @@ import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { type StatusResponse } from "@trigo/contracts";
 
 import { errorResponse, httpErrorBoundary, ownerErrorResponses } from "./http-errors.ts";
+import { masterUploadsLayer, type MasterUploadEnvironment } from "./master-uploads.ts";
 import { authenticateOwner, type OwnerContext } from "./owner-state.ts";
 import { ProductApi } from "./product-api.ts";
+import { isImplementedProductRoute, uploadHandlers } from "./upload-handler.ts";
 
-export interface ProductEnvironment {
-  readonly CATALOG: Pick<D1Database, "prepare">;
+export interface ProductEnvironment extends MasterUploadEnvironment {
   readonly DEPLOYMENT_STAGE: "dev" | "personal";
 }
 export function ownerStatus(context: OwnerContext, stage: "dev" | "personal"): StatusResponse {
@@ -22,18 +23,13 @@ export function ownerStatus(context: OwnerContext, stage: "dev" | "personal"): S
       archive: "ready",
       ownerAuthentication: "ready",
       transcription: "not_verified",
-      callOperations: "unavailable",
+      callOperations: "ready",
     },
     errors: [
       {
         code: "asr_not_verified",
         retry: "after_correction",
         message: "Nova-3 readiness has not been verified; complete issue #13 before transcription.",
-      },
-      {
-        code: "call_operations_unavailable",
-        retry: "after_correction",
-        message: "Call operations are unavailable until issue #17.",
       },
     ],
   };
@@ -45,7 +41,7 @@ const productResponse = Effect.fn("ProductApi.respond")(function* (
 ) {
   // Keep the exact bearer grammar and authentication-before-disclosure for unavailable routes.
   const owner = yield* authenticateOwner(env.CATALOG, request);
-  if (request.method !== "GET" || new URL(request.url).pathname !== "/v1/status") {
+  if (!isImplementedProductRoute(request)) {
     return errorResponse(
       501,
       "operation_unavailable",
@@ -57,7 +53,10 @@ const productResponse = Effect.fn("ProductApi.respond")(function* (
     group.handle("status", () => Effect.succeed(ownerStatus(owner, env.DEPLOYMENT_STAGE))),
   );
   const routes = HttpApiBuilder.layer(ProductApi).pipe(
-    Layer.provide(handlers),
+    Layer.provide([
+      handlers,
+      uploadHandlers(request).pipe(Layer.provide(masterUploadsLayer(env, owner))),
+    ]),
     Layer.provide(httpErrorBoundary),
     Layer.provide(HttpServer.layerServices),
   );

@@ -274,12 +274,37 @@ public final class RecoverableMediaMaster {
   /// Only the verified durable prefix is readable, including the forever-immutable header.
   /// Requests remain bounded independently of checkpoints and ASR intervals.
   public func readStableBytes(in range: Range<Int64>) throws -> Data {
+    try Self.readStableBytes(directory: directory, confirmed: cursor, in: range)
+  }
+
+  /// Read-only transport access uses an issued repository cursor, never reopening/truncating the writer.
+  public static func readStableBytes(
+    directory: URL,
+    confirmed cursor: MediaMasterCursor,
+    in range: Range<Int64>
+  ) throws -> Data {
     guard range.lowerBound >= 0, range.upperBound <= cursor.stableBytes,
       range.count > 0, range.count <= MediaMasterProfile.maximumRequestBytes
     else { throw MediaMasterError.invalidInput }
     return try autoreleasepool {
+      try requireSafePath(directory, directory: true)
+      let mediaURL = directory.appendingPathComponent("master.caf")
+      let indexURL = directory.appendingPathComponent("master.index")
+      try requireSafePath(mediaURL, directory: false)
+      try requireSafePath(indexURL, directory: false)
+      let index = try FileHandle(forReadingFrom: indexURL)
+      defer { try? index.close() }
+      guard
+        try MediaMasterIndex.identity(index.readMasterBytes(upToCount: 128) ?? Data())
+          == cursor.identity
+      else {
+        throw MediaMasterError.identityMismatch
+      }
       let reader = try FileHandle(forReadingFrom: mediaURL)
       defer { try? reader.close() }
+      guard try reader.readMasterBytes(upToCount: 68) == MediaMasterProfile.header else {
+        throw MediaMasterError.invalidHeader
+      }
       try reader.seek(toOffset: UInt64(range.lowerBound))
       let data = try reader.readMasterBytes(upToCount: range.count) ?? Data()
       guard data.count == range.count else {

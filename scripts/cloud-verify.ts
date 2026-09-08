@@ -113,7 +113,7 @@ export const verifyCloudOwnerStatus = Effect.fn("CloudVerifier.ownerStatus")(fun
     status.readiness.archive !== "ready" ||
     status.readiness.ownerAuthentication !== "ready" ||
     status.readiness.transcription !== "not_verified" ||
-    status.readiness.callOperations !== "unavailable"
+    status.readiness.callOperations !== "ready"
   ) {
     return yield* cloudVerificationError("Owner status returned unexpected issue #30 readiness");
   }

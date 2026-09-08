@@ -67,13 +67,15 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   private let namespace: AppNamespace
   private let capture: ScreenCaptureRecording
   private let sources: RecordingSourceAccess
+  private let uploads: MasterUploadApplicationOwner?
 
   public convenience init(connection: ServerConnection, namespace: AppNamespace) {
     self.init(
       connection: connection,
       namespace: namespace,
       capture: ScreenCaptureRecording(),
-      sources: .live
+      sources: .live,
+      uploads: MasterUploadApplicationOwner(namespace: namespace, connection: connection)
     )
   }
 
@@ -81,12 +83,14 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     connection: ServerConnection,
     namespace: AppNamespace,
     capture: ScreenCaptureRecording,
-    sources: RecordingSourceAccess
+    sources: RecordingSourceAccess,
+    uploads: MasterUploadApplicationOwner? = nil
   ) {
     self.connection = connection
     self.namespace = namespace
     self.capture = capture
     self.sources = sources
+    self.uploads = uploads
     self.capturePermissions = sources.permissions()
     capture.onPhaseChange = { [weak self] phase in self?.capturePhase = phase }
     capture.onChange = { [weak self] snapshot in
@@ -243,6 +247,11 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     {
       await retryRecovery()
     }
+    if let binding = snapshot.binding, recoveredArchiveID == binding.archiveId,
+      recoveryReport.failures.isEmpty, !isTerminating
+    {
+      do { try await uploads?.start(binding: binding) } catch { report(error) }
+    }
   }
 
   public var microphoneState: MicrophoneRecordingState {
@@ -312,6 +321,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       do { _ = try await capture.stop(reason: reason) } catch { report(error) }
       capturePhase = capture.phase
       callID = capture.session?.callID
+      await uploads?.wake()
     }
     stopTask = task
     await task.value
@@ -332,6 +342,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
           "The recording has not finished safely. Retry local recovery; do not discard the retained media."
       )
     }
+    if safe { await uploads?.stop() }
     return safe
   }
 

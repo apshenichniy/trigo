@@ -11,6 +11,7 @@ export interface PendingArchiveWorkflowInput {
 }
 
 export interface CloudEnvironmentProbe extends AsrProbeEnvironment {
+  readonly ARCHIVE: Pick<R2Bucket, "get" | "put" | "head" | "delete">;
   readonly CATALOG: Pick<D1Database, "prepare">;
   readonly ARCHIVE_WORKFLOW: { readonly create: unknown };
   readonly DEPLOYMENT_STAGE: "dev" | "personal";

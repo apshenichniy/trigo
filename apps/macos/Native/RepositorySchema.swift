@@ -3,9 +3,9 @@ import Foundation
 /// Immutable preparation rows are content-addressed. Only the small calls/evidence/history
 /// publication tables make prepared data visible. A crash may retain unreachable preparation;
 /// it never exposes a half-imported revision or a partially assembled call snapshot.
-let repositorySchemaVersion = 2
+let repositorySchemaVersion = 3
 
-let repositorySchema = [
+let repositorySchemaV2 = [
   "CREATE TABLE repository_identity(archive_id TEXT NOT NULL, root TEXT NOT NULL) STRICT",
   "CREATE TABLE documents(hash TEXT PRIMARY KEY, byte_count INTEGER NOT NULL CHECK(byte_count>=0), complete INTEGER NOT NULL CHECK(complete IN (0,1))) STRICT",
   "CREATE TABLE document_chunks(hash TEXT NOT NULL REFERENCES documents(hash), part INTEGER NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(hash,part)) STRICT",
@@ -62,3 +62,30 @@ let repositorySchema = [
   "CREATE TABLE media_intervals(call_id TEXT NOT NULL, sequence INTEGER NOT NULL, channel INTEGER NOT NULL, ordinal INTEGER NOT NULL, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL, state TEXT NOT NULL, PRIMARY KEY(call_id,sequence,channel,ordinal), FOREIGN KEY(call_id,sequence) REFERENCES media_commits(call_id,sequence)) STRICT",
   "CREATE TABLE capture_progress(call_id TEXT PRIMARY KEY REFERENCES sessions(call_id), sequence INTEGER CHECK(sequence>0), finalized_hash TEXT, CHECK(sequence IS NOT NULL OR finalized_hash IS NOT NULL), FOREIGN KEY(call_id,sequence) REFERENCES media_commits(call_id,sequence)) STRICT",
 ]
+
+let repositoryUploadSchema = [
+  """
+  CREATE TABLE master_uploads(
+    call_id TEXT PRIMARY KEY REFERENCES sessions(call_id),
+    upload_id TEXT NOT NULL UNIQUE,
+    operation_id TEXT NOT NULL UNIQUE REFERENCES operations(operation_id),
+    finalize_operation_id TEXT NOT NULL UNIQUE,
+    registration_receipt_hash TEXT REFERENCES documents(hash),
+    storage_receipt_hash TEXT REFERENCES documents(hash),
+    cleanup_complete INTEGER NOT NULL DEFAULT 0 CHECK(cleanup_complete IN (0,1)),
+    CHECK(cleanup_complete=0 OR storage_receipt_hash IS NOT NULL)
+  ) STRICT
+  """,
+  """
+  CREATE TABLE master_upload_parts(
+    call_id TEXT NOT NULL REFERENCES master_uploads(call_id),
+    part_index INTEGER NOT NULL CHECK(part_index>=0 AND part_index<83),
+    byte_length INTEGER NOT NULL CHECK(byte_length>0 AND byte_length<=8388608),
+    sha256 TEXT NOT NULL,
+    receipt_hash TEXT REFERENCES documents(hash),
+    PRIMARY KEY(call_id,part_index)
+  ) STRICT
+  """,
+]
+
+let repositorySchema = repositorySchemaV2 + repositoryUploadSchema
