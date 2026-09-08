@@ -10,6 +10,7 @@ import Foundation
   private let composition: DesktopComposition
   private let shell: DesktopShell
   private let shortcut: GlobalRecordingShortcut?
+  private let panel: FixturePanelControl?
   private var observations: [AnyCancellable] = []
   private var timer: Timer?
 
@@ -17,12 +18,14 @@ import Foundation
     root: URL,
     composition: DesktopComposition,
     shell: DesktopShell,
-    shortcut: GlobalRecordingShortcut? = nil
+    shortcut: GlobalRecordingShortcut? = nil,
+    panel: FixturePanelControl? = nil
   ) {
     self.root = root
     self.composition = composition
     self.shell = shell
     self.shortcut = shortcut
+    self.panel = panel
     observations.append(
       shell.objectWillChange.sink { [weak self] in
         Task { @MainActor in await self?.write() }
@@ -41,7 +44,9 @@ import Foundation
         archiveID: FixtureConfiguration.archiveID
       )
       let calls = try await repository.calls()
-      let value: [String: Any] = [
+      let state = shell.recording
+      let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+      var value: [String: Any] = [
         "schemaVersion": 1, "fixture": true, "bundleId": Bundle.main.bundleIdentifier!,
         "archiveRoot": composition.namespace.archive.path, "archiveId": repository.archiveID,
         "bootstrapped": shell.didBootstrap, "phase": String(describing: shell.recording.phase),
@@ -50,12 +55,39 @@ import Foundation
         "microphoneEnabled": shell.recording.microphoneEnabled,
         "activationPolicy": NSApp.activationPolicy().rawValue,
         "credentialAdapter": "memory-fixture", "statusAdapter": "in-process-fixture",
-        "captureAdapter": "no-input-fixture",
+        "captureAdapter": panel == nil ? "no-input-fixture" : "synthetic-pcm-fixture",
         "globalShortcut": shortcut == nil ? "disabled" : "in-process-fixture",
         "gestureState": shortcut?.gesture.status.rawValue ?? "disabled",
         "gestureEnabled": shortcut?.gesture.isEnabled ?? false,
         "callIds": calls.map(\.callID), "source": shell.recording.source?.applicationName ?? "",
+        "elapsedMs": state.elapsedMs, "microphoneChanging": state.microphoneChanging,
+        "microphoneState": String(describing: state.microphoneState),
+        "microphoneRMS": state.levels.microphoneRMS,
+        "applicationRMS": state.levels.applicationRMS,
+        "microphoneNoticeSequence": state.microphoneNoticeSequence,
+        "notificationTitle": shell.recordingNotification?.notice.title ?? "",
+        "notificationId": shell.recordingNotification?.id.uuidString ?? "",
+        "captureStopped": state.finalization.captureStopped,
+        "localSave": String(describing: state.finalization.localSave),
+        "pendingNativeStart": state.finalization.pendingNativeStart,
+        "quitRequirement": String(describing: state.quitRequirement),
+        "statusTitle": state.statusTitle, "statusDetail": state.statusDetail,
+        "focusOwner": front == "io.github.apshenichniy.trigo.fixture.focus"
+          ? "focus-fixture" : front == FixtureConfiguration.bundleID ? "desktop-fixture" : "other",
       ]
+      if let panel {
+        value["controlSequence"] = panel.sequence
+        value["controls"] = panel.commands
+        value["controlFailure"] =
+          panel.failure ?? panel.application.failure ?? panel.microphone.failure ?? ""
+        value["waitingForStart"] = panel.application.waitingForStart
+        value["waitingForSave"] = panel.waitingForSave
+        value["saveCalls"] = panel.saveCalls
+        value["applicationRunning"] = panel.application.running
+        value["microphoneRunning"] = panel.microphone.running
+        value["applicationBuffers"] = panel.application.emittedBuffers
+        value["microphoneBuffers"] = panel.microphone.emittedBuffers
+      }
       try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .prettyPrinted])
         .write(to: root.appendingPathComponent("state.json"), options: .atomic)
     } catch {
