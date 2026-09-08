@@ -36,7 +36,12 @@ Launch that path with its same configuration. Connect using the prepared local
 configuration, read readiness and inspect only the app's own permission controls.
 Before starting capture, record the observed screen/system-audio and microphone
 grants, actual input device, GUI automation authorization and Input Monitoring
-state. For the #58 gesture, read its actual registration/diagnostic state. Record
+state. For the #58 gesture, open General and use Enable Double Left Control, then
+read its actual registration/diagnostic state. The gesture starts disabled in a
+new namespace; Check Again only rechecks, and Open Input Monitoring Settings
+opens the explicit permission page. Establish the ordinary chord/menu fallback
+on the same installed candidate. Follow the bounded input and ownership cases in
+[gesture acceptance](recording-gesture-acceptance.md). Record
 any OS-owned dialog and requester; if it needs owner authentication, keep the
 dependent observation pending. Do not reset ordinary Dev or Personal permissions.
 Separate Dev data namespaces still share the Dev permission identity.

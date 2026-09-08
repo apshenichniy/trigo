@@ -51,6 +51,9 @@ import XCTest
     XCTAssertTrue(library.waitForExistence(timeout: 5))
     app.typeKey(",", modifierFlags: .command)
     XCTAssertTrue(settings.waitForExistence(timeout: 5))
+    XCTAssertTrue(settings.staticTexts["Double Left Control"].exists)
+    XCTAssertTrue(settings.staticTexts["Control–Option–Command–R"].exists)
+    XCTAssertFalse(settings.buttons["gesture-enable"].exists)
     capture("shell-settings-general", settings)
     settings.switches["launch-at-login"].click()
     wait(settings.switches["launch-at-login"], "value == 1")
@@ -109,6 +112,33 @@ import XCTest
     XCTAssertTrue(try (state()["callIds"] as? [String] ?? []).isEmpty)
   }
 
+  func testGestureSetupDenialKeepsMenuStartAvailable() throws {
+    try launch(scenario: "gesture")
+    openMenu()
+    app.menuItems["menu-settings"].click()
+    XCTAssertTrue(settings.waitForExistence(timeout: 5))
+    XCTAssertTrue(settings.buttons["gesture-enable"].exists)
+    capture("shell-gesture-disabled", settings)
+    settings.buttons["gesture-enable"].click()
+    XCTAssertTrue(waitState { $0["gestureState"] as? String == "denied" })
+    XCTAssertTrue(settings.buttons["gesture-open-settings"].exists)
+    XCTAssertTrue(settings.staticTexts["Control–Option–Command–R"].exists)
+    capture("shell-gesture-denied", settings)
+    settings.buttons["gesture-refresh"].click()
+    XCTAssertTrue(waitState { $0["gestureState"] as? String == "denied" })
+    settings.buttons["gesture-disable"].click()
+    XCTAssertTrue(waitState { $0["gestureState"] as? String == "disabled" })
+    settings.buttons["_XCUI:CloseWindow"].click()
+    openMenu()
+    app.menuItems["menu-start-recording"].click()
+    XCTAssertTrue(waitState { $0["phase"] as? String == "recording" })
+    openMenu()
+    app.menuItems["menu-finish-recording"].click()
+    XCTAssertTrue(
+      waitState { ($0["callIds"] as? [String])?.count == 1 && $0["canStart"] as? Bool == true }
+    )
+  }
+
   private func launch(scenario: String = "empty") throws {
     let configuration: [String: Any] = [
       "schemaVersion": 1, "runID": UUID().uuidString.lowercased(), "scenario": scenario,
@@ -132,7 +162,10 @@ import XCTest
     XCTAssertEqual(evidence["bundleId"] as? String, "io.github.apshenichniy.trigo.fixture.desktop")
     XCTAssertEqual(evidence["credentialAdapter"] as? String, "memory-fixture")
     XCTAssertEqual(evidence["statusAdapter"] as? String, "in-process-fixture")
-    XCTAssertEqual(evidence["globalShortcut"] as? String, "disabled")
+    XCTAssertEqual(
+      evidence["globalShortcut"] as? String,
+      scenario == "gesture" ? "in-process-fixture" : "disabled"
+    )
     let archive = try XCTUnwrap(evidence["archiveRoot"] as? String)
     XCTAssertTrue(
       URL(fileURLWithPath: archive).resolvingSymlinksInPath().path
