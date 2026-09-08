@@ -33,6 +33,7 @@ export * from "./document-schema.ts";
 export * from "./schema-registry.ts";
 export * from "./upload-schema.ts";
 export * from "./transcription-schema.ts";
+export * from "./playback-schema.ts";
 function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   const decode = Schema.decodeUnknownResult(schema, { onExcessProperty: "error" });
   return (value: unknown): S["Type"] => {
@@ -44,6 +45,9 @@ function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   };
 }
 const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
+  RequestPlayback: decoder(documentSchemas.RequestPlayback),
+  PlaybackManifest: decoder(documentSchemas.PlaybackManifest),
+  PlaybackGrant: decoder(documentSchemas.PlaybackGrant),
   RequestTranscription: decoder(documentSchemas.RequestTranscription),
   AvailableTranscript: decoder(documentSchemas.AvailableTranscript),
   TranscriptionOperation: decoder(documentSchemas.TranscriptionOperation),

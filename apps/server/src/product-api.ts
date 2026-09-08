@@ -6,8 +6,10 @@ import {
   ExchangeUUID,
   FinalizeMasterUpload,
   MasterUploadSession,
+  PlaybackGrant,
   RegisterMasterUpload,
   RequestTranscription,
+  RequestPlayback,
   SHA256,
   StatusResponse,
   TranscriptionOperation,
@@ -21,6 +23,20 @@ const uploadErrors = [400, 401, 404, 409, 410, 413, 503].map((httpApiStatus) =>
 );
 const transcriptionErrors = [400, 401, 404, 409, 410, 413, 422, 501, 503].map((httpApiStatus) =>
   ErrorEnvelopeSchema.annotate({ httpApiStatus }),
+);
+const playbackErrors = [400, 401, 404, 409, 410, 416, 503].map((httpApiStatus) =>
+  ErrorEnvelopeSchema.annotate({ httpApiStatus }),
+);
+
+/** Media requests use their short-lived capability instead of owner authentication. */
+export const PlaybackMediaApi = HttpApi.make("trigo-playback-media").add(
+  HttpApiGroup.make("playbackMedia").add(
+    HttpApiEndpoint.get("segment", "/v1/calls/:callId/playback/:grantId/segments/:index", {
+      params: { callId: ExchangeUUID, grantId: ExchangeUUID, index: Schema.Int },
+      success: Schema.Uint8Array,
+      error: playbackErrors,
+    }),
+  ),
 );
 
 /** Shared authenticated product handlers; transcription and sync remain separate tasks. */
@@ -82,5 +98,13 @@ export const ProductApi = HttpApi.make("trigo").add(
         error: transcriptionErrors,
       },
     ),
+  ),
+  HttpApiGroup.make("playbackGrants").add(
+    HttpApiEndpoint.post("requestPlayback", "/v1/calls/:callId/playback", {
+      params: { callId: ExchangeUUID },
+      payload: RequestPlayback,
+      success: PlaybackGrant,
+      error: playbackErrors,
+    }),
   ),
 );

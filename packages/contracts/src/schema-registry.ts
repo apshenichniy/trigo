@@ -10,6 +10,7 @@ import {
   StatusResponse,
   TranscriptRevision,
 } from "./document-schema.ts";
+import { playbackSchemas } from "./playback-schema.ts";
 import { transcriptionSchemas } from "./transcription-schema.ts";
 import { uploadSchemas } from "./upload-schema.ts";
 
@@ -25,6 +26,7 @@ export const documentSchemas = {
   ErrorEnvelope,
   ...uploadSchemas,
   ...transcriptionSchemas,
+  ...playbackSchemas,
 };
 export type Documents = {
   [K in keyof typeof documentSchemas]: Schema.Schema.Type<(typeof documentSchemas)[K]>;

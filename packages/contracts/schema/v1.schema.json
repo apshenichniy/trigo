@@ -53,6 +53,15 @@
     },
     {
       "$ref": "#/$defs/TranscriptionOperation"
+    },
+    {
+      "$ref": "#/$defs/RequestPlayback"
+    },
+    {
+      "$ref": "#/$defs/PlaybackManifest"
+    },
+    {
+      "$ref": "#/$defs/PlaybackGrant"
     }
   ],
   "$defs": {
@@ -1377,6 +1386,132 @@
         "updatedAt",
         "result",
         "failure"
+      ],
+      "additionalProperties": false
+    },
+    "RequestPlayback": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        }
+      },
+      "required": ["schemaVersion", "operationId"],
+      "additionalProperties": false
+    },
+    "PlaybackChannel": {
+      "type": "object",
+      "properties": {
+        "channelIndex": {
+          "type": "number",
+          "enum": [0, 1]
+        },
+        "trackId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["microphone", "application"]
+        }
+      },
+      "required": ["channelIndex", "trackId", "role"],
+      "additionalProperties": false
+    },
+    "PlaybackManifest": {
+      "type": "object",
+      "properties": {
+        "masterId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "masterSHA256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "profileId": {
+          "type": "string",
+          "enum": ["wav-pcm-s16le-16000-stereo-segment-v1"]
+        },
+        "sampleRateHz": {
+          "type": "number",
+          "enum": [16000]
+        },
+        "frameCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 172800000
+        },
+        "segmentFrames": {
+          "type": "number",
+          "enum": [480000]
+        },
+        "segmentCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaybackChannel"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "masterId",
+        "masterSHA256",
+        "profileId",
+        "sampleRateHz",
+        "frameCount",
+        "segmentFrames",
+        "segmentCount",
+        "channels"
+      ],
+      "additionalProperties": false
+    },
+    "PlaybackGrant": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "grantId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "^trigo_playback_v1_[0-9a-f]{64}$"
+        },
+        "media": {
+          "$ref": "#/$defs/PlaybackManifest"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operationId",
+        "grantId",
+        "archiveId",
+        "callId",
+        "expiresAt",
+        "token",
+        "media"
       ],
       "additionalProperties": false
     }

@@ -1018,5 +1018,137 @@
     "kind": "TranscriptionOperation",
     "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000180\",\"archiveId\":\"00000000-0000-4000-8000-000000000018\",\"callId\":\"00000000-0000-4000-8000-000000000182\",\"revisionId\":\"00000000-0000-4000-8000-000000000181\",\"state\":\"queued\",\"attemptCount\":0,\"createdAt\":\"2026-09-08T00:00:00Z\",\"updatedAt\":\"2026-09-08T00:00:00Z\",\"result\":null,\"failure\":null,\"canonicalImported\":true}",
     "valid": false
+  },
+  {
+    "name": "RequestPlayback baseline",
+    "kind": "RequestPlayback",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\"}",
+    "valid": true
+  },
+  {
+    "name": "RequestPlayback unknown root property",
+    "kind": "RequestPlayback",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"extra\":true}",
+    "valid": false
+  },
+  {
+    "name": "RequestPlayback missing required field",
+    "kind": "RequestPlayback",
+    "json": "{\"operationId\":\"00000000-0000-4000-8000-000000000073\"}",
+    "valid": false
+  },
+  {
+    "name": "RequestPlayback null required field",
+    "kind": "RequestPlayback",
+    "json": "{\"schemaVersion\":null,\"operationId\":\"00000000-0000-4000-8000-000000000073\"}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest baseline",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}",
+    "valid": true
+  },
+  {
+    "name": "PlaybackManifest unknown root property",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}],\"extra\":true}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest missing required field",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest null required field",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":null,\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackGrant baseline",
+    "kind": "PlaybackGrant",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"2026-09-08T12:01:30Z\",\"token\":\"trigo_playback_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}}",
+    "valid": true
+  },
+  {
+    "name": "PlaybackGrant unknown root property",
+    "kind": "PlaybackGrant",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"2026-09-08T12:01:30Z\",\"token\":\"trigo_playback_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]},\"extra\":true}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackGrant missing required field",
+    "kind": "PlaybackGrant",
+    "json": "{\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"2026-09-08T12:01:30Z\",\"token\":\"trigo_playback_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackGrant null required field",
+    "kind": "PlaybackGrant",
+    "json": "{\"schemaVersion\":null,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"2026-09-08T12:01:30Z\",\"token\":\"trigo_playback_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}}",
+    "valid": false
+  },
+  {
+    "name": "RequestPlayback invalid operation identity",
+    "kind": "RequestPlayback",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"call-73\"}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest unbounded frame count",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":172800001,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest unbounded segment",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":960000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest fractional frame count",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":1.5,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest missing source channel",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"}]}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackManifest invalid channel role",
+    "kind": "PlaybackManifest",
+    "json": "{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"mixed\"}]}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackGrant owner token rejected",
+    "kind": "PlaybackGrant",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"2026-09-08T12:01:30Z\",\"token\":\"trigo_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackGrant token URL rejected",
+    "kind": "PlaybackGrant",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"2026-09-08T12:01:30Z\",\"token\":\"https://media.test/token\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackGrant invalid expiration",
+    "kind": "PlaybackGrant",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"tomorrow\",\"token\":\"trigo_playback_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}]}}",
+    "valid": false
+  },
+  {
+    "name": "PlaybackGrant unknown nested field",
+    "kind": "PlaybackGrant",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000073\",\"grantId\":\"00000000-0000-4000-8000-000000000077\",\"archiveId\":\"00000000-0000-4000-8000-000000000078\",\"callId\":\"00000000-0000-4000-8000-000000000079\",\"expiresAt\":\"2026-09-08T12:01:30Z\",\"token\":\"trigo_playback_v1_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"media\":{\"masterId\":\"00000000-0000-4000-8000-000000000074\",\"masterSHA256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"profileId\":\"wav-pcm-s16le-16000-stereo-segment-v1\",\"sampleRateHz\":16000,\"frameCount\":496000,\"segmentFrames\":480000,\"segmentCount\":2,\"channels\":[{\"channelIndex\":0,\"trackId\":\"00000000-0000-4000-8000-000000000075\",\"role\":\"microphone\"},{\"channelIndex\":1,\"trackId\":\"00000000-0000-4000-8000-000000000076\",\"role\":\"application\"}],\"url\":\"https://public.test/master\"}}",
+    "valid": false
   }
 ]
