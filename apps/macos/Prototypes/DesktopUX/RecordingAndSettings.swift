@@ -4,7 +4,8 @@ struct SettingsView: View {
     @ObservedObject var model: PrototypeModel
     @State private var tab = "General"
     @State private var server = "https://example.invalid"
-    @State private var connected = true
+    @State private var token = ""
+    @State private var connectionStatus = "Connected · sample"
     var body: some View {
         VStack(spacing: 20) {
             Picker("Settings section", selection: $tab) { ForEach(["General", "Connection", "Diagnostics"], id: \.self) { Text($0) } }
@@ -23,10 +24,20 @@ struct SettingsView: View {
                 } else if tab == "Connection" {
                     Section("Server") {
                         TextField("Server address", text: $server)
-                        LabeledContent("Status", value: connected ? "Connected · sample" : "Disconnected · sample")
-                        Button(connected ? "Disconnect sample" : "Connect sample") { connected.toggle() }
+                        SecureField("Replacement token", text: $token, prompt: Text("Use a sample value only"))
+                        LabeledContent("Status", value: connectionStatus)
+                        HStack {
+                            Button("Validate and Save") {
+                                connectionStatus = "Connected · sample update accepted"
+                                token = ""
+                            }
+                            .disabled(server.isEmpty || token.isEmpty)
+                            Button("Retry Saved Connection") {
+                                connectionStatus = "Connected · sample connection checked"
+                            }
+                        }
                     }
-                    Text("This design preview uses an example address and sends no requests.").font(.caption).foregroundStyle(.secondary)
+                    Text("Use sample values only. This preview sends no requests and saves no credentials.").font(.caption).foregroundStyle(.secondary)
                 } else {
                     Section("Recording access") {
                         LabeledContent("Application audio", value: "Available · sample")

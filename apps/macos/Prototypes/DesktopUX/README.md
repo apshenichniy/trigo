@@ -16,6 +16,8 @@ The native layout uses a 192 × 44-point panel. The [ImageGen revision prompt](d
 
 These are selected bases. The complete design decision remains open pending menu/settings review, remaining states and the final walkthrough.
 
+On 2026-09-08, the owner delegated reasonable first-version choices to the agent and requested questions only for substantial unresolved product decisions. Remaining menu/settings choices are recorded in the design ticket as agent-selected defaults under that mandate. They are not additional owner-reviewed screenshots. The existing recording/window contract and the verification requirements remain binding.
+
 ## Run the native preview
 
 Requires macOS 15 or later and a Swift 6 toolchain.
@@ -52,6 +54,8 @@ Native computer use later failed with `Sky Computer Use native pipe closed befor
 - Narrow windows, long source names, light/dark library appearance and native interaction walkthrough.
 
 The panel preserves one application-audio scale and microphone-only activity feedback. A muted microphone is crossed out; an unavailable microphone is dimmed with a reason and badge; an unapplied change has a distinct circular-arrows symbol. Saving freezes the timer and deactivates the controls/levels. The renderer deliberately uses reduced motion. Actual microphone levels, mute acknowledgement, finalization, recovery and persistence still require production implementation and the later agent-run acceptance route.
+
+The connection fixture offers Validate and Save with a sample replacement token, and Retry Saved Connection. It does not introduce a Disconnect operation. Validation, credential persistence, archive-identity checks and failed-update handling remain responsibilities of the existing connection contract; these fixture buttons only change in-memory sample status.
 
 Speaker labels and reading-status examples are provisional visual fixtures. This study does not resolve [Specify library reading and truthful processing states](https://github.com/apshenichniy/trigo/issues/68), speaker continuity, or [Define the UX and transcription handoff for autonomous delivery](https://github.com/apshenichniy/trigo/issues/70).
 

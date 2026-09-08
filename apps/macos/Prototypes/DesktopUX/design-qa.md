@@ -4,6 +4,8 @@
 
 The owner approved the library and recording-panel bases. The complete prototype handoff is blocked on native interaction and remaining screen verification. The inspected panel render has no remaining actionable layout finding; this does not constitute a pass for the entire study.
 
+The owner subsequently delegated reasonable first-version choices to the agent. The connection fixture was corrected to show Validate and Save / Retry Saved Connection instead of a speculative Disconnect operation. That source change compiles, but its screen and actions have not received new native UI verification. Delegated design choices do not close the verification findings below.
+
 ## Findings
 
 - **P1 — Required native interaction evidence is unavailable.** Native computer use returns `Sky Computer Use native pipe closed before response`; resetting its session and reacquiring the prototype did not restore access. The earlier library capture succeeded. Dragging, focus preservation, hiding/revealing, the full start/mute/finish walkthrough, fullscreen and the menu/settings screens remain unverified. Restore native computer use and complete the same synthetic scenarios before a full prototype handoff.
