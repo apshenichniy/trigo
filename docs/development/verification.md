@@ -29,6 +29,43 @@ Coordinate one heavy local check at a time. Start with a focused failing probe,
 then the affected suite, then full acceptance for a stable implementation. A
 quick pass reports only its selected scope.
 
+## Native desktop UI acceptance
+
+Run `bun run test:ui --suite shell` in an unlocked macOS GUI session. It builds
+the dedicated `Trigo UI` scheme and runs the shared production shell, views and
+recording coordinator through XCUITest. `--filter <regular expression>` selects
+named tests and rejects an empty selection. `--suite all` currently includes the
+same core scenarios; reader, measured-panel and gesture tests extend this suite
+as those components arrive.
+
+The fixture has its own bundle identity, per-test temporary SQLite namespace,
+in-memory credentials, synthetic source/permission/status adapters and no live
+capture, HTTP, login registration or global shortcut. It requires a validated
+configuration and has no installed-app fallback. A relaunch test retains only
+its own namespace. Test teardown terminates the fixture and removes its temporary
+store. Personal and Dev targets do not compile fixture sources.
+
+Only one UI acceptance command may own the user's GUI session. Its lease and
+the normal one-heavy-check rule prevent competing automated interactions. Keep
+other windows away from the fixture during screenshots; a window screenshot
+can include an occluding window. No UI test resets TCC or grants itself access.
+An actual OS authentication prompt is an explicit environmental prerequisite.
+
+Each invocation writes `.local/ui-runs/<timestamp-id>/run.json`, build/test logs,
+the `.xcresult`, actual summary and `evidence/index.json`. The index contains
+hashes of explicitly named fixture-window screenshots and synthetic input/state
+attachments. Automatic desktop recordings and diagnostic snapshots remain in
+ignored local artifacts; review curated screenshots before sharing them. Never
+commit the raw result bundle. Preserve a failed run's source/input identity and
+exit status. Missing, skipped, timed-out or empty tests cannot pass this command.
+
+UI acceptance is an explicit GUI gate, separate from the existing headless CI
+component checks. The integrated daily-use handoff in #24 runs it after all
+components are present. A fixture pass does not establish signing, physical
+microphone input, OS consent, real key delivery or hosted ASR. Use the separate
+[signed installed-capture procedure](installed-capture-acceptance.md) for those
+boundaries.
+
 ## Timings and evidence
 
 Set `TRIGO_TIMINGS_FILE` to an ignored JSONL path, for example

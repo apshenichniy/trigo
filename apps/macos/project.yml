@@ -50,6 +50,54 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.dev
         PRODUCT_NAME: Trigo Dev
+  Trigo UI Fixture:
+    type: application
+    platform: macOS
+    sources: [UIFixtures]
+    dependencies:
+      - package: TrigoNative
+        product: TrigoDesktop
+      - package: TrigoNative
+        product: TrigoNative
+    info:
+      path: Generated/UIFixture-Info.plist
+      properties:
+        LSUIElement: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.fixture.desktop
+        PRODUCT_NAME: Trigo UI Fixture
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_TESTABILITY: YES
+  Trigo UI Focus Fixture:
+    type: application
+    platform: macOS
+    sources: [UIFocusFixture]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.fixture.focus
+        PRODUCT_NAME: Trigo UI Focus Fixture
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+  TrigoUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: Trigo UI Fixture
+      - target: Trigo UI Focus Fixture
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.fixture.desktop.uitests
+        TEST_TARGET_NAME: Trigo UI Fixture
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
 schemes:
   Trigo:
     build:
@@ -63,3 +111,14 @@ schemes:
         Trigo Dev: all
     archive:
       config: Release
+  Trigo UI:
+    build:
+      targets:
+        Trigo UI Fixture: all
+        Trigo UI Focus Fixture: all
+        TrigoUITests: [test]
+    test:
+      config: Debug
+      targets: [TrigoUITests]
+      parallelizable: false
+      randomExecutionOrder: false
