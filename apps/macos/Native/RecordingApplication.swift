@@ -13,16 +13,18 @@ import Foundation
   public convenience init(namespace: AppNamespace, variant: AppVariant) {
     self.init(namespace: namespace) {
       RecordingCoordinator(
-        connection: .live(namespace: namespace, variant: variant),
+        connection: try .live(namespace: namespace, variant: variant),
         namespace: namespace
       )
     }
   }
 
-  init(namespace: AppNamespace, makeCoordinator: () -> RecordingCoordinator) {
+  init(namespace: AppNamespace, makeCoordinator: () throws -> RecordingCoordinator) {
     do {
-      lease = try AppInstanceLease(namespace: namespace)
-      coordinator = makeCoordinator()
+      let acquired = try AppInstanceLease(namespace: namespace)
+      let created = try makeCoordinator()
+      lease = acquired
+      coordinator = created
       startupFailure = nil
     } catch {
       lease = nil
