@@ -67,6 +67,30 @@ extension LocalRepository {
             }
         }
     )
+    for (revisionID, groups) in call.speakerGroups.sorted(by: { $0.key < $1.key }) {
+      try await stageRows(
+        "INSERT OR IGNORE INTO call_speaker_groups VALUES (?,?,?,?,?)",
+        groups.enumerated()
+          .map { ordinal, group in
+            [
+              .text(hash), .text(revisionID), .text(group.groupId), .int(ordinal),
+              .text(group.displayName),
+            ]
+          }
+      )
+      for group in groups {
+        try await stageRows(
+          "INSERT OR IGNORE INTO call_group_members VALUES (?,?,?,?,?)",
+          group.speakerIds.enumerated()
+            .map { ordinal, speakerID in
+              [
+                .text(hash), .text(group.groupId), .text(revisionID), .int(ordinal),
+                .text(speakerID),
+              ]
+            }
+        )
+      }
+    }
     try interruption(.afterRepositoryStaging)
   }
 
@@ -84,6 +108,7 @@ extension LocalRepository {
         [.text(hash), .text($0.speakerId)]
       }
     )
+    try await stageSpeakerDetails(document.value, hash: hash)
     try await stageRows(
       "INSERT OR IGNORE INTO revision_turns VALUES (?,?,?,?,?,?,?,?)",
       document.value.turns.enumerated()
@@ -215,8 +240,24 @@ extension LocalRepository {
       names[try name.string(1), default: [:]][try name.string(2)] = try name.string(3)
     }
     let audioID = try row.optionalString(12)
+    var groups: [String: [SpeakerGroup]] = [:]
+    let members = try projectionRows("call_group_members", hash: hash)
+    for group in try projectionRows("call_speaker_groups", hash: hash)
+      .sorted(by: { try $0.int(3) < $1.int(3) })
+    {
+      let groupID = try group.string(2)
+      groups[try group.string(1), default: []]
+        .append(
+          try .init(
+            groupId: groupID,
+            displayName: group.string(4),
+            speakerIds: members.filter { try $0.string(1) == groupID }
+              .sorted { try $0.int(3) < $1.int(3) }.map { try $0.string(4) }
+          )
+        )
+    }
     return try .init(
-      schemaVersion: 1,
+      schemaVersion: 2,
       archiveId: archiveID,
       callId: row.string(0),
       documentVersion: row.int(1),
@@ -236,7 +277,8 @@ extension LocalRepository {
       audioManifest: audioID.map { .init(manifestId: $0, sha256: try row.string(13)) },
       revisions: revisions,
       activeRevisionId: row.optionalString(14),
-      speakerNames: names
+      speakerNames: names,
+      speakerGroups: groups
     )
   }
 

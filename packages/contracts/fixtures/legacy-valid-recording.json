@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "archiveId": "00000000-0000-4000-8000-000000000012",
+  "callId": "00000000-0000-4000-8000-000000000001",
+  "documentVersion": 2,
+  "startedAt": "2026-09-05T10:00:00Z",
+  "endedAt": null,
+  "durationMs": null,
+  "captureState": "recording",
+  "interruptionReason": null,
+  "source": {
+    "applicationName": "Google Chrome",
+    "bundleId": "com.google.Chrome",
+    "processId": 123,
+    "windowId": null,
+    "windowTitle": null
+  },
+  "tracks": [
+    {
+      "trackId": "00000000-0000-4000-8000-000000000002",
+      "role": "microphone",
+      "inputDevice": null,
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+      "intervals": []
+    },
+    {
+      "trackId": "00000000-0000-4000-8000-000000000003",
+      "role": "application",
+      "inputDevice": null,
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+      "intervals": []
+    }
+  ],
+  "audioManifest": null,
+  "revisions": [],
+  "activeRevisionId": null,
+  "speakerNames": {}
+}

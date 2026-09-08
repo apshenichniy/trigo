@@ -44,6 +44,18 @@ extension Contract {
       call["activeRevisionId"].isNull
         || call["revisions"].items.contains { $0["revisionId"] == call["activeRevisionId"] }
     )
+    var groupIds: [JSONValue] = []
+    for (revisionId, groups) in call["speakerGroups"].object ?? [:] {
+      try require(call["revisions"].items.contains { $0["revisionId"].text == revisionId })
+      var members: [JSONValue] = []
+      for group in groups.items {
+        groupIds.append(group["groupId"])
+        members.append(contentsOf: group["speakerIds"].items)
+        try unique(group["speakerIds"].items)
+      }
+      try unique(members)
+    }
+    try unique(groupIds)
   }
   static func validateRevision(_ revision: JSONValue) throws {
     let speakers = revision["speakers"].items

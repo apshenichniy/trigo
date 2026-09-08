@@ -252,7 +252,7 @@ const getOperation = Effect.fn("Transcription.getOperation")(function* (
 export const maximumRevisionBytes = 16_000_000;
 export const maximumProvenanceBytes = 65_536;
 
-const getRevision = Effect.fn("Transcription.getRevision")(function* (
+export const readTranscriptArtifact = Effect.fn("Transcription.getRevision")(function* (
   env: TranscriptionEnvironment,
   owner: OwnerContext,
   callId: string,
@@ -317,7 +317,7 @@ export const transcriptionsLayer = (env: TranscriptionEnvironment, owner: OwnerC
     request: (callId, value) => requestTranscription(env, owner, callId, value),
     operation: (operationId) => getOperation(env, owner, operationId),
     revision: (callId, revisionId, provenance) =>
-      getRevision(env, owner, callId, revisionId, provenance),
+      readTranscriptArtifact(env, owner, callId, revisionId, provenance),
   });
 
 /** Publication and attempt admission share this predicate rather than trusting Workflow history. */

@@ -377,7 +377,8 @@ struct MasterUploadTests {
     let url = copiedRoot.appendingPathComponent(SQLiteDatabase.filename)
     try sqliteFixtureSQL(
       url,
-      "DROP TABLE master_upload_parts; DROP TABLE master_uploads; PRAGMA user_version=2; UPDATE repository_identity SET root='\(copiedRoot.path)'"
+      removeSyncSchemaFixtureSQL
+        + "DROP TABLE master_upload_parts; DROP TABLE master_uploads; PRAGMA user_version=2; UPDATE repository_identity SET root='\(copiedRoot.path)'"
     )
     let migrated = try LocalRepository(root: copiedRoot, archiveID: repositoryArchiveID)
     #expect(
@@ -385,7 +386,8 @@ struct MasterUploadTests {
     )
     #expect(try migrated.confirmedMediaCursor(callID: fixture.session.callID) == cursor)
     #expect(
-      try migrated.database.access { try migrated.database.scalarInt("PRAGMA user_version") } == 3
+      try migrated.database.access { try migrated.database.scalarInt("PRAGMA user_version") }
+        == repositorySchemaVersion
     )
     #expect(try migrated.masterUpload(callID: fixture.session.callID) == nil)
   }

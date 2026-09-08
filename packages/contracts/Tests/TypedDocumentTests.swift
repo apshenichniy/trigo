@@ -23,6 +23,7 @@ func typedRoundTrip(_ kind: String, bytes: Data) throws -> Data {
   case "LocalDevelopmentBridge": try typedRoundTrip(LocalDevelopmentBridge.self, bytes: bytes)
   case "CaptureMasterProfile": try typedRoundTrip(CaptureMasterProfile.self, bytes: bytes)
   case "CallDocument": try typedRoundTrip(CallDocument.self, bytes: bytes)
+  case "LegacyCallDocument": try typedRoundTrip(LegacyCallDocument.self, bytes: bytes)
   case "TranscriptRevision": try typedRoundTrip(TranscriptRevision.self, bytes: bytes)
   case "AudioManifest": try typedRoundTrip(AudioManifest.self, bytes: bytes)
   case "StatusResponse": try typedRoundTrip(StatusResponse.self, bytes: bytes)
@@ -37,6 +38,16 @@ func typedRoundTrip(_ kind: String, bytes: Data) throws -> Data {
   case "RequestTranscription": try typedRoundTrip(RequestTranscription.self, bytes: bytes)
   case "AvailableTranscript": try typedRoundTrip(AvailableTranscript.self, bytes: bytes)
   case "TranscriptionOperation": try typedRoundTrip(TranscriptionOperation.self, bytes: bytes)
+  case "ReplicaReference": try typedRoundTrip(ReplicaReference.self, bytes: bytes)
+  case "PublishCallReplica": try typedRoundTrip(PublishCallReplica.self, bytes: bytes)
+  case "ReplicaReceipt": try typedRoundTrip(ReplicaReceipt.self, bytes: bytes)
+  case "CallDeletionMarker": try typedRoundTrip(CallDeletionMarker.self, bytes: bytes)
+  case "CallCatalogEntry": try typedRoundTrip(CallCatalogEntry.self, bytes: bytes)
+  case "CallCatalogPage": try typedRoundTrip(CallCatalogPage.self, bytes: bytes)
+  case "CallChange": try typedRoundTrip(CallChange.self, bytes: bytes)
+  case "CallChangesPage": try typedRoundTrip(CallChangesPage.self, bytes: bytes)
+  case "CatalogTranscriptResult": try typedRoundTrip(CatalogTranscriptResult.self, bytes: bytes)
+  case "TranscriptResultsPage": try typedRoundTrip(TranscriptResultsPage.self, bytes: bytes)
   default: throw ContractError.structure
   }
 }

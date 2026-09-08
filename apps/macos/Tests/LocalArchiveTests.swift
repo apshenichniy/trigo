@@ -139,7 +139,7 @@ private func encodedJSONObject(_ object: [String: Any]) throws -> Data {
     try await archive.publishManifest(badHash)
   }
 
-  let unsupported = try replacingJSONValue(original, key: "schemaVersion", value: 2)
+  let unsupported = try replacingJSONValue(original, key: "schemaVersion", value: 3)
   await #expect(throws: Error.self) {
     try await archive.publishManifest(unsupported)
   }

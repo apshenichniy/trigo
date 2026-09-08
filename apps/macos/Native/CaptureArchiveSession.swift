@@ -221,7 +221,7 @@ public struct CaptureArchiveSession: Equatable, Sendable {
     ]
     return try Contract.encode(
       CallDocument(
-        schemaVersion: 1,
+        schemaVersion: 2,
         archiveId: archiveID,
         callId: callID,
         documentVersion: version,
@@ -245,7 +245,8 @@ public struct CaptureArchiveSession: Equatable, Sendable {
         audioManifest: reference,
         revisions: [],
         activeRevisionId: nil,
-        speakerNames: [:]
+        speakerNames: [:],
+        speakerGroups: [:]
       )
     )
   }
