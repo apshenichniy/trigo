@@ -44,6 +44,15 @@
     },
     {
       "$ref": "#/$defs/VerifiedMasterReceipt"
+    },
+    {
+      "$ref": "#/$defs/RequestTranscription"
+    },
+    {
+      "$ref": "#/$defs/AvailableTranscript"
+    },
+    {
+      "$ref": "#/$defs/TranscriptionOperation"
     }
   ],
   "$defs": {
@@ -1222,6 +1231,152 @@
         "channelMap",
         "audioManifest",
         "storedAt"
+      ],
+      "additionalProperties": false
+    },
+    "RequestTranscription": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "revisionId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "requestedLanguage": {
+          "type": "string",
+          "enum": ["en", "ru", "uk"]
+        },
+        "profileId": {
+          "type": "string",
+          "enum": ["nova3-wav-s16le-16000-stereo-stream-v1"]
+        }
+      },
+      "required": ["schemaVersion", "operationId", "revisionId", "requestedLanguage", "profileId"],
+      "additionalProperties": false
+    },
+    "AvailableTranscript": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "byteLength": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "provenanceSHA256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "provenanceByteLength": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      },
+      "required": [
+        "revisionId",
+        "createdAt",
+        "sha256",
+        "byteLength",
+        "provenanceSHA256",
+        "provenanceByteLength"
+      ],
+      "additionalProperties": false
+    },
+    "TranscriptionFailure": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retry": {
+          "type": "string",
+          "enum": ["never", "after_correction", "retryable"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["code", "retry", "message"],
+      "additionalProperties": false
+    },
+    "TranscriptionOperation": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "revisionId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["queued", "running", "result_available", "failed"]
+        },
+        "attemptCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "createdAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AvailableTranscript"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TranscriptionFailure"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operationId",
+        "archiveId",
+        "callId",
+        "revisionId",
+        "state",
+        "attemptCount",
+        "createdAt",
+        "updatedAt",
+        "result",
+        "failure"
       ],
       "additionalProperties": false
     }

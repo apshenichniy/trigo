@@ -34,6 +34,9 @@ func typedRoundTrip(_ kind: String, bytes: Data) throws -> Data {
   case "UploadPartReceipt": try typedRoundTrip(UploadPartReceipt.self, bytes: bytes)
   case "FinalizeMasterUpload": try typedRoundTrip(FinalizeMasterUpload.self, bytes: bytes)
   case "VerifiedMasterReceipt": try typedRoundTrip(VerifiedMasterReceipt.self, bytes: bytes)
+  case "RequestTranscription": try typedRoundTrip(RequestTranscription.self, bytes: bytes)
+  case "AvailableTranscript": try typedRoundTrip(AvailableTranscript.self, bytes: bytes)
+  case "TranscriptionOperation": try typedRoundTrip(TranscriptionOperation.self, bytes: bytes)
   default: throw ContractError.structure
   }
 }

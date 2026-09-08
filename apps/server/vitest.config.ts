@@ -10,7 +10,10 @@ export default defineConfig({
         compatibilityFlags: ["nodejs_compat"],
         r2Buckets: ["LOCAL_ARCHIVE"],
         d1Databases: ["CATALOG"],
-        workflows: { ARCHIVE_WORKFLOW: { name: "offline-probe", className: "LocalProbeWorkflow" } },
+        workflows: {
+          ARCHIVE_WORKFLOW: { name: "offline-probe", className: "LocalProbeWorkflow" },
+          TRANSCRIPTION_WORKFLOW: { name: "offline-archive", className: "LocalArchiveWorkflow" },
+        },
         bindings: {
           LOCAL_RUN_ID: "00000000-0000-4000-8000-000000000054",
           LOCAL_ARCHIVE_ID: "00000000-0000-4000-8000-000000000054",

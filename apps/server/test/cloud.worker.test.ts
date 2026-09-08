@@ -8,7 +8,7 @@ function cloudBindings() {
   return {
     ARCHIVE: { get: vi.fn(), put: vi.fn(), head: vi.fn(), delete: vi.fn() },
     CATALOG: { prepare: vi.fn() },
-    ARCHIVE_WORKFLOW: { create: vi.fn() },
+    ARCHIVE_WORKFLOW: { create: vi.fn(), get: vi.fn() },
     AI: { run: vi.fn() },
     DEPLOYMENT_STAGE: "dev" as const,
     DEPLOYMENT_IDENTITY: "trigo-dev-api:9236f745b86ef20f",

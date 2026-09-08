@@ -48,7 +48,7 @@ for (const composition of ["local", "cloud"] as const) {
     const cloud = {
       ARCHIVE: { get: vi.fn(), put: vi.fn(), head: vi.fn(), delete: vi.fn() },
       CATALOG: env.CATALOG,
-      ARCHIVE_WORKFLOW: { create: vi.fn() },
+      ARCHIVE_WORKFLOW: { create: vi.fn(), get: vi.fn() },
       AI: { run: vi.fn() },
       DEPLOYMENT_STAGE: "dev" as const,
       DEPLOYMENT_IDENTITY: "test-cloud-dev",
@@ -95,10 +95,13 @@ for (const composition of ["local", "cloud"] as const) {
           readiness: {
             archive: "ready",
             ownerAuthentication: "ready",
-            transcription: "not_verified",
+            transcription: composition === "cloud" ? "ready" : "not_verified",
             callOperations: "ready",
           },
-          errors: [{ code: "asr_not_verified", retry: "after_correction" }],
+          errors:
+            composition === "cloud"
+              ? []
+              : [{ code: "asr_not_verified", retry: "after_correction" }],
         });
         expect(read).not.toHaveBeenCalled();
         expect(workflow).not.toHaveBeenCalled();
@@ -128,7 +131,7 @@ for (const composition of ["local", "cloud"] as const) {
     });
     it("authenticates before disclosing unavailable operations including unknown methods", async () => {
       for (const [path, method] of [
-        ["/v1/calls/00000000-0000-4000-8000-000000000017/transcriptions", "POST"],
+        ["/v1/calls/00000000-0000-4000-8000-000000000017", "DELETE"],
         ["/v1/status", "POST"],
         ["/v1/unknown", "GET"],
         ["/v1/status", "OPTIONS"],
@@ -183,7 +186,7 @@ it("keeps simultaneous local/dev/personal requests in their own composition cont
   const cloud = {
     ARCHIVE: env.LOCAL_ARCHIVE,
     CATALOG: env.CATALOG,
-    ARCHIVE_WORKFLOW: env.ARCHIVE_WORKFLOW,
+    ARCHIVE_WORKFLOW: env.TRANSCRIPTION_WORKFLOW,
     AI: { run: vi.fn() },
     DEPLOYMENT_IDENTITY: "test",
   };

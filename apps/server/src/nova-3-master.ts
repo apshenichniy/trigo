@@ -73,6 +73,24 @@ function failure(message: string) {
   return new Nova3NormalizationError({ operation: "Nova3.normalizeMaster", message });
 }
 
+/** Validate the complete interval before a caller admits a subsequent paid submission. */
+export const inspectNova3IntervalMetadata = Effect.fn("Nova3.inspectIntervalMetadata")(function* (
+  response: unknown,
+  frameCount: number,
+) {
+  const metadata = yield* Schema.decodeUnknownEffect(ProviderMetadata)(response).pipe(
+    Effect.mapError(() => failure("Provider metadata is invalid")),
+  );
+  const duration = metadata.metadata?.duration;
+  if (duration !== undefined && Math.abs(duration * 16_000 - frameCount) > 1) {
+    return yield* failure("Provider duration does not match the complete submitted interval");
+  }
+  if (metadata.metadata?.channels !== undefined && metadata.metadata.channels !== 2) {
+    return yield* failure("Provider metadata does not preserve both channels");
+  }
+  return metadata;
+});
+
 /** Returns immutable transcript evidence and its independently retained transformation provenance. */
 export const normalizeNova3Master = Effect.fn("Nova3.normalizeMaster")(function* (
   unknownInput: unknown,
@@ -130,19 +148,11 @@ export const normalizeNova3Master = Effect.fn("Nova3.normalizeMaster")(function*
       const response = yield* parseJson(text).pipe(
         Effect.mapError(() => failure("Provider evidence is not valid JSON")),
       );
-      const metadata = yield* Schema.decodeUnknownEffect(ProviderMetadata)(response).pipe(
-        Effect.mapError(() => failure("Provider metadata is invalid")),
+      const metadata = yield* inspectNova3IntervalMetadata(
+        response,
+        interval.endFrame - interval.startFrame,
       );
       const reportedDurationSeconds = metadata.metadata?.duration ?? null;
-      if (
-        reportedDurationSeconds !== null &&
-        Math.abs(reportedDurationSeconds * 16_000 - (interval.endFrame - interval.startFrame)) > 1
-      ) {
-        return yield* failure("Provider duration does not match the complete submitted interval");
-      }
-      if (metadata.metadata?.channels !== undefined && metadata.metadata.channels !== 2) {
-        return yield* failure("Provider metadata does not preserve both channels");
-      }
       for (const channel of metadata.results?.channels ?? []) {
         if (channel.detected_language !== undefined) {
           detectedLanguages.add(channel.detected_language);

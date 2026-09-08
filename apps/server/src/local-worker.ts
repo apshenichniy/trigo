@@ -4,6 +4,7 @@ import { Effect, Schema } from "effect";
 import { TranscriptRevision } from "@trigo/contracts";
 
 import { fakeAsr } from "./asr.ts";
+import { fakeTranscriptionRunner } from "./fake-transcription.ts";
 import { errorResponse } from "./http-errors.ts";
 import { noSpeechInput } from "./local-fixture.ts";
 import {
@@ -13,11 +14,14 @@ import {
   OwnerVerifierSha256,
 } from "./owner-state.ts";
 import { productFetch } from "./product-handler.ts";
+import { runTranscriptionWorkflow } from "./transcription-workflow.ts";
+import { type TranscriptionWorkflowInput } from "./transcriptions.ts";
 
 export interface LocalEnv {
   LOCAL_ARCHIVE: R2Bucket;
   CATALOG: D1Database;
   ARCHIVE_WORKFLOW: Workflow<{ runId: string }>;
+  TRANSCRIPTION_WORKFLOW: Workflow<TranscriptionWorkflowInput>;
   LOCAL_RUN_ID: string;
   LOCAL_ARCHIVE_ID: string;
   LOCAL_OWNER_VERIFIER: string;
@@ -40,6 +44,22 @@ export class LocalProbeWorkflow extends WorkflowEntrypoint<LocalEnv, { runId: st
   run(event: WorkflowEvent<{ runId: string }>, step: WorkflowStep) {
     return step.do("store-canonical-fake-revision", () =>
       Effect.runPromise(storeFixture(this.env, event.payload.runId)),
+    );
+  }
+}
+
+/** The ordinary local product path shares admission, artifacts and publication with cloud. */
+export class LocalArchiveWorkflow extends WorkflowEntrypoint<LocalEnv, TranscriptionWorkflowInput> {
+  run(event: WorkflowEvent<TranscriptionWorkflowInput>, step: WorkflowStep) {
+    return runTranscriptionWorkflow(
+      {
+        CATALOG: this.env.CATALOG,
+        ARCHIVE: this.env.LOCAL_ARCHIVE,
+        AI: fakeTranscriptionRunner,
+        TRANSCRIPTION_MODE: "fake",
+      },
+      event.payload.operationId,
+      step,
     );
   }
 }
@@ -100,6 +120,8 @@ export default {
         CATALOG: env.CATALOG,
         ARCHIVE: env.LOCAL_ARCHIVE,
         DEPLOYMENT_STAGE: "dev",
+        TRANSCRIPTION_WORKFLOW: env.TRANSCRIPTION_WORKFLOW,
+        TRANSCRIPTION_MODE: "fake",
       });
     }
     return Effect.runPromise(localProbe(request, env));
