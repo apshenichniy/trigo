@@ -2,7 +2,15 @@
 
 **Final result: passed for the local prototype**
 
-This review covers the disposable prototype for [design decision #67](https://github.com/apshenichniy/trigo/issues/67), including the owner's requested floating sidebar and Liquid Glass revision. The full native run passed all nine scenarios with zero failures or skips. Final light/dark, narrow, resized and hidden-sidebar captures were inspected at readable scale; no unresolved P0, P1 or P2 visual finding remains in the reviewed scope. Approval of the new design and production implementation remain separate decisions.
+This review covers the retained prototype for [design decision #67](https://github.com/apshenichniy/trigo/issues/67), including the owner's requested floating sidebar and Liquid Glass revision. The full native run passed all nine scenarios with zero failures or skips. Final light/dark, narrow, resized and hidden-sidebar captures were inspected at readable scale; no unresolved P0, P1 or P2 visual finding remains in the reviewed scope. The owner subsequently accepted the prototype overall and requested its preservation as a workbench. Further UI refinement of intermediate and recovery states is deferred to the next iteration. Production implementation remains a separate instruction.
+
+## Retention and Quit correction — 2026-09-08
+
+The owner's report that Command-Q could not close the workbench exposed a fixture boundary missing from the earlier suite. The product Quit handler correctly refused to leave unresolved stop/save states, but a deliberately held Saving fixture never supplies completion. That made the workbench itself impossible to quit normally while inspecting those states.
+
+The focused native reproducer passed in Idle and failed in held Saving and Recovery. Since changing only the fixture isolated the blocker, additional instrumentation was unnecessary. Ordinary Command-Q / Quit now exits the workbench. **Prototype → Simulate Trigo Quit…** explicitly exercises the existing product guards and recording confirmation. The eight regression scenarios passed, including waiting for finalization, unresolved recovery, cancellation, Finish and quit, and starting retirement. [Quit verification](evidence/quit-verification.json) retains the failing and passing run identities, source hashes and scope.
+
+The library, recording-panel appearance and synthetic data model are unchanged by this correction. Earlier visual evidence remains the accepted layout baseline; the newer focused suite verifies the changed Quit route. The old running preview was closed, and the rebuilt workbench was left closed for the owner.
 
 ## Findings and corrections
 

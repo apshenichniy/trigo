@@ -1,0 +1,58 @@
+{
+  "scope": "Quit behavior of the retained design workbench; synthetic fixtures only",
+  "uiBaselineCommit": "9afbf346daa203f74612f0fd72706551b9a50647",
+  "command": "bash apps/macos/Prototypes/DesktopUX/run-ui-tests.sh -only-testing:DesktopUXUITests/QuitUITests",
+  "reproduction": {
+    "run": "run-20260908-121100-9851",
+    "result": "Failed",
+    "passedTests": 1,
+    "failedTests": 2,
+    "failures": [
+      "testCommandQExitsHeldRecoveryFixture()",
+      "testCommandQExitsHeldSavingFixture()"
+    ],
+    "sourceSha256": {
+      "CompactRecordingPanel.swift": "839be910603813d5a7dc95c8c56e33a3cf8113bfaa5f4f96fad0032943c97062",
+      "Library.swift": "344a86bf1e9e7a967817c1af32ac65650595e4ecd6794b19ef501d33bf6a1976",
+      "PrototypeApp.swift": "003fcf121057cb47e2746b1665a2efc3d8d1feb6a130193485d2e841addae1e7",
+      "PrototypeModel.swift": "bed3c457163eb36f594338913ed631beb71c61f41acf7e07cc70441d8e693248",
+      "PrototypeRenders.swift": "ebe75ef11e477781ee2a2db977ea1a14440e35c644d4ad28ae0917c5d4a08d76",
+      "RecordingAndSettings.swift": "79981fa9a4ff42e32dfc0bbc85c66588ef2dd8e2847d6902ab52ce92b1184d2d",
+      "UITests/DesktopUXUITests.swift": "549ef64aaf4b2aff67d129fa17bfefa6847523dee3975e36ca56150392f9aafc",
+      "UITests/QuitUITests.swift": "0c20e7e7d3b0f241b722974b3f02c7474a2adfe64e084f52ed7308c513e63182",
+      "project.yml": "49319c574ac20fed1ddf6e8893a01fefff0e5118355cf6623c0b0f1591c8b5df"
+    }
+  },
+  "verification": {
+    "run": "run-20260908-121527-1631",
+    "result": "Passed",
+    "passedTests": 8,
+    "failedTests": 0,
+    "skippedTests": 0,
+    "durationSeconds": 82.912,
+    "sourceSha256": {
+      "CompactRecordingPanel.swift": "839be910603813d5a7dc95c8c56e33a3cf8113bfaa5f4f96fad0032943c97062",
+      "Library.swift": "344a86bf1e9e7a967817c1af32ac65650595e4ecd6794b19ef501d33bf6a1976",
+      "PrototypeApp.swift": "2fb3073cfca92868ef550b073002540eb708d430be41d064d25669f416676080",
+      "PrototypeModel.swift": "bed3c457163eb36f594338913ed631beb71c61f41acf7e07cc70441d8e693248",
+      "PrototypeRenders.swift": "ebe75ef11e477781ee2a2db977ea1a14440e35c644d4ad28ae0917c5d4a08d76",
+      "RecordingAndSettings.swift": "79981fa9a4ff42e32dfc0bbc85c66588ef2dd8e2847d6902ab52ce92b1184d2d",
+      "UITests/DesktopUXUITests.swift": "549ef64aaf4b2aff67d129fa17bfefa6847523dee3975e36ca56150392f9aafc",
+      "UITests/QuitUITests.swift": "dbffb94771283c8cac36567e707f90a28ea9e87ec99a223eb9bd88e88bc15280",
+      "project.yml": "49319c574ac20fed1ddf6e8893a01fefff0e5118355cf6623c0b0f1591c8b5df"
+    }
+  },
+  "cause": "Guarded product Quit waited indefinitely in deliberately held Saving and unresolved Recovery fixtures.",
+  "resolution": "Ordinary Quit exits the workbench. Prototype > Simulate Trigo Quit exercises the existing product confirmation and stop/save guards.",
+  "coverage": [
+    "Ordinary Quit from idle, held saving, held recovery, and recording",
+    "Simulated Quit waits for finalization and exits after its synthetic completion",
+    "Simulated Quit preserves unresolved recovery",
+    "Recording confirmation supports Keep open and Finish and quit",
+    "Starting confirmation retires the pending sample start"
+  ],
+  "limits": [
+    "The product stop/save contract is simulated; no real capture or durability claim",
+    "Earlier layout acceptance remains recorded separately in native/verification.json"
+  ]
+}

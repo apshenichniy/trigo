@@ -1,10 +1,18 @@
-# Disposable desktop UX study
+# Retained desktop UX workbench
 
-This prototype answers the visual question in [Choose the library, menu-bar, and recording-panel mockups](https://github.com/apshenichniy/trigo/issues/67). It is throwaway code on `codex/prototype-desktop-library`, outside the production application targets. Do not merge or promote it into the application.
+This native prototype answers the visual question in [Choose the library, menu-bar, and recording-panel mockups](https://github.com/apshenichniy/trigo/issues/67). Preserve it on `codex/prototype-desktop-library` as an interactive workbench for product invariants and intermediate states. It is independent of production application targets; do not import or promote its simulated services into the application.
+
+## Accepted baseline and next iteration — 2026-09-08
+
+The owner accepted the prototype overall, including the floating-sidebar direction, and explicitly requested that it be retained for future work. This accepts the general structure and direction. Further UI work is deferred to the next iteration, with emphasis on the intermediate and recovery states already available in Design Controls.
+
+Keep the runnable source, selected references, native screenshots and verification evidence together. Do not remove this workbench during prototype cleanup or replace it with screenshots alone. The branch supports further iterations; the `desktop-ux-accepted-2026-09-08` tag preserves this baseline.
+
+The next design frontier is [library reading and truthful processing states #68](https://github.com/apshenichniy/trigo/issues/68). Use this workbench to review the observable state/action matrix and then refine those states' presentation. The later [implementation handoff #70](https://github.com/apshenichniy/trigo/issues/70) reconciles scopes, dependencies and acceptance. Production implementation still starts on a separate owner instruction.
 
 ## Floating Liquid Glass revision — 2026-09-08
 
-The owner requested a new library variant with an inset, floating sidebar, Liquid Glass and modern macOS controls, using the attached Telegram screenshot as the composition reference. This is an experimental revision of the library, not a newly approved final design.
+The owner requested a library variant with an inset, floating sidebar, Liquid Glass and modern macOS controls, using the attached Telegram screenshot as the composition reference. The owner subsequently accepted the prototype overall, with further state-specific UI refinement deferred as described above.
 
 The sidebar has a rounded system-glass surface, a draggable width and a Show/Hide Sidebar control. The player floats above the reading background. Export and overflow actions use native SwiftUI glass button styles. An actual unified compact `NSToolbar` aligns the sidebar action, window traffic lights and title. Menus, sliders and text use native macOS components. The transcript stays on a plain content surface; glass is reserved for navigation and controls, following Apple's [sidebar guidance](https://developer.apple.com/design/human-interface-guidelines/sidebars) and [material guidance](https://developer.apple.com/design/human-interface-guidelines/materials).
 
@@ -28,7 +36,7 @@ The owner selected the first compact recording-panel concept and approved its re
 
 The native layout uses a 192 × 44-point panel. The [ImageGen revision prompt](designs/recording-panel-with-timer.prompt.md) and both full ideation sets are preserved in `designs/`. The images are magnified design samples, not measurements or capture evidence.
 
-These are the earlier selected bases. The complete design decision remains open while the requested floating-sidebar revision is evaluated.
+These are the earlier selected bases. The floating-sidebar variant is now the accepted overall direction; remaining state-specific visual refinements belong to the next iteration.
 
 On 2026-09-08, the owner delegated reasonable first-version choices to the agent and requested questions only for substantial unresolved product decisions. Remaining menu/settings choices are recorded in the design ticket as agent-selected defaults under that mandate. They are not additional owner-reviewed screenshots. The existing recording/window contract and the verification requirements remain binding.
 
@@ -43,6 +51,8 @@ bash apps/macos/Prototypes/DesktopUX/run.sh
 The script builds `Trigo UX Prototype.app` inside this directory's ignored `.build/` folder. The prototype has the distinct bundle identifier `io.github.apshenichniy.trigo.prototype.desktopux`; it does not use Trigo Dev or Personal data. Quit an already-running preview before reopening a rebuilt version.
 
 Open **Prototype → Design Controls…** or press **Command–D** to select scenarios. The controls can show recording, starting, saving, interruption, uncertain stopping and save failure, and switch the selected call between reading states. They also expose narrow-window, long-title, appearance and reduced-motion fixtures. Settings are a separate window.
+
+**Command–Q / Quit Trigo UX Prototype** closes the workbench, including deliberately held Saving and Recovery fixtures. All sample data is in memory. Use **Prototype → Simulate Trigo Quit…** to exercise the product's guarded Quit contract: confirm while starting/recording, wait for finalization, and refuse to leave unresolved stop/save recovery. Resetting a held Saving fixture to idle supplies its simulated completion. This distinction keeps the study escapable while preserving the product invariant for inspection.
 
 ```bash
 # Compile without opening a window.
@@ -82,7 +92,7 @@ Every invocation creates an ignored `.build/ui-tests/run-*/` directory. `results
 
 Initial probes exposed a shared accessibility label overwriting panel actions, unavailable microphone state on the outer element, toolbar placement/menu issues and variable sidebar drag movement. These were corrected and verified with focused checks. The final complete run, `run-20260908-113150-28307`, passed all nine scenarios in 228.459 seconds. The preceding run was interrupted at the owner's request for a call; the successful run resumed afterward with unchanged source. A later focused settings/reading-state rerun passed after bringing the library forward for four unobstructed screenshots and asserting visible headings. Only the test capture sequence changed; application sources match the complete passing run. Both source snapshots and curated captures are recorded in `evidence/native/verification.json`.
 
-## Review fixtures still awaiting agreement
+## Fixtures retained for the next UI iteration
 
 - Menu-bar layout and action order in idle, recording and processing states.
 - Setup/settings presentation, separated from everyday reading.

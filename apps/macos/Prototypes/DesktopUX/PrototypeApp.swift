@@ -14,6 +14,7 @@ import SwiftUI
     private var controlsWindow: NSWindow?
     private var statusItem: NSStatusItem?
     private var quittingAfterSave = false
+    private var simulatingQuit = false
     private let sidebarItemID = NSToolbarItem.Identifier("library-sidebar")
     private let libraryMenuItemID = NSToolbarItem.Identifier("library-actions")
 
@@ -55,6 +56,8 @@ import SwiftUI
         review.submenu = NSMenu(title: "Prototype")
         review.submenu?.addItem(item("Design Controls…", #selector(showControls), key: "d"))
         review.submenu?.addItem(item("Start Sample Recording", #selector(start)))
+        review.submenu?.addItem(.separator())
+        review.submenu?.addItem(item("Simulate Trigo Quit…", #selector(simulateTrigoQuit)))
         menu.addItem(review)
         let window = NSMenuItem(title: "Window", action: nil, keyEquivalent: "")
         window.submenu = NSMenu(title: "Window")
@@ -287,6 +290,9 @@ import SwiftUI
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showLibrary(); return true }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Quitting the workbench must remain possible in deliberately held fixtures.
+        // The explicit simulation route exercises the product's stop/save guards.
+        guard simulatingQuit else { return .terminateNow }
         if model.capture == .recording || model.capture == .starting {
             let alert = NSAlert()
             alert.messageText = "Finish recording and quit?"
@@ -310,6 +316,11 @@ import SwiftUI
     @objc private func finish() { model.finish() }
     @objc private func cancelStart() { model.cancelStart() }
     @objc private func showPanel() { model.panelVisible = true }
+    @objc private func simulateTrigoQuit() {
+        simulatingQuit = true
+        defer { simulatingQuit = false }
+        NSApp.terminate(nil)
+    }
     @objc private func quit() { NSApp.terminate(nil) }
 }
 
