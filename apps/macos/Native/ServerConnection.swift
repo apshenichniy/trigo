@@ -75,6 +75,12 @@ public struct ArchiveBinding: Equatable, Sendable {
   public let serverURL: URL
   public let archiveId: String
   public let stage: ServerStage
+
+  public init(serverURL: URL, archiveId: String, stage: ServerStage) {
+    self.serverURL = serverURL
+    self.archiveId = archiveId
+    self.stage = stage
+  }
 }
 
 public enum CredentialAccessFailure: Equatable, Sendable {
@@ -285,7 +291,8 @@ public actor ServerConnection {
     self.statusClient = statusClient
   }
 
-  public static func live(namespace: AppNamespace, variant: AppVariant) -> ServerConnection {
+  public static func live(namespace: AppNamespace, variant: AppVariant) throws -> ServerConnection {
+    try namespace.requireInstalledVariant(variant)
     let policy: ServerTransportPolicy =
       namespace.localDevelopment.map { .localDevelopment($0) } ?? .httpsOnly
     return ServerConnection(
