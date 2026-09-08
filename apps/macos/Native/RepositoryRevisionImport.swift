@@ -10,16 +10,31 @@ public struct PreparedRevisionImport: Sendable {
   let revision: StoredDocument<TranscriptRevision>
   let snapshot: StoredDocument<CallDocument>
   let operation: PreparedOperation
+  let provenanceHash: String?
+  let serverResult: CatalogTranscriptResult?
 }
 
 extension LocalRepository {
   public func prepareRevisionImport(
     _ bytes: Data,
-    associatedWork: OperationIntent
+    associatedWork: OperationIntent,
+    provenance: Data? = nil,
+    serverResult: CatalogTranscriptResult? = nil
   ) async throws
     -> PreparedRevisionImport
   {
     let revision = try Contract.decode(TranscriptRevision.self, bytes: bytes)
+    if let serverResult {
+      guard let provenance,
+        serverResult.result.revisionId == revision.value.revisionId,
+        serverResult.result.createdAt == revision.value.createdAt,
+        serverResult.result.sha256 == revision.sha256,
+        serverResult.result.byteLength == bytes.count,
+        serverResult.result.provenanceSHA256 == Contract.hash(provenance),
+        serverResult.result.provenanceByteLength == provenance.count,
+        serverResult.generation > 0
+      else { throw CanonicalSyncError.invalidResult }
+    }
     guard associatedWork.callID == revision.value.callId else { throw ContractError.reference }
     try requireArchiveIdentity(associatedWork.archiveID)
     guard let priorHash = try currentHash(revision.value.callId) else {
@@ -32,6 +47,7 @@ extension LocalRepository {
       guard retained.sha256 == revision.sha256,
         try documentBytes(retained.sha256) == bytes
       else { throw LocalPersistenceError.immutableConflict(revision.value.revisionId) }
+      if associatedWork.kind == .replica { call.documentVersion += 1 }
     } else {
       call.revisions.append(
         .init(
@@ -48,13 +64,16 @@ extension LocalRepository {
     try await stageRevision(revision)
     try await stageCall(snapshot)
     let operation = try await prepareOperation(associatedWork)
+    let provenanceHash = try await provenance.mapAsync { try await stageDocument($0) }
     return .init(
       root: root,
       archiveID: archiveID,
       priorHash: priorHash,
       revision: revision,
       snapshot: snapshot,
-      operation: operation
+      operation: operation,
+      provenanceHash: provenanceHash,
+      serverResult: serverResult
     )
   }
 
@@ -129,6 +148,7 @@ extension LocalRepository {
     let semanticID = "import:\(revision.value.callId):\(revision.value.revisionId)"
     return try database.access {
       try database.transaction(interruption: interruption) {
+        try requireActiveCallLocked(revision.value.callId)
         if try semanticWorkExists(semanticID) {
           try validateSemanticWork(semanticID, operation: prepared.operation)
           // Immutable revision identity, even when another revision has since become active.
@@ -150,11 +170,10 @@ extension LocalRepository {
           hash: revision.sha256
         )
         // A legacy-staged already-retained revision needs no reconstructed-byte publication.
-        let retained = try database.rows(
-          "SELECT revision_id FROM call_revisions WHERE hash=? AND revision_id=?",
-          [.text(prepared.priorHash), .text(revision.value.revisionId)]
-        )
-        if retained.isEmpty {
+        let priorVersion = try database
+          .rows("SELECT version FROM call_values WHERE hash=?", [.text(prepared.priorHash)]).first?
+          .int(0)
+        if priorVersion != prepared.snapshot.value.documentVersion {
           _ = try commitCall(
             prepared.snapshot.value,
             hash: prepared.snapshot.sha256,
@@ -171,6 +190,38 @@ extension LocalRepository {
           [.text(revision.value.callId)]
         )
         try commitSemanticWork(semanticID, operation: prepared.operation)
+        if prepared.operation.intent.kind == .replica {
+          try commitReplicaWork(
+            prepared.operation,
+            snapshot: prepared.snapshot,
+            annotationRevisionIDs: []
+          )
+        }
+        if let hash = prepared.provenanceHash {
+          if let prior =
+            try database.rows(
+              "SELECT hash FROM transcript_provenance WHERE revision_id=?",
+              [.text(revision.value.revisionId)]
+            )
+            .first,
+            try prior.string(0) != hash
+          {
+            throw CanonicalSyncError.invalidResult
+          }
+          try database.execute(
+            "INSERT OR IGNORE INTO transcript_provenance VALUES (?,?)",
+            [.text(revision.value.revisionId), .text(hash)]
+          )
+        }
+        if let result = prepared.serverResult {
+          try database.execute(
+            "INSERT INTO imported_server_results VALUES (?,?,?,?)",
+            [
+              .text(revision.value.revisionId), .text(prepared.operation.intent.operationID),
+              .text(result.operationId), .int(result.generation),
+            ]
+          )
+        }
         return .committed
       }
     }
@@ -185,6 +236,41 @@ extension LocalRepository {
   {
     let prepared = try await prepareRevisionImport(bytes, associatedWork: associatedWork)
     return try await commitRevisionImport(prepared)
+  }
+
+  @discardableResult
+  public func importAvailableResult(
+    _ result: CatalogTranscriptResult,
+    callID: String,
+    revision: Data,
+    provenance: Data
+  ) async throws -> PublicationResult {
+    let intent = OperationIntent(
+      operationID: synchronizationIdentity(
+        "trigo-result-import:\(archiveID):\(callID):\(result.result.revisionId)"
+      ),
+      archiveID: archiveID,
+      callID: callID,
+      kind: .replica,
+      payload: try Contract.encode(result)
+    )
+    let prepared = try await prepareRevisionImport(
+      revision,
+      associatedWork: intent,
+      provenance: provenance,
+      serverResult: result
+    )
+    return try await commitRevisionImport(prepared)
+  }
+
+  public func transcriptProvenanceBytes(revisionID: String) throws -> Data? {
+    let hash = try database.access {
+      try database
+        .rows("SELECT hash FROM transcript_provenance WHERE revision_id=?", [.text(revisionID)])
+        .first?
+        .string(0)
+    }
+    return try hash.map { try documentBytes($0) }
   }
 
   func semanticWorkExists(_ identity: String) throws -> Bool {

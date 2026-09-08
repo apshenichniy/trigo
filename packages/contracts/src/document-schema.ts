@@ -89,7 +89,7 @@ const SpeakerNames = Schema.Record(
   Schema.String,
   Schema.Record(Schema.String, Schema.String).check(Schema.isPropertyNames(ExchangeUUID)),
 ).check(Schema.isPropertyNames(ExchangeUUID));
-export const CallDocument = Schema.Struct({
+export const LegacyCallDocument = Schema.Struct({
   schemaVersion: Schema.Literal(1),
   archiveId: ExchangeUUID,
   callId: ExchangeUUID,
@@ -105,6 +105,23 @@ export const CallDocument = Schema.Struct({
   revisions: Schema.Array(RevisionReference),
   activeRevisionId: Schema.NullOr(ExchangeUUID),
   speakerNames: SpeakerNames,
+}).annotate({ identifier: "LegacyCallDocument" });
+export interface LegacyCallDocument extends Schema.Schema.Type<typeof LegacyCallDocument> {}
+
+export const SpeakerGroup = Schema.Struct({
+  groupId: ExchangeUUID,
+  displayName: Schema.String.check(Schema.isPattern(/\S/)),
+  speakerIds: Schema.Array(ExchangeUUID).check(Schema.isMinLength(2)),
+}).annotate({ identifier: "SpeakerGroup" });
+export interface SpeakerGroup extends Schema.Schema.Type<typeof SpeakerGroup> {}
+
+/** A new closed shape; legacy input has a deliberate read path rather than optional fields. */
+export const CallDocument = Schema.Struct({
+  ...LegacyCallDocument.fields,
+  schemaVersion: Schema.Literal(2),
+  speakerGroups: Schema.Record(Schema.String, Schema.Array(SpeakerGroup)).check(
+    Schema.isPropertyNames(ExchangeUUID),
+  ),
 }).annotate({ identifier: "CallDocument" });
 export interface CallDocument extends Schema.Schema.Type<typeof CallDocument> {}
 

@@ -4,10 +4,12 @@ import { HttpApiBuilder } from "effect/unstable/httpapi";
 
 import { type StatusResponse } from "@trigo/contracts";
 
+import { canonicalSyncLayer } from "./canonical-sync.ts";
 import { errorResponse, httpErrorBoundary, ownerErrorResponses } from "./http-errors.ts";
 import { masterUploadsLayer } from "./master-uploads.ts";
 import { authenticateOwner, type OwnerContext } from "./owner-state.ts";
 import { ProductApi } from "./product-api.ts";
+import { isSyncRoute, syncHandlers } from "./sync-handler.ts";
 import { isTranscriptionRoute, transcriptionHandlers } from "./transcription-handler.ts";
 import { transcriptionsLayer, type TranscriptionEnvironment } from "./transcriptions.ts";
 import { isImplementedProductRoute, uploadHandlers } from "./upload-handler.ts";
@@ -53,7 +55,11 @@ const productResponse = Effect.fn("ProductApi.respond")(function* (
 ) {
   // Keep the exact bearer grammar and authentication-before-disclosure for unavailable routes.
   const owner = yield* authenticateOwner(env.CATALOG, request);
-  if (!isImplementedProductRoute(request) && !isTranscriptionRoute(request)) {
+  if (
+    !isImplementedProductRoute(request) &&
+    !isTranscriptionRoute(request) &&
+    !isSyncRoute(request)
+  ) {
     return errorResponse(
       501,
       "operation_unavailable",
@@ -71,6 +77,7 @@ const productResponse = Effect.fn("ProductApi.respond")(function* (
       handlers,
       uploadHandlers(request).pipe(Layer.provide(masterUploadsLayer(env, owner))),
       transcriptionHandlers(request).pipe(Layer.provide(transcriptionsLayer(env, owner))),
+      syncHandlers(request).pipe(Layer.provide(canonicalSyncLayer(env, owner))),
     ]),
     Layer.provide(httpErrorBoundary),
     Layer.provide(HttpServer.layerServices),

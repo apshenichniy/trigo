@@ -73,13 +73,18 @@ extension LocalRepository {
     guard
       let hash = try database.access({
         try database
-          .rows("SELECT storage_receipt_hash FROM master_uploads WHERE call_id=?", [.text(callID)])
+          .rows("SELECT hash FROM server_storage_receipts WHERE call_id=?", [.text(callID)])
           .first?
           .optionalString(0)
       })
     else { return nil }
     let receipt = try Contract.decode(VerifiedMasterReceipt.self, bytes: documentBytes(hash))
-    try validateVerifiedMaster(receipt.value, state: requiredMasterUpload(callID))
+    if let state = try masterUpload(callID: callID) {
+      try validateVerifiedMaster(receipt.value, state: state)
+    } else {
+      guard let current = try currentHash(callID) else { throw CanonicalSyncError.invalidReceipt }
+      try validateRestoredMasterReceipt(receipt.value, call: callValue(hash: current))
+    }
     return receipt
   }
 
@@ -120,6 +125,10 @@ extension LocalRepository {
         try database.execute(
           "UPDATE master_uploads SET storage_receipt_hash=? WHERE call_id=? AND storage_receipt_hash IS NULL",
           [.text(hash), .text(callID)]
+        )
+        try database.execute(
+          "INSERT INTO server_storage_receipts VALUES (?,?) ON CONFLICT(call_id) DO NOTHING",
+          [.text(callID), .text(hash)]
         )
         try database.execute(
           "UPDATE lifecycle SET upload='stored',upload_failure=NULL,upload_retry=NULL,state_version=state_version+1 WHERE call_id=?",

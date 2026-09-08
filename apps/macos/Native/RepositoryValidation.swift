@@ -30,7 +30,7 @@ extension LocalRepository {
   func validateEvolution(
     from current: CallDocument,
     to proposed: CallDocument,
-    allowedSpeakerNameChange: SpeakerNameChange?
+    allowedAnnotationRevisionIDs: Set<String>
   ) throws {
     let currentRevisions = current.revisions
     let proposedRevisions = proposed.revisions
@@ -47,53 +47,13 @@ extension LocalRepository {
     if current.audioManifest != nil, current.audioManifest != proposed.audioManifest {
       throw LocalPersistenceError.manifestWouldChangeAudioManifest
     }
-    let currentNames = current.speakerNames
-    let proposedNames = proposed.speakerNames
-    guard let allowedSpeakerNameChange else {
-      guard currentNames == proposedNames else {
-        throw LocalPersistenceError.manifestWouldChangeSpeakerAnnotations
-      }
-      return
-    }
-    let currentWithoutTarget = removingSpeakerName(
-      revisionID: allowedSpeakerNameChange.revisionID,
-      speakerID: allowedSpeakerNameChange.speakerID,
-      from: currentNames
-    )
-    let proposedWithoutTarget = removingSpeakerName(
-      revisionID: allowedSpeakerNameChange.revisionID,
-      speakerID: allowedSpeakerNameChange.speakerID,
-      from: proposedNames
-    )
-    let proposedTarget = proposedNames[allowedSpeakerNameChange.revisionID]?[
-      allowedSpeakerNameChange.speakerID
-    ]
-    guard currentWithoutTarget == proposedWithoutTarget,
-      proposedTarget == allowedSpeakerNameChange.name
+    guard
+      current.speakerNames.filter({ !allowedAnnotationRevisionIDs.contains($0.key) })
+        == proposed.speakerNames.filter({ !allowedAnnotationRevisionIDs.contains($0.key) }),
+      current.speakerGroups.filter({ !allowedAnnotationRevisionIDs.contains($0.key) })
+        == proposed.speakerGroups.filter({ !allowedAnnotationRevisionIDs.contains($0.key) })
     else {
       throw LocalPersistenceError.manifestWouldChangeSpeakerAnnotations
     }
   }
-}
-
-struct SpeakerNameChange {
-  let revisionID: String
-  let speakerID: String
-  let name: String?
-}
-
-func removingSpeakerName(
-  revisionID: String,
-  speakerID: String,
-  from names: [String: [String: String]]
-) -> [String: [String: String]] {
-  var result = names
-  var revisionNames = result[revisionID] ?? [:]
-  revisionNames.removeValue(forKey: speakerID)
-  if revisionNames.isEmpty {
-    result.removeValue(forKey: revisionID)
-  } else {
-    result[revisionID] = revisionNames
-  }
-  return result
 }

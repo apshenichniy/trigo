@@ -98,7 +98,7 @@ export async function createUploadedCall(
     intervals: [],
   }));
   const call = validateDocument("CallDocument", {
-    schemaVersion: 1,
+    schemaVersion: 2,
     archiveId: transcriptionArchiveId,
     callId,
     documentVersion: 1,
@@ -119,6 +119,7 @@ export async function createUploadedCall(
     revisions: [],
     activeRevisionId: null,
     speakerNames: {},
+    speakerGroups: {},
   });
   const bytes = new Uint8Array(68 + durationMs * 64);
   bytes.set(cafMasterHeader);

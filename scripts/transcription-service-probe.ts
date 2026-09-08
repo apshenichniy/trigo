@@ -20,6 +20,7 @@ import {
   TranscriptionOperation,
   UploadPartReceipt,
   VerifiedMasterReceipt,
+  parseCallDocument,
   parseStored,
   storedByteHash,
 } from "../packages/contracts/src/index.ts";
@@ -97,8 +98,7 @@ export const validateServiceProbePlan = Effect.fn("ServiceProbe.validatePlan")(f
     value,
   ).pipe(Effect.mapError(() => failure("Invalid prepared service probe.")));
   const call = yield* Effect.try({
-    try: () =>
-      parseStored("CallDocument", new TextEncoder().encode(plan.registration.callDocument)),
+    try: () => parseCallDocument(new TextEncoder().encode(plan.registration.callDocument)),
     catch: () => failure("Invalid prepared call document."),
   });
   const hash = yield* Effect.promise(() => storedByteHash(bytes));

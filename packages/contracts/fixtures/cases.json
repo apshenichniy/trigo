@@ -455,5 +455,71 @@
     "document": "valid-master-stream-revision.json",
     "references": {},
     "expected": null
+  },
+  {
+    "name": "valid named group preserves individual names",
+    "kind": "CallDocument",
+    "document": "valid-grouped.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "grouping-revision.json",
+      "00000000-0000-4000-8000-000000000011": "valid-no-speech.json"
+    },
+    "expected": null
+  },
+  {
+    "name": "duplicate group members",
+    "kind": "CallDocument",
+    "document": "duplicate-group-member.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "grouping-revision.json",
+      "00000000-0000-4000-8000-000000000011": "valid-no-speech.json"
+    },
+    "expected": "semantics"
+  },
+  {
+    "name": "foreign group member",
+    "kind": "CallDocument",
+    "document": "foreign-group-member.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "grouping-revision.json",
+      "00000000-0000-4000-8000-000000000011": "valid-no-speech.json"
+    },
+    "expected": "reference"
+  },
+  {
+    "name": "foreign group revision",
+    "kind": "CallDocument",
+    "document": "foreign-group-revision.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "grouping-revision.json",
+      "00000000-0000-4000-8000-000000000011": "valid-no-speech.json"
+    },
+    "expected": "semantics"
+  },
+  {
+    "name": "overlapping speaker groups",
+    "kind": "CallDocument",
+    "document": "overlapping-groups.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "grouping-revision.json",
+      "00000000-0000-4000-8000-000000000011": "valid-no-speech.json"
+    },
+    "expected": "semantics"
+  },
+  {
+    "name": "duplicate group identities",
+    "kind": "CallDocument",
+    "document": "duplicate-group-id.json",
+    "references": {
+      "00000000-0000-4000-8000-000000000004": "audio.json",
+      "00000000-0000-4000-8000-000000000006": "grouping-revision.json",
+      "00000000-0000-4000-8000-000000000011": "valid-no-speech.json"
+    },
+    "expected": "semantics"
   }
 ]
