@@ -30,6 +30,7 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
   private var libraryWindow: NSWindow?
   private var settingsWindow: NSWindow?
   private var recordingPanel: NSPanel?
+  private var recordingRevealSequence = -1
   private var notificationPanel: NSPanel?
   private var notificationID: UUID?
   private var notificationTask: Task<Void, Never>?
@@ -322,7 +323,11 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
       recordingPanel = panel
     }
     clampRecordingWindows()
-    recordingPanel?.orderFrontRegardless()
+    if recordingPanel?.isVisible != true || recordingRevealSequence != shell.recordingRevealSequence
+    {
+      recordingPanel?.orderFrontRegardless()
+      recordingRevealSequence = shell.recordingRevealSequence
+    }
   }
 
   private func makeStatusPanel(size: NSSize) -> RecordingStatusPanel {
