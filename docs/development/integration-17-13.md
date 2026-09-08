@@ -30,6 +30,17 @@ Worker upload/receipt recovery path. Final run identities, outcomes and timings
 belong in PR #75 with the required CI result; historical component evidence does
 not replace that integration gate.
 
+The full integrated macOS check passed in 760.369 seconds, including both Debug
+app variants and local Worker/native receipt recovery. Integration review then
+found that a failed initial archive recovery prevented the application upload
+owner from starting after a successful local recovery retry. The new regression
+test first failed on `2d9071613` with only that test added: the recovered call had
+no durable upload operation after three seconds. Starting the upload owner after
+successful recovery fixes this without reconnecting or relaunching. All six
+focused recovery tests pass; the fixture reports server operations unavailable
+and performs no external request. The final candidate's affected native checks
+and full required CI results are recorded in the PR.
+
 Downstream first-use work remains #18, #19, #20, #73, #45, #58 and #72. Export,
 manual re-transcription and Delete Call remain deferred in #21/#22. Owner-operated
 Meet/Telegram acceptance follows the runnable handoff in #23.

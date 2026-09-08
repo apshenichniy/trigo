@@ -239,7 +239,10 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       guard capture.phase == .idle else { return }
       recoveryReport = await RecordingRecovery.run(root: namespace.archive, archiveID: archiveID)
       recoveredArchiveID = archiveID
-      if recoveryReport.failures.isEmpty { notice = nil }
+      if recoveryReport.failures.isEmpty {
+        notice = nil
+        await startUploadsAfterRecovery()
+      }
     }
     recoveryTask = task
     await task.value
@@ -252,7 +255,11 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     {
       await retryRecovery()
     }
-    if let binding = snapshot.binding, recoveredArchiveID == binding.archiveId,
+    await startUploadsAfterRecovery()
+  }
+
+  private func startUploadsAfterRecovery() async {
+    if let binding = connectionSnapshot.binding, recoveredArchiveID == binding.archiveId,
       recoveryReport.failures.isEmpty, !isTerminating
     {
       do { try await uploads?.start(binding: binding) } catch { report(error) }
