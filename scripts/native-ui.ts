@@ -1,15 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import {
-  closeSync,
-  existsSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { closeSync, existsSync, mkdirSync, openSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { DateTime } from "effect";
@@ -18,53 +9,17 @@ import { commandOptions } from "./arguments.ts";
 import { artifactFingerprint, nativeBuildIdentity } from "./build-reuse.ts";
 import { sourceState } from "./check-inputs.ts";
 import { assertLocksUnchanged, snapshotLocks } from "./locks.ts";
-import { assertSuccessfulUIRun, collectNativeUIEvidence } from "./native-ui-evidence.ts";
+import {
+  assertSuccessfulUIRun,
+  assertUIAttachments,
+  collectNativeUIEvidence,
+  shellTestAttachments,
+} from "./native-ui-evidence.ts";
+import { acquireGUILease } from "./native-ui-lease.ts";
 import { beginTiming, timed } from "./timing.ts";
 import { requireNativeTools, toolOutput } from "./toolchain.ts";
 
-const shellTests = [
-  "testBackgroundMenuLibraryReopenAndSettings",
-  "testRealCoordinatorStartMuteFinishAndBackgroundQuit",
-  "testDeniedAccessRetainsSettingsAndPreventsStart",
-] as const;
-
-function acquireGUILease(): () => void {
-  const path = resolve(tmpdir(), "trigo-native-ui-acceptance.lock");
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const descriptor = openSync(path, "wx", 0o600);
-      try {
-        writeFileSync(descriptor, String(process.pid));
-      } finally {
-        closeSync(descriptor);
-      }
-      return () => {
-        if (readFileSync(path, "utf8") === String(process.pid)) {
-          unlinkSync(path);
-        }
-      };
-    } catch (error) {
-      if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST") {
-        throw error;
-      }
-      const pid = Number(readFileSync(path, "utf8"));
-      if (!Number.isSafeInteger(pid) || pid < 1) {
-        throw new Error("The native UI lease is invalid; inspect it before retrying");
-      }
-      try {
-        process.kill(pid, 0);
-      } catch (failure) {
-        if (failure instanceof Error && "code" in failure && failure.code === "ESRCH") {
-          unlinkSync(path);
-          continue;
-        }
-        throw failure;
-      }
-      throw new Error(`Another native UI acceptance owns the GUI session (PID ${pid})`);
-    }
-  }
-  throw new Error("Could not acquire the native UI acceptance lease");
-}
+const shellTests = Object.keys(shellTestAttachments);
 
 export function runNativeUI(args: string[]): void {
   const options = commandOptions("native ui", args, { "--suite": "value", "--filter": "value" });
@@ -81,18 +36,14 @@ export function runNativeUI(args: string[]): void {
   if (selected.length === 0) {
     throw new Error("No native UI tests matched the selection");
   }
-  requireNativeTools();
-  beginTiming("macos:ui", { suite, ...(filter === undefined ? {} : { filter }) });
-  const release = acquireGUILease();
-  const locks = snapshotLocks();
   const run = resolve(
     ".local/ui-runs",
     `${DateTime.formatIso(DateTime.nowUnsafe()).replaceAll(":", "-")}-${randomUUID().slice(0, 8)}`,
   );
   mkdirSync(run, { recursive: true, mode: 0o700 });
   const bundle = resolve(run, "result.xcresult");
-  const identity = nativeBuildIdentity("native-ui-fixture-debug", ["Trigo UI", ...selected]);
-  const initialIdentity = identity();
+  let release: (() => void) | undefined;
+  let failure: { error: unknown } | undefined;
   const commands: {
     phase: string;
     command: string[];
@@ -103,12 +54,10 @@ export function runNativeUI(args: string[]): void {
   const metadata: Record<string, unknown> = {
     schemaVersion: 1,
     status: "running",
-    source: sourceState(),
-    inputHash: initialIdentity,
     startedAt: DateTime.formatIso(DateTime.nowUnsafe()),
     selection: selected,
     environment: {
-      os: toolOutput(["sw_vers", "-productVersion"]),
+      platform: process.platform,
       architecture: process.arch,
       fixtureBundle: "io.github.apshenichniy.trigo.fixture.desktop",
     },
@@ -144,6 +93,17 @@ export function runNativeUI(args: string[]): void {
     });
   }
   try {
+    metadata.source = sourceState();
+    save();
+    beginTiming("macos:ui", { suite, ...(filter === undefined ? {} : { filter }) });
+    requireNativeTools();
+    release = acquireGUILease();
+    const locks = snapshotLocks();
+    const identity = nativeBuildIdentity("native-ui-fixture-debug", ["Trigo UI", ...selected]);
+    const initialIdentity = identity();
+    metadata.inputHash = initialIdentity;
+    metadata.osVersion = toolOutput(["sw_vers", "-productVersion"]);
+    save();
     execute("prepare", ["bun", "scripts/macos.ts", "prepare", "--variant", "dev"], 60_000);
     const common = [
       "-project",
@@ -182,7 +142,9 @@ export function runNativeUI(args: string[]): void {
       ],
       10 * 60_000,
     );
-    assertSuccessfulUIRun(collectNativeUIEvidence(bundle, run), selected.length);
+    const evidence = collectNativeUIEvidence(bundle, run);
+    assertSuccessfulUIRun(evidence.summary, selected.length);
+    assertUIAttachments(evidence.attachments, selected);
     if (identity() !== initialIdentity) {
       throw new Error("Native UI inputs changed during the run");
     }
@@ -199,14 +161,21 @@ export function runNativeUI(args: string[]): void {
           collection instanceof Error ? collection.message : "Evidence collection failed";
       }
     }
-    throw error;
+    failure = { error };
   } finally {
-    metadata.finishedAt = DateTime.formatIso(DateTime.nowUnsafe());
     try {
-      save();
+      release?.();
+    } catch (error) {
+      metadata.status = "failed";
+      metadata.cleanupFailure = error instanceof Error ? error.message : "GUI lease cleanup failed";
+      failure ??= { error };
     } finally {
-      release();
+      metadata.finishedAt = DateTime.formatIso(DateTime.nowUnsafe());
+      save();
+      console.log(`Native UI ${String(metadata.status)}; evidence: ${run}`);
     }
-    console.log(`Native UI ${String(metadata.status)}; evidence: ${run}`);
+  }
+  if (failure) {
+    throw failure.error;
   }
 }

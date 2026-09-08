@@ -60,7 +60,16 @@ not add the deferred export, manual Retry/Re-transcribe or Delete actions.
 The separate [installed protocol](installed-capture-acceptance.md) establishes
 signing, GUI automation, capture permissions, independent microphone stimulus,
 source pinning, mute, interruption and real gesture evidence. Its promoted
-selected-call collector has 21 disposable self-checks for admission, read bounds,
+selected-call collector has 22 disposable self-checks for admission, read bounds,
 hash/index agreement, mute/silence, recovery prefixes and additive schema versions.
 Those fabricated inputs validate the collector; actual installed capture remains
 part of #24. `--require-measured-mute` cannot pass on an all-zero microphone track.
+
+Review added executable guards for early preflight failures and missing/duplicate
+required screenshots/input/state. A malformed previous cursor is rejected before
+any media read. The GUI lease now uses a kernel `flock` on a stable descriptor,
+through the pinned Bun runtime's macOS FFI; it never reclaims ownership by
+unlinking a PID file. A controlled two-process probe established exclusion while
+the owner lived and release after its death, even while its unrelated spawned
+child remained alive. These changes preserve the earlier failed evidence and
+require a final run on the reviewed candidate.

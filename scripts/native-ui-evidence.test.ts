@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { assertSuccessfulUIRun, curatedUIAttachment } from "./native-ui-evidence.ts";
+import {
+  assertSuccessfulUIRun,
+  assertUIAttachments,
+  curatedUIAttachment,
+  shellTestAttachments,
+} from "./native-ui-evidence.ts";
 
 describe("native UI evidence", () => {
   const passed = {
@@ -39,6 +44,27 @@ describe("native UI evidence", () => {
       "shell-library_1_ABC123.mov",
     ]) {
       expect(curatedUIAttachment(filename)).toBeNull();
+    }
+  });
+
+  it("requires every selected test's actual screenshots and fixture input/state", () => {
+    const names = Object.keys(shellTestAttachments);
+    const index = Object.entries(shellTestAttachments).flatMap(([test, filenames]) =>
+      filenames.map((file) => ({
+        test: `DesktopShellUITests/${test}()`,
+        file: `${test}/${file}`,
+        sha256: "a".repeat(64),
+        byteLength: 100,
+      })),
+    );
+    expect(() => assertUIAttachments(index, names)).not.toThrow();
+    for (const incomplete of [
+      [],
+      index.slice(1),
+      [...index, index[0]!],
+      index.map((entry) => ({ ...entry, byteLength: 0 })),
+    ]) {
+      expect(() => assertUIAttachments(incomplete, names)).toThrow();
     }
   });
 });

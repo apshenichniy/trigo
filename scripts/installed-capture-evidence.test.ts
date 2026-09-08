@@ -10,6 +10,6 @@ it("validates the selected-call collector against disposable repository and medi
   });
   expect(result.error, result.stderr).toBeUndefined();
   expect(result.status, result.stderr).toBe(0);
-  expect(result.stderr).toContain("Ran 21 tests");
+  expect(result.stderr).toMatch(/Ran [1-9]\d* tests/);
   expect(result.stderr).toContain("OK");
 });

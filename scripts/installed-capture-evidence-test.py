@@ -2,6 +2,7 @@
 """Disposable fabricated inputs verify the collector only, never the installed app."""
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import re
@@ -379,6 +380,28 @@ class CollectorTest(unittest.TestCase):
         manifest["namespacePath"] = str(personal)
         self.manifest.write_text(json.dumps(manifest))
         self.reject_before_media("only an explicit local Dev namespace")
+
+    def test_malformed_previous_cursors_fail_before_media_access(self):
+        self.append()
+        baseline = self.collect(cursor_only=True)
+        previous = self.directory / "previous.json"
+        for field, value in (
+            ("confirmedBytes", -1), ("confirmedBytes", True),
+            ("confirmedBytes", 68 + 4 * 16000 * 601),
+            ("confirmedFrames", -1), ("confirmedFrames", 1.5),
+            ("confirmedFrames", 16001), ("confirmedPrefixSHA256", "invalid"),
+        ):
+            with self.subTest(field=field, value=value):
+                modified = json.loads(json.dumps(baseline))
+                modified["calls"][0]["media"][field] = value
+                previous.write_text(json.dumps(modified))
+                self.reject_before_media("previous confirmed", previous)
+        class RejectReads(io.BytesIO):
+            def read(self, size=-1):
+                raise AssertionError("an invalid bound reached the media reader")
+        for byte_count in (-1, True, 0, 2**64):
+            with self.assertRaisesRegex(ValueError, "outside the observation bound"):
+                collector.stream_hash(RejectReads(), byte_count)
 
 
 if __name__ == "__main__":

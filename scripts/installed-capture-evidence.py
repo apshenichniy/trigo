@@ -168,6 +168,8 @@ def state_bytes(spans, start_ms, end_ms, channel):
 
 
 def stream_hash(handle, byte_count):
+    need(type(byte_count) is int and 68 <= byte_count <= 68 + 4 * 16000 * 600,
+         "previous confirmed byte count is outside the observation bound")
     digest = hashlib.sha256()
     remaining = byte_count
     while remaining:
@@ -346,6 +348,17 @@ def collect(manifest_path, label, previous_path=None, cursor_only=False, require
             need(call_id in previous_selected and call_id not in previous_calls, "unexpected or duplicate previously inspected call")
             need(call["process_id"] == previous_selected[call_id]
                  and call.get("expectedApplicationProcessId") == previous_selected[call_id], "previous observed source disagrees with its admission")
+            media = call.get("media")
+            if media is not None:
+                need(isinstance(media, dict), "previous media cursor is invalid")
+                frames, byte_count = media.get("confirmedFrames"), media.get("confirmedBytes")
+                need(type(frames) is int and 0 <= frames <= 16000 * 600 and frames % 16 == 0,
+                     "previous confirmed frame count is invalid")
+                need(type(byte_count) is int and byte_count == 68 + 4 * frames,
+                     "previous confirmed byte count disagrees with frames")
+                digest = media.get("confirmedPrefixSHA256")
+                need(isinstance(digest, str) and re.fullmatch(r"[a-f0-9]{64}", digest),
+                     "previous confirmed prefix hash is invalid")
             previous_calls[call_id] = call
         need(set(previous_calls) == set(previous_selected), "previous inspection does not match its controlled-call admission")
     observed_at = utc()

@@ -6,6 +6,55 @@ import { basename, resolve } from "node:path";
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+export const shellTestAttachments: Readonly<Record<string, readonly string[]>> = {
+  testBackgroundMenuLibraryReopenAndSettings: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-library-empty-light.png",
+    "shell-library-accessibility.txt",
+    "shell-settings-general.png",
+    "shell-settings-connection.png",
+    "shell-settings-diagnostics.png",
+  ],
+  testRealCoordinatorStartMuteFinishAndBackgroundQuit: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-recording-started.png",
+  ],
+  testDeniedAccessRetainsSettingsAndPreventsStart: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-denied-capture-access.png",
+  ],
+};
+
+export type UIAttachment = { test: string; file: string; sha256: string; byteLength: number };
+
+export function assertUIAttachments(
+  index: readonly UIAttachment[],
+  selected: readonly string[],
+): void {
+  for (const name of selected) {
+    const required = shellTestAttachments[name];
+    if (!required) {
+      throw new Error(`Native UI test has no required evidence contract: ${name}`);
+    }
+    for (const filename of required) {
+      const matches = index.filter(
+        (entry) =>
+          entry.test === `DesktopShellUITests/${name}()` && basename(entry.file) === filename,
+      );
+      if (
+        matches.length !== 1 ||
+        matches[0]!.byteLength < 1 ||
+        !/^[a-f0-9]{64}$/.test(matches[0]!.sha256)
+      ) {
+        throw new Error(`Missing, empty or duplicate native UI evidence: ${name}/${filename}`);
+      }
+    }
+  }
+}
+
 export function assertSuccessfulUIRun(value: unknown, expected: number): void {
   if (
     !record(value) ||
@@ -43,7 +92,13 @@ function xcrun(args: string[]): string {
 
 /** Automatic desktop recordings remain in the ignored result/attachment directories.
  * Only explicit fixture-window screenshots and fixture input/state are curated. */
-export function collectNativeUIEvidence(bundle: string, run: string): unknown {
+export function collectNativeUIEvidence(
+  bundle: string,
+  run: string,
+): {
+  summary: unknown;
+  attachments: UIAttachment[];
+} {
   const summary: unknown = JSON.parse(
     xcrun(["xcresulttool", "get", "test-results", "summary", "--path", bundle]),
   );
@@ -54,7 +109,7 @@ export function collectNativeUIEvidence(bundle: string, run: string): unknown {
   if (!Array.isArray(manifest)) {
     throw new Error("Unknown xcresult attachment manifest");
   }
-  const index: { test: string; file: string; sha256: string }[] = [];
+  const index: UIAttachment[] = [];
   for (const test of manifest) {
     if (
       !record(test) ||
@@ -82,15 +137,20 @@ export function collectNativeUIEvidence(bundle: string, run: string): unknown {
       const destination = resolve(run, "evidence", directory);
       mkdirSync(destination, { recursive: true });
       const source = resolve(attachments, attachment.exportedFileName);
+      if (index.some((entry) => entry.file === `${directory}/${filename}`)) {
+        throw new Error("Native UI evidence names collide; no attachment may overwrite another");
+      }
+      const bytes = readFileSync(source);
       copyFileSync(source, resolve(destination, filename));
       index.push({
         test: test.testIdentifier,
         file: `${directory}/${filename}`,
-        sha256: createHash("sha256").update(readFileSync(source)).digest("hex"),
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        byteLength: bytes.byteLength,
       });
     }
   }
   mkdirSync(resolve(run, "evidence"), { recursive: true });
   writeFileSync(resolve(run, "evidence", "index.json"), `${JSON.stringify(index, null, 2)}\n`);
-  return summary;
+  return { summary, attachments: index };
 }
