@@ -151,7 +151,7 @@ actor RecordingStatusFixture: ServerStatusFetching {
 }
 
 @Test(arguments: [ConnectionIssue.unreachable, .unauthorized, .incompatible]) @MainActor
-func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges(
+func savedBindingRecordsLocallyAndShortcutRevealsItsPinnedSourceAcrossFocusChanges(
   healthFailure: ConnectionIssue
 ) async throws {
   let support = FileManager.default.temporaryDirectory.appendingPathComponent(
@@ -217,6 +217,9 @@ func savedBindingRecordsLocallyAndShortcutStopsItsPinnedSourceAcrossFocusChanges
     processLaunchDate: Date()
   )
   await coordinator.shortcutPressed()
+  #expect(coordinator.phase == .recording)
+  #expect(sourceReads == 1)
+  await coordinator.stop()
   #expect(coordinator.phase == .idle)
   #expect(coordinator.pinnedSource == original)
   #expect(coordinator.callID == callID)

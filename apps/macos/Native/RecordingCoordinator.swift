@@ -9,6 +9,11 @@ public enum RecordingControlPhase: Equatable, Sendable {
 public struct RecordingNotice: Equatable, Sendable {
   public let title: String
   public let message: String
+
+  public init(title: String, message: String) {
+    self.title = title
+    self.message = message
+  }
 }
 
 public enum MicrophoneRecordingState: Equatable, Sendable {
@@ -288,14 +293,33 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   }
 
   public func shortcutPressed() async {
-    if canStop {
-      await stop()
-      return
-    }
-    await start(useFrontmost: true)
+    guard mayStart() else { return }
+    await startSelectedSource(selectFrontmostSource())?.value
   }
 
-  public func startPinnedSource() async { await start(useFrontmost: false) }
+  /// Selection is synchronous, before a menu, panel or asynchronous Start can change focus.
+  public func selectFrontmostSource() -> Result<CaptureSource, CaptureStartFailure> {
+    refreshCaptureReadiness()
+    guard capturePermissions.ready else {
+      return .failure(
+        capturePermissions.screenAudio ? .microphonePermission : .screenAudioPermission
+      )
+    }
+    do { return .success(try sources.frontmost()) } catch {
+      return .failure(error as? CaptureStartFailure ?? .unsupportedSource)
+    }
+  }
+
+  public func startPinnedSource() async {
+    await startSelectedSource(pinnedSource.map { .success($0) } ?? .failure(.unsupportedSource))?
+      .value
+  }
+
+  /// The shell may exit immediately only when no capture, late Start or recovery is outstanding.
+  public var canTerminateImmediately: Bool {
+    capture.phase == .idle && attempt == nil && startTask == nil && stopTask == nil
+      && recoveryTask == nil && !isRecovering && recoveryReport.failures.isEmpty
+  }
 
   public func stop(reason: String? = nil) async {
     if let stopTask {
@@ -323,7 +347,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     await stop(reason: "application_termination")
     await startTask?.value
     await recoveryTask?.value
-    let safe = capture.phase == .idle && startTask == nil && stopTask == nil
+    let safe = canTerminateImmediately
     if !safe {
       isTerminating = false
       notice = .init(
@@ -335,13 +359,17 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     return safe
   }
 
-  private func start(useFrontmost: Bool) async {
-    guard mayStart() else { return }
+  /// Synchronous admission fences repeated intents; the returned task owns native completion.
+  @discardableResult public func startSelectedSource(
+    _ selection: Result<CaptureSource, CaptureStartFailure>
+  ) -> Task<Void, Never>? {
+    guard mayStart() else { return nil }
     let current = RecordingControlAttempt()
     attempt = current
     notice = nil
     noticeTracksMicrophoneAvailability = false
     recordingSnapshot = nil
+    pinnedSource = try? selection.get()
     let task = Task { [self] in
       defer {
         if attempt === current {
@@ -352,13 +380,6 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         }
       }
       do {
-        if !useFrontmost && pinnedSource == nil {
-          notice = .init(
-            title: "Choose an application",
-            message: "Focus the target application and use the global recording shortcut."
-          )
-          return
-        }
         refreshCaptureReadiness()
         let preflight = capturePermissions
         if !preflight.ready {
@@ -368,18 +389,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
           )
           return
         }
-        let selected: CaptureSource
-        if useFrontmost {
-          selected = try sources.frontmost()
-        } else if let pinnedSource {
-          selected = pinnedSource
-        } else {
-          notice = .init(
-            title: "Choose an application",
-            message: "Focus the target application and use the global recording shortcut."
-          )
-          return
-        }
+        let selected = try selection.get()
         guard selected.processID != ProcessInfo.processInfo.processIdentifier else {
           throw CaptureStartFailure.unsupportedSource
         }
@@ -404,7 +414,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       }
     }
     startTask = task
-    await task.value
+    return task
   }
 
   private func mayStart() -> Bool {
