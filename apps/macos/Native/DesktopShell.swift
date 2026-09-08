@@ -15,6 +15,7 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
   @Published public private(set) var didBootstrap = false
   @Published public private(set) var isQuitting = false
   @Published public private(set) var recordingVisible = false
+  @Published public private(set) var recordingNotification: DesktopRecordingNotification?
   @Published public var settingsSection: DesktopSettingsSection = .general
   private var bootstrapTask: Task<Void, Never>?
   private var quitTask: Task<Void, Never>?
@@ -22,6 +23,7 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
   private var menuSource: Result<CaptureSource, CaptureStartFailure>?
   private var menuMayStart = false
   private var lastPhase: RecordingControlPhase
+  private var lastSavedCallID: String?
   public var openLibrary: () -> Void = {}
   public var openSettings: () -> Void = {}
 
@@ -67,6 +69,7 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
   public func startOrReveal(from origin: DesktopStartOrigin) {
     guard let services = composition.services else { return }
     if services.state.canStart && !isQuitting {
+      recordingNotification = nil
       if origin == .menu {
         if menuMayStart, let menuSource { services.start(source: menuSource) }
       } else {
@@ -83,6 +86,10 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
 
   public func showRecording() { recordingVisible = true }
   public func hideRecording() { recordingVisible = false }
+  public func dismissRecordingNotification(_ id: UUID) {
+    guard recordingNotification?.id == id else { return }
+    recordingNotification = nil
+  }
 
   public func finish() async {
     await composition.services?.finish()
@@ -164,6 +171,27 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
   private func refresh() {
     guard let services = composition.services else { return }
     let value = services.state
+    if value.microphoneNoticeSequence != recording.microphoneNoticeSequence,
+      let message = value.microphoneUnavailableReason
+    {
+      recordingNotification = .init(
+        notice: .init(title: "Microphone unavailable", message: message),
+        isSaved: false
+      )
+    }
+    if value.phase == .idle, value.finalization.isSettled,
+      value.finalization.localSave == .confirmed, let callID = value.finalization.callID,
+      lastSavedCallID != callID
+    {
+      lastSavedCallID = callID
+      recordingNotification = .init(
+        notice: .init(
+          title: "Recording saved",
+          message: "Audio is saved on this Mac. Upload and transcription may still be pending."
+        ),
+        isSaved: true
+      )
+    }
     if value.phase != lastPhase || (recording.isRecovering && !value.isRecovering) {
       if value.phase == .interrupted || value.phase == .error
         || (value.phase == .recoveryRequired && !value.isRecovering)

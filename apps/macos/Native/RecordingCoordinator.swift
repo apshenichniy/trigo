@@ -58,10 +58,13 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   @Published public private(set) var finalization = CaptureFinalizationState()
   @Published public private(set) var microphoneRecordingEnabled = true
   @Published public private(set) var isMicrophoneChanging = false
+  @Published public private(set) var microphoneNoticeSequence = 0
+  @Published public private(set) var microphoneUnavailableReason: String?
   @Published public private(set) var recoveryReport = RecordingRecoveryReport()
   @Published public private(set) var isRecovering = false
   private var recoveredArchiveID: String?
   private var noticeTracksMicrophoneAvailability = false
+  private var microphoneWasUnavailable = false
   @Published private var capturePhase: ScreenCapturePhase = .idle
   @Published private var attempt: RecordingControlAttempt?
   @Published private var isStopping = false
@@ -98,7 +101,10 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     self.sources = sources
     self.uploads = uploads
     self.capturePermissions = sources.permissions()
-    capture.onPhaseChange = { [weak self] phase in self?.capturePhase = phase }
+    capture.onPhaseChange = { [weak self] phase in
+      self?.capturePhase = phase
+      self?.refreshMicrophoneAvailability()
+    }
     capture.onFinalizationChange = { [weak self] state in self?.finalization = state }
     capture.onChange = { [weak self] snapshot in
       guard let self else { return }
@@ -110,12 +116,16 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
         notice = nil
         noticeTracksMicrophoneAvailability = false
       }
+      refreshMicrophoneAvailability()
     }
     capture.onFailure = { [weak self] reason in
       guard let self else { return }
       refreshCaptureReadiness()
-      noticeTracksMicrophoneAvailability =
-        reason == "microphone_unavailable" || reason == "microphone_permission"
+      if reason == "microphone_unavailable" || reason == "microphone_permission" {
+        refreshMicrophoneAvailability(reason: reason)
+        return
+      }
+      noticeTracksMicrophoneAvailability = false
       notice = .init(
         title: "Capture needs attention",
         message: Self.captureRecoverySuggestion(reason)
@@ -168,6 +178,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     return attempt == nil && !isStopping && !isTerminating && !isMicrophoneChanging
       && !isRequestingPermission
       && capturePhase == .idle && !isRecovering && recoveryReport.failures.isEmpty
+      && finalization.isSettled
   }
 
   /// Read-only refresh after activation, wake, Settings return and device changes.
@@ -390,6 +401,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     attempt = current
     notice = nil
     noticeTracksMicrophoneAvailability = false
+    microphoneWasUnavailable = false
+    microphoneUnavailableReason = nil
     recordingSnapshot = nil
     pinnedSource = try? selection.get()
     let task = Task { [self] in
@@ -447,6 +460,26 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       )
     }
     return canStart
+  }
+
+  private func refreshMicrophoneAvailability(reason: String? = nil) {
+    guard capturePhase == .recording, let recordingSnapshot else { return }
+    if recordingSnapshot.microphone != nil {
+      microphoneWasUnavailable = false
+      microphoneUnavailableReason = nil
+      return
+    }
+    refreshCaptureReadiness()
+    let reason =
+      reason ?? (capturePermissions.microphone ? "microphone_unavailable" : "microphone_permission")
+    let message = Self.captureRecoverySuggestion(reason)
+    microphoneUnavailableReason = message
+    noticeTracksMicrophoneAvailability = true
+    notice = .init(title: "Microphone unavailable", message: message)
+    if !microphoneWasUnavailable {
+      microphoneWasUnavailable = true
+      microphoneNoticeSequence += 1
+    }
   }
 
   private func report(_ error: any Error) {

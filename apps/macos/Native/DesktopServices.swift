@@ -1,7 +1,6 @@
 import Combine
 import Foundation
 
-/// #45 can refine stop/save facts without changing the shell's safety routing.
 /// `prepareForTermination` remains the authority before any deferred Quit succeeds.
 public enum DesktopQuitRequirement: Equatable, Sendable {
   case ready, confirmFinish, waitForSafety
@@ -28,6 +27,10 @@ public struct DesktopRecordingState: Equatable, Sendable {
   public var microphoneEnabled = true
   public var microphoneChanging = false
   public var microphoneName: String?
+  public var microphoneNoticeSequence = 0
+  public var microphoneUnavailableReason: String?
+  public var levels = RecordedAudioLevels()
+  public var finalization = CaptureFinalizationState()
   public var recoveryMessages: [String] = []
   public var quitRequirement: DesktopQuitRequirement = .waitForSafety
 
@@ -39,8 +42,8 @@ public struct DesktopRecordingState: Equatable, Sendable {
     case .idle: permissions.ready ? "Ready to record" : "Capture access required"
     case .starting: "Starting recording…"
     case .recording: "Recording"
-    case .stopping: "Finishing recording…"
-    case .recoveryRequired: "Recording needs recovery"
+    case .stopping: "Saving recording…"
+    case .recoveryRequired: recoveryTitle
     case .interrupted: "Recording interrupted"
     case .error: notice?.title ?? "Recording needs attention"
     }
@@ -93,6 +96,11 @@ public struct DesktopRecordingState: Equatable, Sendable {
     value.microphoneEnabled = coordinator.microphoneRecordingEnabled
     value.microphoneChanging = coordinator.isMicrophoneChanging
     value.microphoneName = coordinator.recordingSnapshot?.microphone?.name
+    value.microphoneNoticeSequence = coordinator.microphoneNoticeSequence
+    value.microphoneUnavailableReason = coordinator.microphoneUnavailableReason
+    value.levels =
+      value.phase == .recording ? coordinator.recordingSnapshot?.levels ?? .init() : .init()
+    value.finalization = coordinator.finalization
     value.recoveryMessages =
       coordinator.recoveryReport.recoveredCalls.map { "\($0.callID): \($0.explanation)" }
       + coordinator.recoveryReport.failures.map { "\($0.callID): \($0.message)" }

@@ -46,6 +46,7 @@ import Foundation
         "archiveRoot": composition.namespace.archive.path, "archiveId": repository.archiveID,
         "bootstrapped": shell.didBootstrap, "phase": String(describing: shell.recording.phase),
         "canStart": shell.recording.canStart,
+        "recordingVisible": shell.recordingVisible,
         "microphoneEnabled": shell.recording.microphoneEnabled,
         "activationPolicy": NSApp.activationPolicy().rawValue,
         "credentialAdapter": "memory-fixture", "statusAdapter": "in-process-fixture",

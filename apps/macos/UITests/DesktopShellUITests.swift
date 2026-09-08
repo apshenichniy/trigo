@@ -3,10 +3,16 @@ import XCTest
 
 @MainActor final class DesktopShellUITests: XCTestCase {
   private let app = XCUIApplication()
+  private let focus = XCUIApplication(
+    bundleIdentifier: "io.github.apshenichniy.trigo.fixture.focus"
+  )
+  private var pointerDriver: XCUIApplication?
   private var root: URL!
   private var library: XCUIElement { app.windows["library-window"] }
   private var settings: XCUIElement { app.windows["settings-window"] }
-  private var panel: XCUIElement { app.dialogs["recording-window"] }
+  private var panel: XCUIElement {
+    app.descendants(matching: .any).matching(identifier: "recording-window").firstMatch
+  }
 
   override func setUp() async throws {
     continueAfterFailure = false
@@ -171,12 +177,20 @@ import XCTest
       URL(fileURLWithPath: archive).resolvingSymlinksInPath().path
         .hasPrefix(root.resolvingSymlinksInPath().path + "/")
     )
+    focus.launch()
+    XCTAssertTrue(focus.wait(for: .runningForeground, timeout: 5))
   }
 
   private func openMenu() {
+    if app.state == .runningForeground {
+      pointerDriver = app
+    } else {
+      if focus.state != .runningForeground { focus.activate() }
+      pointerDriver = focus
+    }
     let item = app.statusItems["trigo-status-item"]
     XCTAssertTrue(item.waitForExistence(timeout: 5))
-    item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+    pointerClick(item)
     waitForVisibleMenuItem(app.menuItems["menu-open-library"])
   }
 
@@ -184,9 +198,20 @@ import XCTest
     let item = app.menuItems[identifier]
     waitForVisibleMenuItem(item)
     XCTAssertTrue(item.isEnabled)
-    // A real pointer click avoids XCTest's separate menu traversal/activation,
-    // which can close a status menu while waiting for another open notification.
-    item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+    pointerClick(item)
+  }
+
+  private func pointerClick(_ element: XCUIElement) {
+    let frame = element.frame
+    XCTAssertFalse(frame.isEmpty)
+    // Anchor the real pointer event to the already-foreground controlled app.
+    // An element in the background accessory app makes XCTest activate that app
+    // before synthesis, which both alters focus and can dismiss its status menu.
+    let driver = pointerDriver ?? focus
+    let window = driver.windows.firstMatch
+    let origin = window.frame.origin
+    window.coordinate(withNormalizedOffset: .zero)
+      .withOffset(CGVector(dx: frame.midX - origin.x, dy: frame.midY - origin.y)).click()
   }
 
   private func waitForVisibleMenuItem(_ item: XCUIElement) {

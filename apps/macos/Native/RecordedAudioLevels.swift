@@ -1,6 +1,6 @@
 import Foundation
 
-/// Linear RMS of the latest committed half-second, after source admission,
+/// Linear RMS of the latest appended half-second, after source admission,
 /// overlap rejection and effective microphone suppression. No audio is retained.
 public struct RecordedAudioLevels: Equatable, Sendable {
   public var microphoneRMS: Double = 0
