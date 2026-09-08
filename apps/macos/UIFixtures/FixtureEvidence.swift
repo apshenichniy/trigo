@@ -9,13 +9,20 @@ import Foundation
   private let root: URL
   private let composition: DesktopComposition
   private let shell: DesktopShell
+  private let shortcut: GlobalRecordingShortcut?
   private var observations: [AnyCancellable] = []
   private var timer: Timer?
 
-  init(root: URL, composition: DesktopComposition, shell: DesktopShell) {
+  init(
+    root: URL,
+    composition: DesktopComposition,
+    shell: DesktopShell,
+    shortcut: GlobalRecordingShortcut? = nil
+  ) {
     self.root = root
     self.composition = composition
     self.shell = shell
+    self.shortcut = shortcut
     observations.append(
       shell.objectWillChange.sink { [weak self] in
         Task { @MainActor in await self?.write() }
@@ -42,7 +49,10 @@ import Foundation
         "microphoneEnabled": shell.recording.microphoneEnabled,
         "activationPolicy": NSApp.activationPolicy().rawValue,
         "credentialAdapter": "memory-fixture", "statusAdapter": "in-process-fixture",
-        "captureAdapter": "no-input-fixture", "globalShortcut": "disabled",
+        "captureAdapter": "no-input-fixture",
+        "globalShortcut": shortcut == nil ? "disabled" : "in-process-fixture",
+        "gestureState": shortcut?.gesture.status.rawValue ?? "disabled",
+        "gestureEnabled": shortcut?.gesture.isEnabled ?? false,
         "callIds": calls.map(\.callID), "source": shell.recording.source?.applicationName ?? "",
       ]
       try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .prettyPrinted])

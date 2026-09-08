@@ -34,9 +34,11 @@ struct DesktopSettingsView: View {
   private var general: some View {
     Form {
       Section("Recording") {
-        LabeledContent("Start or show controls", value: "Control–Option–Command–R")
+        LabeledContent("Start or show controls", value: GlobalRecordingShortcut.gestureLabel)
+        LabeledContent("Ordinary shortcut", value: GlobalRecordingShortcut.fallbackName)
+        if let shortcut { GestureSettings(gesture: shortcut.gesture) }
         Text(
-          "Focus the application to record, then use the shortcut. Use Finish to end the recording."
+          "Focus the application to record, then use either shortcut. Use Finish to end the recording."
         )
         .font(.callout).foregroundStyle(.secondary)
         Text("Microphone recording mute affects Trigo only. It does not mute your calling app.")
@@ -138,7 +140,7 @@ private struct ShortcutDiagnostics: View {
     VStack(alignment: .leading, spacing: 10) {
       Text(
         shortcut.isRegistered
-          ? "Control–Option–Command–R: available" : "Recording shortcut unavailable"
+          ? "\(GlobalRecordingShortcut.fallbackName): available" : "Ordinary shortcut unavailable"
       )
       .accessibilityIdentifier("shortcut-readiness")
       if let issue = shortcut.issue {
@@ -146,7 +148,42 @@ private struct ShortcutDiagnostics: View {
         Button("Retry Shortcut Registration") { shortcut.register() }
           .accessibilityIdentifier("shortcut-retry")
       }
+      GestureSettings(gesture: shortcut.gesture)
     }
     .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+  }
+}
+
+private struct GestureSettings: View {
+  @ObservedObject var gesture: RecordingGestureController
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text(gesture.status.message)
+        .font(.callout).accessibilityIdentifier("gesture-readiness")
+      if gesture.isEnabled {
+        HStack {
+          Button("Disable Gesture") { gesture.disable() }
+            .accessibilityIdentifier("gesture-disable")
+          if gesture.status != .available {
+            Button("Check Again") { gesture.refresh() }
+              .accessibilityIdentifier("gesture-refresh")
+          }
+        }
+        if [.permissionRequired, .denied, .revoked, .unavailable].contains(gesture.status) {
+          Button("Open Input Monitoring Settings") { gesture.openSettings() }
+            .accessibilityIdentifier("gesture-open-settings")
+        }
+      } else {
+        Text(
+          "Input Monitoring is required for this gesture. The ordinary shortcut and menu remain available."
+        )
+        .font(.callout).foregroundStyle(.secondary)
+        Button("Enable Double Left Control") { gesture.enable() }
+          .accessibilityIdentifier("gesture-enable")
+      }
+      Text("Press and release Left Control twice. Other apps may also respond to this gesture.")
+        .font(.callout).foregroundStyle(.secondary)
+    }
   }
 }

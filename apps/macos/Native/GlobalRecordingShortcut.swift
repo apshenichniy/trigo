@@ -23,6 +23,10 @@ enum RecordingShortcutError: Error { case registrationFailed(OSStatus) }
 /// Owns one exclusive registration and fences callbacks from a retired registration.
 @MainActor public final class GlobalRecordingShortcut: ObservableObject {
   public static let label = "⌃⌥⌘R"
+  public static let gestureLabel = "Double Left Control"
+  public static let fallbackName = "Control–Option–Command–R"
+  public let gesture: RecordingGestureController
+  public let isFixture: Bool
   @Published public private(set) var isRegistered = false
   @Published public private(set) var issue: String?
   private let system: RecordingShortcutSystem
@@ -30,15 +34,29 @@ enum RecordingShortcutError: Error { case registrationFailed(OSStatus) }
   private var lease: RecordingShortcutLease?
   private var generation = UUID()
 
-  public convenience init(action: @escaping @MainActor () -> Void) {
-    self.init(system: .live, action: action)
+  public convenience init(preferences: UserDefaults, action: @escaping @MainActor () -> Void) {
+    self.init(
+      system: .live,
+      gestureSystem: .live(preferences: preferences),
+      isFixture: false,
+      action: action
+    )
   }
-  init(system: RecordingShortcutSystem, action: @escaping @MainActor () -> Void) {
+  init(
+    system: RecordingShortcutSystem,
+    gestureSystem: RecordingGestureSystem? = nil,
+    isFixture: Bool = true,
+    action: @escaping @MainActor () -> Void
+  ) {
     self.system = system
+    self.isFixture = isFixture
     self.action = action
+    self.gesture = RecordingGestureController(system: gestureSystem, action: action)
   }
 
   public func register() {
+    gesture.start()
+    gesture.refresh()
     guard lease == nil else { return }
     generation = UUID()
     let expected = generation
@@ -57,6 +75,7 @@ enum RecordingShortcutError: Error { case registrationFailed(OSStatus) }
   }
 
   public func unregister() {
+    gesture.stop()
     isRegistered = false
     generation = UUID()
     lease?.cancel()
