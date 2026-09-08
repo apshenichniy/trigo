@@ -100,7 +100,8 @@ export interface AsrMasterSource {
   readonly read: (offset: number, length: number) => Effect.Effect<Uint8Array, AsrExtractionError>;
 }
 
-export const asrReadRangeBytes = 262_144;
+/** Two bounded passes over a three-hour master stay below 1,000 internal subrequests. */
+export const asrReadRangeBytes = 2_097_152;
 
 /** Matches the native immutable CAF header, including its indefinite last data chunk. */
 export function makeAsrMasterHeader(): Uint8Array {
@@ -243,7 +244,7 @@ export const r2MasterSource = (
   };
 };
 
-/** The evidence becomes available only after every output byte has been consumed. */
+/** Hash evidence covers every produced byte; the transport owns the separate consumer EOF witness. */
 export const extractMasterWave = Effect.fn("Asr.extractMasterWave")(function* (
   source: AsrMasterSource,
   unknownMaster: unknown,
@@ -322,7 +323,7 @@ export const extractMasterWave = Effect.fn("Asr.extractMasterWave")(function* (
   );
   const evidence = Effect.fn("Asr.extractionEvidence")(function* () {
     if (completed === undefined) {
-      return yield* failure("extract", "Complete extraction has not been consumed");
+      return yield* failure("extract", "Complete extraction has not been produced");
     }
     return completed;
   });

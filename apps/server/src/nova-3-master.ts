@@ -36,11 +36,21 @@ const ProviderMetadata = Schema.Struct({
   ),
 });
 
+export const Nova3SubmissionTransport = Schema.Struct({
+  deliveryWitness: Schema.Literals(["consumer-eof-v1", "legacy-producer-hash-v1", "unobserved"]),
+  deliveredByteLength: Schema.NullOr(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  responseBodyComplete: Schema.NullOr(Schema.Boolean),
+  providerHttpStatus: Schema.NullOr(
+    Schema.Int.check(Schema.isBetween({ minimum: 100, maximum: 599 })),
+  ),
+});
+
 export const Nova3MasterSubmission = Schema.Struct({
   extraction: AsrExtractionEvidence,
   rawArtifactKey: Schema.NonEmptyString,
   rawBytes: Schema.Uint8Array,
   providerRequestId: Schema.NullOr(Schema.NonEmptyString),
+  transport: Schema.optionalKey(Nova3SubmissionTransport),
 });
 export interface Nova3MasterSubmission extends Schema.Schema.Type<typeof Nova3MasterSubmission> {}
 
@@ -80,6 +90,24 @@ export const normalizeNova3Master = Effect.fn("Nova3.normalizeMaster")(function*
     Effect.gen(function* () {
       const { extraction } = submission;
       const { interval } = extraction;
+      const transport =
+        submission.transport ??
+        Nova3SubmissionTransport.make({
+          deliveryWitness: "unobserved",
+          deliveredByteLength: null,
+          responseBodyComplete: null,
+          providerHttpStatus: null,
+        });
+      if (
+        transport.deliveryWitness === "consumer-eof-v1" &&
+        (transport.deliveredByteLength !== extraction.byteLength ||
+          transport.responseBodyComplete !== true ||
+          transport.providerHttpStatus !== 200)
+      ) {
+        return yield* failure(
+          "Consumer EOF evidence must cover the exact input and a complete successful response",
+        );
+      }
       if (
         !sameMaster(extraction.master, input.master) ||
         interval.index !== index ||
@@ -144,6 +172,7 @@ export const normalizeNova3Master = Effect.fn("Nova3.normalizeMaster")(function*
         },
         evidence: {
           extraction,
+          transport,
           rawArtifact: {
             key: submission.rawArtifactKey,
             sha256: yield* Effect.promise(() => storedByteHash(submission.rawBytes)),
@@ -202,6 +231,9 @@ export const normalizeNova3Master = Effect.fn("Nova3.normalizeMaster")(function*
       revisionId: input.revisionId,
       profileId: nova3StreamProfile.id,
       master: input.master,
+      allConsumerEOFVerified: submissions.every(
+        (submission) => submission.evidence.transport.deliveryWitness === "consumer-eof-v1",
+      ),
       submissions: submissions.map((submission) => submission.evidence),
     },
   };

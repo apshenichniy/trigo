@@ -78,16 +78,18 @@ it.effect(
       for (const durationMs of [3_600_000, 10_800_000]) {
         const witness = master(durationMs);
         let sequence = 100;
-        const intervals = yield* planMasterSubmissions(witness, 900_000, () => id(sequence++));
-        expect(intervals.length).toBe(durationMs / 900_000);
+        const intervals = yield* planMasterSubmissions(witness, durationMs, () => id(sequence++));
+        expect(intervals.length).toBe(1);
         let expectedOffset = 68;
         let totalPcmBytes = 0;
         let maximumRead = 0;
+        let sourceReadCount = 0;
         for (const interval of intervals) {
           const source: AsrMasterSource = {
             read: (offset, length) =>
               Effect.sync(() => {
                 maximumRead = Math.max(maximumRead, length);
+                sourceReadCount += 1;
                 if (offset === 0) {
                   return makeAsrMasterHeader();
                 }
@@ -109,6 +111,7 @@ it.effect(
           expect((yield* extraction.evidence()).byteLength).toBe(emitted);
         }
         expect(maximumRead).toBeLessThanOrEqual(asrReadRangeBytes);
+        expect(sourceReadCount * 2 + 20).toBeLessThan(1_000);
         expect(expectedOffset).toBe(witness.byteLength);
         expect(totalPcmBytes).toBe(witness.frameCount * 4);
         expect(intervals.at(-1)?.endFrame).toBe(witness.frameCount);

@@ -6,7 +6,7 @@ import { beforeEach, vi } from "vitest";
 import { storedByteHash, validateDocument } from "@trigo/contracts";
 
 import ownerMigration from "../migrations/0001_owner_identity.sql?raw";
-import { makeAsrMasterHeader } from "../src/asr-master.ts";
+import { asrReadRangeBytes, makeAsrMasterHeader } from "../src/asr-master.ts";
 import cloudWorker, { type CloudEnvironmentProbe } from "../src/cloud-worker.ts";
 import { HostedMasterFixture, fixtureTemplateByteLength } from "../src/hosted-master-fixture.ts";
 import {
@@ -242,5 +242,53 @@ it.effect("keeps master fixture mutation dev-only and owner-authenticated", () =
       )).status,
     ).toBe(404);
     expect(yield* Effect.promise(() => env.LOCAL_ARCHIVE.get(`${root}/fixture.json`))).toBeNull();
+  }),
+);
+
+it.effect("rejects a prefetched final audio block as delivery evidence", () =>
+  Effect.gen(function* () {
+    const run = vi.fn(async (_model: string, input: Record<string, unknown>) => {
+      const audio = input.audio;
+      if (
+        typeof audio !== "object" ||
+        audio === null ||
+        !("body" in audio) ||
+        !(audio.body instanceof ReadableStream)
+      ) {
+        throw new Error("Expected streamed input");
+      }
+      const reader = audio.body.getReader();
+      let delivered = 0;
+      while (delivered < 44 + asrReadRangeBytes) {
+        const next = await reader.read();
+        if (next.done) {
+          break;
+        }
+        delivered += next.value.byteLength;
+      }
+      expect(delivered).toBe(44 + asrReadRangeBytes);
+      expect(delivered).toBeLessThan(3_840_044);
+      reader.releaseLock();
+      return Response.json({
+        results: {
+          channels: [
+            { alternatives: [{ transcript: "", words: [] }] },
+            { alternatives: [{ transcript: "", words: [] }] },
+          ],
+        },
+      });
+    });
+    const environment = bindings(run);
+    expect(
+      (yield* fetch(
+        environment,
+        "PUT",
+        "?language=en&durationMs=60000&intervalMs=60000",
+        template(),
+      )).status,
+    ).toBe(201);
+    const result = yield* fetch(environment, "POST", "?index=0");
+    expect(yield* Effect.promise(() => result.json())).toMatchObject({ fullyConsumed: "false" });
+    expect((yield* fetch(environment, "POST", "?action=normalize")).status).toBe(409);
   }),
 );

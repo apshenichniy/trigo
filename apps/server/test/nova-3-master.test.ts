@@ -108,7 +108,51 @@ it.effect(
         yield* Effect.promise(() => storedByteHash(submission(0).rawBytes)),
       );
       expect(first?.reportedDurationSeconds).toBe(1);
+      expect(first?.transport.deliveryWitness).toBe("unobserved");
+      expect(result.provenance.allConsumerEOFVerified).toBe(false);
     }),
+);
+
+it.effect("preserves legacy delivery qualification and rejects contradictory EOF witnesses", () =>
+  Effect.gen(function* () {
+    const value = input();
+    const submissions = value.submissions.map((item) => ({
+      ...item,
+      transport: {
+        deliveryWitness: "consumer-eof-v1",
+        deliveredByteLength: item.extraction.byteLength,
+        responseBodyComplete: true,
+        providerHttpStatus: 200,
+      },
+    }));
+    const completed = yield* normalizeNova3Master({ ...value, submissions });
+    expect(completed.provenance.allConsumerEOFVerified).toBe(true);
+    const legacy = submissions.map((item) => ({
+      ...item,
+      transport: { ...item.transport, deliveryWitness: "legacy-producer-hash-v1" },
+    }));
+    const qualified = yield* normalizeNova3Master({ ...input(), submissions: legacy });
+    expect(qualified.provenance.allConsumerEOFVerified).toBe(false);
+    expect(qualified.provenance.submissions[0]?.transport.deliveryWitness).toBe(
+      "legacy-producer-hash-v1",
+    );
+    for (const contradiction of [
+      { deliveredByteLength: 44 },
+      { responseBodyComplete: false },
+      { providerHttpStatus: 500 },
+    ]) {
+      const rejected = yield* Effect.result(
+        normalizeNova3Master({
+          ...input(),
+          submissions: submissions.map((item) => ({
+            ...item,
+            transport: { ...item.transport, ...contradiction },
+          })),
+        }),
+      );
+      expect(rejected._tag).toBe("Failure");
+    }
+  }),
 );
 
 it.effect(

@@ -170,19 +170,13 @@ const submit = Effect.fn("HostedAsrProbe.submit")(function* (
     yield* Effect.promise(() => input.body.cancel());
     return yield* recover(env, fixture, false);
   }
-  const response = yield* submitNova3Stream(env.AI, input.body, "audio/wav", language).pipe(
-    Effect.flatMap((result) =>
-      Effect.gen(function* () {
-        const bytes = yield* readBoundedBody(result.body, 4_000_000);
-        return {
-          status: result.status,
-          requestId: result.headers.get("cf-ai-req-id") ?? "",
-          bytes,
-        };
-      }),
-    ),
-    Effect.result,
-  );
+  const response = yield* submitNova3Stream(
+    env.AI,
+    input.body,
+    "audio/wav",
+    language,
+    input.size,
+  ).pipe(Effect.result);
   const latencyMs = (yield* Clock.currentTimeMillis) - startedAt;
   if (response._tag === "Failure") {
     yield* storage("uncertainty evidence write", () =>
@@ -210,6 +204,10 @@ const submit = Effect.fn("HostedAsrProbe.submit")(function* (
         sha256,
         providerLatencyMs: String(latencyMs),
         language,
+        responseBodyComplete: String(result.responseBodyComplete),
+        responseBodyProblem: result.responseBodyProblem ?? "",
+        requestBodyComplete: String(result.requestBody.complete),
+        deliveredByteLength: String(result.requestBody.byteLength),
       },
     }),
   );

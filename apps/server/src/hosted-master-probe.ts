@@ -13,7 +13,11 @@ import {
   prepareHostedMasterFixture,
   storeControlledMaster,
 } from "./hosted-master-fixture.ts";
-import { normalizeNova3Master, type Nova3MasterSubmission } from "./nova-3-master.ts";
+import {
+  Nova3SubmissionTransport,
+  normalizeNova3Master,
+  type Nova3MasterSubmission,
+} from "./nova-3-master.ts";
 import { readBoundedBody, submitNova3Stream } from "./nova-3-transport.ts";
 
 const json = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));
@@ -211,15 +215,21 @@ const submit = Effect.fn("HostedMasterProbe.submit")(function* (
   }
   const providerStarted = yield* Clock.currentTimeMillis;
   const result = yield* Effect.gen(function* () {
-    const body = yield* Stream.toReadableStreamEffect(actual.stream);
-    const response = yield* submitNova3Stream(env.AI, body, "audio/wav", plan.language);
-    const bytes = yield* readBoundedBody(response.body, 4_000_000);
+    const body = yield* Stream.toReadableStreamEffect(actual.stream, {
+      strategy: { highWaterMark: 0 },
+    });
+    const response = yield* submitNova3Stream(
+      env.AI,
+      body,
+      "audio/wav",
+      plan.language,
+      actual.byteLength,
+    );
     const consumed = yield* Effect.result(actual.evidence());
     return {
-      bytes,
-      status: response.status,
-      requestId: response.headers.get("cf-ai-req-id") ?? "",
+      ...response,
       fullyConsumed:
+        response.requestBody.complete &&
         consumed._tag === "Success" &&
         Schema.toEquivalence(AsrExtractionEvidence)(consumed.success, extraction),
     };
@@ -248,6 +258,10 @@ const submit = Effect.fn("HostedMasterProbe.submit")(function* (
         extractionMs: String(extractionMs),
         providerMs: String(providerMs),
         fullyConsumed: String(raw.fullyConsumed),
+        deliveryWitness: "consumer-eof-v1",
+        deliveredByteLength: String(raw.requestBody.byteLength),
+        responseBodyComplete: String(raw.responseBodyComplete),
+        responseBodyProblem: raw.responseBodyProblem ?? "",
       },
     }),
   );
@@ -274,7 +288,8 @@ const normalize = Effect.fn("HostedMasterProbe.normalize")(function* (
       if (
         raw === null ||
         raw.customMetadata?.httpStatus !== "200" ||
-        raw.customMetadata.fullyConsumed !== "true"
+        raw.customMetadata.fullyConsumed !== "true" ||
+        raw.customMetadata.responseBodyComplete === "false"
       ) {
         return yield* failure(
           409,
@@ -296,11 +311,24 @@ const normalize = Effect.fn("HostedMasterProbe.normalize")(function* (
       if (rawHash !== raw.customMetadata.sha256) {
         return yield* failure(409, "Raw evidence hash does not match the retained receipt");
       }
+      const transport = yield* Schema.decodeUnknownEffect(Nova3SubmissionTransport)({
+        deliveryWitness: raw.customMetadata.deliveryWitness ?? "legacy-producer-hash-v1",
+        deliveredByteLength:
+          raw.customMetadata.deliveredByteLength === undefined
+            ? null
+            : Number(raw.customMetadata.deliveredByteLength),
+        responseBodyComplete:
+          raw.customMetadata.responseBodyComplete === undefined
+            ? null
+            : raw.customMetadata.responseBodyComplete === "true",
+        providerHttpStatus: Number(raw.customMetadata.httpStatus),
+      }).pipe(Effect.mapError(() => failure(409, "Stored transport evidence is invalid")));
       return {
         extraction,
         rawArtifactKey: part.raw,
         rawBytes,
         providerRequestId: raw.customMetadata.providerRequestId || null,
+        transport,
       } satisfies Nova3MasterSubmission;
     }),
   );
@@ -332,9 +360,9 @@ const handle = Effect.fn("HostedMasterProbe.handle")(function* (
   env: AsrProbeEnvironment,
   fixture: string,
 ) {
-  if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(fixture)) {
-    return yield* failure(400, "Invalid controlled fixture identity");
-  }
+  yield* Schema.decodeEffect(HostedMasterFixture.fields.fixture)(fixture).pipe(
+    Effect.mapError(() => failure(400, "Invalid controlled fixture identity")),
+  );
   const url = new URL(request.url);
   if (request.method === "PUT") {
     return yield* prepare(request, env, fixture);
