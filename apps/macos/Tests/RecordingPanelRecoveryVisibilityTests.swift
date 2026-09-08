@@ -82,3 +82,58 @@ func successfulLivePanelRecoveryHidesControlsAfterStopOrSaveFailure(stopFails: B
   let completion = try #require(try repository.captureCompletion(callID: session.callID))
   #expect(completion.call.durationMs == 1000)
 }
+
+@Test(arguments: [
+  CaptureStartFailure.unsupportedSource, .screenAudioPermission, .microphonePermission,
+])
+@MainActor func rejectedNewStartTakesPrecedenceOverRestoredInterruption(
+  failure: CaptureStartFailure
+) async throws {
+  let fixture = try RecordingControlFixture()
+  defer { fixture.cleanup() }
+  let session = try await CaptureArchiveSession.begin(
+    root: fixture.namespace.archive,
+    archiveID: fixture.status.archiveID,
+    source: fixture.os.source,
+    microphone: nil
+  )
+  let writer = try CaptureMediaWriter(session: session)
+  try writer.append(interleaved: Array(repeating: Int16(123), count: 32_000))
+  await fixture.bind()
+  #expect(fixture.coordinator.phase == .interrupted)
+  switch failure {
+  case .unsupportedSource: fixture.os.frontmostFailure = failure
+  case .screenAudioPermission: fixture.os.permissions = .init(screenAudio: false, microphone: true)
+  case .microphonePermission: fixture.os.permissions = .init(screenAudio: true, microphone: false)
+  default: Issue.record("Unexpected fixture failure")
+  }
+  await fixture.coordinator.shortcutPressed()
+  let state = LiveDesktopRecordingServices(coordinator: fixture.coordinator).state
+  #expect(state.phase == .error)
+  #expect(state.notice?.message == fixture.coordinator.notice?.message)
+  #expect(state.notice?.message.contains(failure.recoverySuggestion) == true)
+  #expect(state.source == fixture.coordinator.pinnedSource)
+  #expect(state.elapsedMs == 0)
+  #expect(!state.canStop)
+  #expect(!fixture.os.application.running)
+  #expect(fixture.coordinator.recoveryReport.recoveredCallIDs == [session.callID])
+  let repository = try LocalRepository(
+    root: fixture.namespace.archive,
+    archiveID: session.archiveID
+  )
+  #expect(try repository.captureCompletion(callID: session.callID)?.call.durationMs == 1000)
+}
+
+@Test @MainActor func liveInterruptedPanelRetainsCauseAndSavedDuration() async throws {
+  let fixture = try RecordingControlFixture()
+  defer { fixture.cleanup() }
+  await fixture.bind()
+  await fixture.coordinator.shortcutPressed()
+  await fixture.coordinator.stop(reason: "system_sleep")
+  let state = LiveDesktopRecordingServices(coordinator: fixture.coordinator).state
+  #expect(state.phase == .interrupted)
+  #expect(state.statusDetail.contains("System sleep interrupted recording."))
+  #expect(state.statusDetail.contains("Retained duration:"))
+  #expect(state.statusDetail.contains("Audio is saved on this Mac."))
+  #expect(state.finalization.localSave == .confirmed)
+}

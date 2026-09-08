@@ -140,7 +140,7 @@ export function runNativeUI(args: string[]): void {
         bundle,
         ...selected.map((name) => `-only-testing:TrigoUITests/DesktopShellUITests/${name}`),
       ],
-      10 * 60_000,
+      Math.max(10 * 60_000, selected.length * 120_000 + 60_000),
     );
     const evidence = collectNativeUIEvidence(bundle, run);
     assertSuccessfulUIRun(evidence.summary, selected.length);

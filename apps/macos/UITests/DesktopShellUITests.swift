@@ -122,7 +122,10 @@ import XCTest
     XCTAssertTrue(waitState { $0["statusTitle"] as? String == "Capture access required" })
     XCTAssertTrue(panel.waitForExistence(timeout: 5))
     capture("shell-permission-status", panel)
-    XCTAssertEqual(panel.staticTexts["recording-state"].label, "Capture access required")
+    wait(
+      panel.staticTexts["recording-state"],
+      "value == 'Capture access required' OR label == 'Capture access required'"
+    )
     XCTAssertTrue(try (state()["callIds"] as? [String] ?? []).isEmpty)
   }
 
@@ -489,7 +492,7 @@ import XCTest
   }
 
   private func openMenu() {
-    if app.state == .runningForeground {
+    if app.state == .runningForeground && app.windows.firstMatch.exists {
       pointerDriver = app
     } else {
       if focus.state != .runningForeground { focus.activate() }

@@ -19,23 +19,25 @@ public struct RecoveredRecording: Equatable, Sendable, Identifiable {
   public var callID: String { call.callID }
   public var interruptionReason: String? { call.interruptionReason }
   public var id: String { callID }
-  public var explanation: String {
-    switch interruptionReason {
-    case "process_terminated": "The process ended before recording was finalized."
-    case "application_termination": "The app quit before recording was finalized."
-    case "system_sleep": "System sleep interrupted recording."
-    case "source_exited": "The selected application exited."
-    case "duration_limit": "The three-hour recording limit was reached."
-    case "media_write_failed":
-      "Local media writing failed. Check free disk space and archive access."
-    case "application_stream_failed":
-      "The application capture stream failed. Check capture permissions before recording again."
-    case "corrupt_media_tail":
-      "A corrupt media tail was rejected; only the verified prefix was recovered."
-    case .some(let reason):
-      "Recorded interruption: \(reason.replacingOccurrences(of: "_", with: " "))."
-    case nil: "Pending finalization completed; no interruption cause was recorded."
-    }
+  public var explanation: String { recordingInterruptionExplanation(interruptionReason) }
+}
+
+func recordingInterruptionExplanation(_ reason: String?) -> String {
+  switch reason {
+  case "process_terminated": "The process ended before recording was finalized."
+  case "application_termination": "The app quit before recording was finalized."
+  case "system_sleep": "System sleep interrupted recording."
+  case "source_exited": "The selected application exited."
+  case "duration_limit": "The three-hour recording limit was reached."
+  case "media_write_failed":
+    "Local media writing failed. Check free disk space and archive access."
+  case "application_stream_failed":
+    "The application capture stream failed. Check capture permissions before recording again."
+  case "corrupt_media_tail":
+    "A corrupt media tail was rejected; only the verified prefix was recovered."
+  case .some(let reason):
+    "Recorded interruption: \(reason.replacingOccurrences(of: "_", with: " "))."
+  case nil: "Pending finalization completed; no interruption cause was recorded."
   }
 }
 

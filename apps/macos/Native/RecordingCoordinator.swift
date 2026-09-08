@@ -146,7 +146,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     if attempt != nil { return .starting }
     if !recoveryReport.failures.isEmpty { return .recoveryRequired }
     if recordingSnapshot?.state == .interrupted { return .interrupted }
-    if recordingSnapshot == nil,
+    if recordingSnapshot == nil, notice == nil,
       recoveryReport.recoveredCalls.contains(where: { $0.interruptionReason != nil })
     {
       return .interrupted

@@ -242,8 +242,7 @@ public enum ScreenCapturePhase: Equatable, Sendable {
     monitor = nil
     if let sleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver) }
     sleepObserver = nil
-    output.stopClock()
-    let endedAt = CMClockGetTime(CMClockGetHostTimeClock())
+    let endedAt = output.stopClock()
     let application = applicationStream
     let microphone = microphoneStream
     applicationStream = nil
@@ -516,6 +515,10 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
   private let routing: CaptureAudioRouting
   private let selection = CaptureStreamSelection()
   private var timer: DispatchSourceTimer?
+  // Finish freezes the clock before queued timer work can resume. Engine and
+  // media mutation still belong exclusively to the serial audio queue.
+  private let clockLock = NSLock()
+  private var stoppedClockTime: CMTime?
   private var failed = false
   private let onSnapshot: @Sendable (CaptureRecordingSnapshot) -> Void
   private let onFailure: @Sendable (String) -> Void
@@ -580,7 +583,10 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
       clock.setEventHandler { [weak self] in
         guard let self, !failed else { return }
         do {
-          try advanceClock(at: CMClockGetTime(CMClockGetHostTimeClock()))
+          let time = clockLock.withLock {
+            stoppedClockTime ?? CMClockGetTime(CMClockGetHostTimeClock())
+          }
+          try advanceClock(at: time)
         } catch CaptureError.durationLimit { fail("duration_limit") } catch {
           fail(error is CaptureError ? "capture_timeline_failed" : "media_write_failed")
         }
@@ -597,11 +603,17 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
     onSnapshot(engine.snapshot)
   }
 
-  func stopClock() {
+  func stopClock() -> CMTime {
+    let time = clockLock.withLock {
+      let time = stoppedClockTime ?? CMClockGetTime(CMClockGetHostTimeClock())
+      stoppedClockTime = time
+      return time
+    }
     queue.async { [self] in
       timer?.cancel()
       timer = nil
     }
+    return time
   }
 
   func stream(

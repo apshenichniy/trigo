@@ -38,6 +38,13 @@ the library or claiming upload/transcription completion. This also applies after
 Retry stopping/saving. Failure remains reachable after Hide. Recovered calls
 retain their committed duration, source and interruption reason for status
 presentation; restoration does not fabricate a new live capture session.
+New Start failures take precedence over historical restoration status while the
+recovered calls remain available in Diagnostics. Live interruptions also preserve
+their cause in the panel's accessible detail.
+
+Finish freezes the capture clock before queued timer work resumes. A delayed
+tick cannot commit beyond the requested end and then make finalization rewind
+the timeline. Native stream retirement and durable save remain independent.
 
 The native host uses a nonactivating floating window, accepts pointer actions
 without becoming key/main, and exposes the floating-window accessibility subrole.
@@ -69,6 +76,19 @@ passed in 67.275 seconds (`panel-native-review-corrections.log`). A separate rev
 correction preserves actual status titles for non-start notices such as capture
 access setup. Compilation failures are retained separately and are not test results.
 
+The first complete UI run at `6511f4571` exposed a Finish/queued-timer race.
+`panel-final-regressions-red.log` reproduces it with the actual production timer:
+hold the audio queue until a timer event is pending, enqueue mute and Finish,
+then release the queue more than the reorder allowance after Finish. Before the
+fix, the call ended as `interrupted` with `media_write_failed`. The same red run
+also proves that three new Start failures were masked by a restored interruption.
+Two tests failed with 18 expectations in 1.450 seconds (51.192 seconds including
+build); input identity `501fe03aa7ea7df177ec9778c80b4ce69d11afc9cf205c0a1e1d7e58aed3dcfd`.
+After the fixes, eight selected tests passed in 1.540 seconds (64.496 seconds
+including build), including retained ingress/drain coverage, queued timer work,
+normal Finish, live/restored interruption details and error precedence.
+`panel-final-regressions-green.log` retains that result.
+
 ## Native UI evidence
 
 The isolated UI executable uses the real coordinator, repository, PCM ingress,
@@ -89,13 +109,14 @@ ignored and are not acceptance exports.
 
 Retained iteration results under `.local/ui-runs`:
 
-| Run                                 | Result and purpose                                                                                                                                                                                                                                  |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `2026-09-08T22-28-54.727Z-ea5e7541` | First compact-panel pilot failed before Start; XCTest activated the background target during menu synthesis. Input hash `943e69ec10df46d66718e3c353d1bcc3ca7e8f273ae6478bdd7039a383669211`.                                                         |
-| `2026-09-08T22-33-39.763Z-3e4ed557` | Foreground-anchored Start succeeded and captured the actual 192 × 44 strip. Later menu interaction failed because the panel was exposed as an interrupting AXDialog. Input hash `29f9d39d93d9bd5eca856dcc9fd02dc66428f13c2429dd3e8f06ded092246a42`. |
-| `2026-09-08T22-35-29.420Z-5f47928b` | Correct floating-window role: Start, mute, Finish, saved call and background Quit passed in 85.295 seconds.                                                                                                                                         |
-| `2026-09-08T22-45-35.772Z-f694ef04` | Independent measured signals, silence, effective mute, hidden microphone-loss notice and muted reattachment passed in 88.175 seconds.                                                                                                               |
-| `2026-09-08T22-47-24.850Z-8965c742` | Five boundary/focus scenarios passed in 283.903 seconds: native fullscreen/drag/hide/reveal; pending mute and next-call reset; Cancel/late Start; held/failed save; failed Stop with saved audio.                                                   |
+| Run                                 | Result and purpose                                                                                                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2026-09-08T22-28-54.727Z-ea5e7541` | First compact-panel pilot failed before Start; XCTest activated the background target during menu synthesis. Input hash `943e69ec10df46d66718e3c353d1bcc3ca7e8f273ae6478bdd7039a383669211`.                                                                                        |
+| `2026-09-08T22-33-39.763Z-3e4ed557` | Foreground-anchored Start succeeded and captured the actual 192 × 44 strip. Later menu interaction failed because the panel was exposed as an interrupting AXDialog. Input hash `29f9d39d93d9bd5eca856dcc9fd02dc66428f13c2429dd3e8f06ded092246a42`.                                |
+| `2026-09-08T22-35-29.420Z-5f47928b` | Correct floating-window role: Start, mute, Finish, saved call and background Quit passed in 85.295 seconds.                                                                                                                                                                        |
+| `2026-09-08T22-45-35.772Z-f694ef04` | Independent measured signals, silence, effective mute, hidden microphone-loss notice and muted reattachment passed in 88.175 seconds.                                                                                                                                              |
+| `2026-09-08T22-47-24.850Z-8965c742` | Five boundary/focus scenarios passed in 283.903 seconds: native fullscreen/drag/hide/reveal; pending mute and next-call reset; Cancel/late Start; held/failed save; failed Stop with saved audio.                                                                                  |
+| `2026-09-08T23-01-09.777Z-1b5a9ce0` | First complete selection at `6511f4571`: seven passed, three failed, no skips. The stronger saved-call assertion exposed the queued-timer interruption. Two harness failures read a macOS text label instead of its value and tried to anchor a click to a closed Settings window. |
 
 The first two runs used `cca2daa08` plus their recorded dirty inputs. The last two
 used the same source fingerprint
@@ -103,6 +124,8 @@ used the same source fingerprint
 subsequently committed as `78a72fbe9`. Those runs preceded the review corrections.
 The saved-call assertions now additionally require the panel to disappear after
 recovery, and denied-permission UI includes the actual non-start status text.
+The earlier pending-mute pilot did not require the panel to hide, so it does not
+establish that normal finalization passed that stronger acceptance condition.
 
 Run the current complete selection on the final committed candidate:
 

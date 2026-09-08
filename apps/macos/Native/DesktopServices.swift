@@ -101,6 +101,16 @@ public struct DesktopRecordingState: Equatable, Sendable {
     value.levels =
       value.phase == .recording ? coordinator.recordingSnapshot?.levels ?? .init() : .init()
     value.finalization = coordinator.finalization
+    if value.phase == .interrupted,
+      let reason = coordinator.recordingSnapshot?.interruptionReason
+    {
+      value.notice =
+        value.notice
+        ?? .init(
+          title: "Recording interrupted",
+          message: recordingInterruptionExplanation(reason)
+        )
+    }
     if value.phase == .interrupted, coordinator.recordingSnapshot == nil,
       let recovered = coordinator.recoveryReport.recoveredCalls
         .filter({ $0.interruptionReason != nil })
@@ -116,7 +126,8 @@ public struct DesktopRecordingState: Equatable, Sendable {
       value.finalization.captureStopped = true
       value.finalization.pendingNativeStart = false
       value.finalization.localSave = .confirmed
-      value.notice = .init(title: "Recording interrupted", message: recovered.explanation)
+      value.notice =
+        value.notice ?? .init(title: "Recording interrupted", message: recovered.explanation)
     }
     value.recoveryMessages =
       coordinator.recoveryReport.recoveredCalls.map { "\($0.callID): \($0.explanation)" }
