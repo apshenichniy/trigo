@@ -31,15 +31,16 @@ extension DesktopRecordingState {
     }
     let retirement =
       finalization.pendingNativeStart
-      ? "Waiting for a pending native start to retire."
-      : finalization.captureStopped ? "" : "Capture termination is not confirmed."
+      ? "Waiting for recording to finish stopping."
+      : finalization.captureStopped ? "" : "Recording has not yet been confirmed stopped."
     if phase == .starting {
       return "Starting recording from \(source?.applicationName ?? "the selected application")."
     }
     if phase == .stopping {
       return [statusTitle, save, retirement].filter { !$0.isEmpty }.joined(separator: " ")
     }
-    return [statusTitle, notice?.message ?? "", save, retirement].filter { !$0.isEmpty }
+    let retained = phase == .interrupted ? "Retained duration: \(elapsedText)." : ""
+    return [statusTitle, notice?.message ?? "", retained, save, retirement].filter { !$0.isEmpty }
       .joined(separator: " ")
   }
 

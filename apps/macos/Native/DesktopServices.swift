@@ -101,6 +101,23 @@ public struct DesktopRecordingState: Equatable, Sendable {
     value.levels =
       value.phase == .recording ? coordinator.recordingSnapshot?.levels ?? .init() : .init()
     value.finalization = coordinator.finalization
+    if value.phase == .interrupted, coordinator.recordingSnapshot == nil,
+      let recovered = coordinator.recoveryReport.recoveredCalls
+        .filter({ $0.interruptionReason != nil })
+        .max(by: {
+          ($0.call.startedAt, $0.callID) < ($1.call.startedAt, $1.callID)
+        })
+    {
+      // A restored completion describes the retained interrupted call. It does
+      // not change the live capture owner's admission or retirement state.
+      value.source = recovered.source
+      value.elapsedMs = recovered.call.durationMs ?? 0
+      value.finalization.callID = recovered.callID
+      value.finalization.captureStopped = true
+      value.finalization.pendingNativeStart = false
+      value.finalization.localSave = .confirmed
+      value.notice = .init(title: "Recording interrupted", message: recovered.explanation)
+    }
     value.recoveryMessages =
       coordinator.recoveryReport.recoveredCalls.map { "\($0.callID): \($0.explanation)" }
       + coordinator.recoveryReport.failures.map { "\($0.callID): \($0.message)" }

@@ -184,6 +184,7 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
       lastSavedCallID != callID
     {
       lastSavedCallID = callID
+      recordingVisible = false
       recordingNotification = .init(
         notice: .init(
           title: "Recording saved",

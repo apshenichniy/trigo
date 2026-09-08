@@ -173,7 +173,7 @@ struct RecordingPanel: View {
         state.phase == .interrupted
           ? "Interrupted"
           : state.phase == .error
-            ? "Start failed" : state.phase == .setupRequired ? "Setup required" : "Ready"
+            ? state.statusTitle : state.phase == .setupRequired ? "Setup required" : "Ready"
       )
       if state.phase == .error && state.canStart && state.source != nil {
         iconButton(

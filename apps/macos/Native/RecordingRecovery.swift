@@ -14,8 +14,10 @@ public struct RecordingRecoveryReport: Equatable, Sendable {
 }
 
 public struct RecoveredRecording: Equatable, Sendable, Identifiable {
-  public let callID: String
-  public let interruptionReason: String?
+  public let call: LocalCallSummary
+  public let source: CaptureSource
+  public var callID: String { call.callID }
+  public var interruptionReason: String? { call.interruptionReason }
   public var id: String { callID }
   public var explanation: String {
     switch interruptionReason {
@@ -74,7 +76,7 @@ enum RecordingRecovery {
             }
             let aggregate = try await session.recoverCompletion()
             let reason = aggregate.call.interruptionReason
-            report.recoveredCalls.append(.init(callID: call.callID, interruptionReason: reason))
+            report.recoveredCalls.append(.init(call: aggregate.call, source: session.source))
             if reason == "corrupt_media_tail" {
               report.warnings.append(
                 .init(

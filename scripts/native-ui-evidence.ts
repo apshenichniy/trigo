@@ -25,6 +25,7 @@ export const shellTestAttachments: Readonly<Record<string, readonly string[]>> =
     "fixture-configuration.txt",
     "fixture-final-state.txt",
     "shell-denied-capture-access.png",
+    "shell-permission-status.png",
   ],
   testGestureSetupDenialKeepsMenuStartAvailable: [
     "fixture-configuration.txt",

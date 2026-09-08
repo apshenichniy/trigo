@@ -118,6 +118,12 @@ import XCTest
     capture("shell-denied-capture-access", settings)
     XCTAssertFalse(panel.exists)
     XCTAssertTrue(try (state()["callIds"] as? [String] ?? []).isEmpty)
+    settings.buttons["enable-screen-audio"].click()
+    XCTAssertTrue(waitState { $0["statusTitle"] as? String == "Capture access required" })
+    XCTAssertTrue(panel.waitForExistence(timeout: 5))
+    capture("shell-permission-status", panel)
+    XCTAssertEqual(panel.staticTexts["recording-state"].label, "Capture access required")
+    XCTAssertTrue(try (state()["callIds"] as? [String] ?? []).isEmpty)
   }
 
   func testGestureSetupDenialKeepsMenuStartAvailable() throws {
@@ -418,6 +424,7 @@ import XCTest
       }
     )
     XCTAssertEqual(try state()["quitRequirement"] as? String, "ready")
+    wait(panel, "exists == false")
     XCTAssertFalse(library.exists)
   }
 
