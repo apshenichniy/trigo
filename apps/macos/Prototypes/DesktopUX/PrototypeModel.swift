@@ -76,9 +76,10 @@ func clockText(_ seconds: Int) -> String {
     @Published var position = 29.0
     @Published var playing = false
     @Published var volume = true
-    @Published var appearance = "Light" { didSet { onAppearanceChange?() } }
+    @Published var appearance = "System" { didSet { onAppearanceChange?() } }
     @Published var reduceMotion = false
     @Published var longTitle = false
+    @Published var sidebarVisible = true { didSet { onSidebarVisibilityChange?() } }
     @Published var launchAtLogin = false
     @Published var tick = 0.0
     @Published var simulateSaveFailure = false
@@ -86,6 +87,7 @@ func clockText(_ seconds: Int) -> String {
     var onCaptureChange: (() -> Void)?
     var onPanelVisibilityChange: (() -> Void)?
     var onAppearanceChange: (() -> Void)?
+    var onSidebarVisibilityChange: (() -> Void)?
     var openLibrary: (() -> Void)?
     var openSettings: (() -> Void)?
     var openControls: (() -> Void)?

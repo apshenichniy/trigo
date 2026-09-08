@@ -87,6 +87,7 @@ struct PrototypeControlsView: View {
                         HStack { Button("Active recording") { model.showCapture(.recording) }; Button("Interruption") { model.showCapture(.interrupted) } }
                         HStack { Button("Starting status") { model.showCapture(.starting) }; Button("Saving status") { model.showCapture(.saving) } }
                         Toggle("Microphone available", isOn: $model.microphoneAvailable)
+                        Toggle("Hold microphone change pending", isOn: $model.microphonePending)
                         Toggle("Microphone signal", isOn: $model.microphoneSignal)
                         Toggle("Application signal", isOn: $model.applicationSignal)
                         Toggle("Make the next save fail", isOn: $model.simulateSaveFailure)

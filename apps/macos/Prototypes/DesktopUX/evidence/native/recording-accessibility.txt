@@ -1,0 +1,25 @@
+Attributes: Dialog, 0xa3760fc00, {{1286.0, 781.0}, {192.0, 44.0}}, title: 'Trigo sample recording controls', Disabled
+Element subtree:
+ →Dialog, 0xa3760fc00, {{1286.0, 781.0}, {192.0, 44.0}}, title: 'Trigo sample recording controls', Disabled
+    Group, 0xa3760d540, {{1286.0, 781.0}, {192.0, 44.0}}, label: 'Recording controls', Disabled
+      Group, 0xa3760d680, {{1286.0, 781.0}, {192.0, 44.0}}, label: 'Sample recording controls. All levels are simulated.'
+        Button, 0xa3760f700, {{1297.1, 786.1}, {33.8, 33.8}}, identifier: 'mic', label: 'Mute Trigo's microphone recording'
+        StaticText, 0xa3760f5c0, {{1342.0, 792.0}, {58.0, 22.0}}, value: Application audio ...
+        Button, 0xa3760f480, {{1411.0, 789.0}, {28.0, 28.0}}, identifier: 'stop.fill', label: 'Finish recording and save on this Mac'
+        Button, 0xa3760c8c0, {{1447.0, 789.0}, {20.0, 28.0}}, identifier: 'chevron.down', label: 'Hide controls. Recording continues.'
+Path to element:
+ →Application, 0xa3760ed00, pid: 50505, title: 'Trigo UX Prototype', Disabled
+  ↳Dialog, 0xa3760fc00, {{1286.0, 781.0}, {192.0, 44.0}}, title: 'Trigo sample recording controls', Disabled
+Query chain:
+ →Find: Target Application 'io.github.apshenichniy.trigo.prototype.desktopux'
+  Output: {
+    Application, 0xa37d21540, pid: 50505, title: 'Trigo UX Prototype', Disabled
+  }
+  ↪︎Find: Descendants matching type Dialog
+    Output: {
+      Dialog, 0xa37d21680, {{1286.0, 781.0}, {192.0, 44.0}}, title: 'Trigo sample recording controls', Disabled
+    }
+    ↪︎Find: Elements matching predicate '"Trigo sample recording controls" IN identifiers'
+      Output: {
+        Dialog, 0xa37d21680, {{1286.0, 781.0}, {192.0, 44.0}}, title: 'Trigo sample recording controls', Disabled
+      }

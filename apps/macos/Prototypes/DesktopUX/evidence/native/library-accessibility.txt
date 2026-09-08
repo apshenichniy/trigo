@@ -1,0 +1,69 @@
+Attributes: Window (Main), 0xa3760cc80, {{148.0, 47.0}, {1216.0, 864.0}}, title: 'Trigo', Keyboard Focused, Disabled
+Element subtree:
+ →Window (Main), 0xa3760cc80, {{148.0, 47.0}, {1216.0, 864.0}}, title: 'Trigo', Keyboard Focused, Disabled
+    Group, 0xa3760d680, {{148.0, 47.0}, {1216.0, 864.0}}, label: 'Call archive', Disabled
+      StaticText, 0xa3760ea80, {{182.0, 113.0}, {51.0, 19.0}}, value: Library
+      ScrollView, 0xa3760ed00, {{160.0, 146.0}, {334.5, 712.0}}, label: 'Call library', Disabled
+        StaticText, 0xa3760f480, {{182.0, 148.0}, {93.5, 14.0}}, value: Yesterday / Sep 7
+        Button, 0xa3760f5c0, {{170.0, 170.0}, {314.5, 56.0}}, label: 'Google Chrome, Mon, Sep 7, 2026, 17:40, 38 minutes, Ready', Selected
+        Button, 0xa3760d2c0, {{170.0, 230.0}, {314.5, 56.0}}, label: 'Telegram, Mon, Sep 7, 2026, 14:15, 12 minutes, Ready'
+        Button, 0xa3760e300, {{170.0, 290.0}, {314.5, 56.0}}, label: 'Google Chrome, Mon, Sep 7, 2026, 10:30, 46 minutes, Ready'
+        StaticText, 0xa3760ca00, {{182.0, 370.0}, {80.5, 14.0}}, value: Sunday / Sep 6
+        Button, 0xa3760ef80, {{170.0, 392.0}, {314.5, 56.0}}, label: 'Telegram, Sun, Sep 6, 2026, 18:00, 24 minutes, Ready'
+        Button, 0xa3760fd40, {{170.0, 452.0}, {314.5, 56.0}}, label: 'Google Chrome, Sun, Sep 6, 2026, 09:45, 31 minutes, Ready'
+        StaticText, 0xa3760f700, {{182.0, 532.0}, {74.0, 14.0}}, value: Friday / Sep 4
+        Button, 0xa3760f980, {{170.0, 554.0}, {314.5, 56.0}}, label: 'Google Chrome, Fri, Sep 4, 2026, 16:20, 55 minutes, Ready'
+        Button, 0xa3760d7c0, {{170.0, 614.0}, {314.5, 56.0}}, label: 'Telegram, Fri, Sep 4, 2026, 11:00, 8 minutes, Ready'
+      StaticText, 0xa3760fe80, {{182.0, 872.0}, {132.0, 13.0}}, value: Sample data · Desi...
+      Slider, 0xa3760cb40, {{494.4, 93.0}, {12.1, 818.0}}, label: 'Call list width'
+      StaticText, 0xa3760d040, {{538.4, 111.0}, {124.0, 20.5}}, value: Google Chrome
+      StaticText, 0xa3760cf00, {{538.4, 137.5}, {203.5, 15.0}}, value: Mon, Sep 7, 2026  ...
+      Button, 0xa3760f0c0, {{1203.5, 117.0}, {90.5, 29.5}}, label: 'Export this transcript'
+      MenuButton, 0xa3760c8c0, {{1305.0, 120.5}, {28.0, 23.0}}, label: 'More recording actions'
+      StaticText, 0xa3760f200, {{538.4, 176.5}, {67.0, 16.0}}, value: Transcript
+      ScrollView, 0xa3760df40, {{506.5, 210.5}, {857.5, 612.5}}, label: 'Transcript passages', Disabled
+        Button, 0xa3760f340, {{539.5, 210.5}, {792.5, 52.5}}, label: 'Speaker 1, 00:00. Давай сначала проверим, что запись сохраняется локально.
+Отправка на сервер может продолжаться после завершения звонка.'
+        Button, 0xa3760cdc0, {{539.5, 280.0}, {792.5, 52.5}}, label: 'Speaker 2, 00:13. Пользователь должен сразу увидеть звонок в библиотеке,
+даже если транскрипт ещё обрабатывается.'
+        Button, 0xa3760d540, {{539.5, 349.5}, {792.5, 52.5}}, label: 'Speaker 1, 00:29. Если сеть пропала, исходное аудио остаётся на компьютере.
+Когда соединение вернётся, приложение повторит отправку.'
+        Button, 0xa3760e800, {{539.5, 419.0}, {792.5, 52.5}}, label: 'Speaker 2, 00:46. Тогда отдельно показываем, что звонок сохранён,
+а текст пока не готов.'
+        Button, 0xa3760d180, {{539.5, 488.5}, {792.5, 52.5}}, label: 'Speaker 1, 01:02. Источник записи не меняется, когда пользователь
+переключается между окнами.'
+        Button, 0xa3760fac0, {{539.5, 558.0}, {792.5, 52.5}}, label: 'Speaker 2, 01:13. Для проверки возьмём два независимых звуковых сигнала
+и сравним их после сохранения.'
+        Button, 0xa3760ee40, {{539.5, 627.5}, {792.5, 35.0}}, label: 'Speaker 1, 01:29. Хорошо. Ещё нужно проверить узкое окно и длинные названия приложений. Текст должен оставаться удобным для чтения.'
+        Button, 0xa3760e580, {{539.5, 679.5}, {792.5, 35.0}}, label: 'Speaker 2, 01:51. И отдельно посмотрим, как выглядит отсутствие речи. Не стоит подменять пустой результат придуманным текстом.'
+      Button, 0xa3760f840, {{559.5, 857.5}, {13.5, 15.0}}, identifier: 'play.fill', label: 'Play sample timeline'
+      StaticText, 0xa3804c000, {{601.5, 857.5}, {34.0, 15.0}}, value: 00:29
+      Slider, 0xa3804c140, {{655.5, 856.0}, {581.0, 18.0}}, label: 'Playback position', value: 29
+        ValueIndicator, 0xa3804c280, {{663.5, 857.0}, {20.0, 16.0}}, value: 29, Disabled
+      StaticText, 0xa3804c3c0, {{1251.6, 857.5}, {34.0, 15.0}}, value: 38:00
+      Button, 0xa3804c500, {{1303.5, 859.5}, {14.5, 11.5}}, identifier: 'speaker.wave.2.fill', label: 'Mute sample playback'
+    Toolbar, 0xa3804c640, {{148.0, 47.0}, {1216.0, 40.0}}, Disabled
+      Button, 0xa3804c780, {{233.0, 47.0}, {44.0, 40.0}}, label: 'Hide sidebar'
+      MenuButton, 0xa3804c8c0, {{1316.0, 47.0}, {44.0, 40.0}}, label: 'More library actions'
+    Button, 0xa3804ca00, {{159.0, 59.0}, {16.0, 16.0}}, identifier: '_XCUI:CloseWindow'
+    Button, 0xa3804cb40, {{205.0, 59.0}, {16.0, 16.0}}, identifier: '_XCUI:FullScreenWindow'
+      Group, 0xa3804cc80, {{206.0, 60.0}, {14.0, 14.0}}, Disabled
+        Group, 0xa3804cdc0, {{206.0, 60.0}, {14.0, 14.0}}, Disabled
+    Button, 0xa3804cf00, {{182.0, 59.0}, {16.0, 16.0}}, identifier: '_XCUI:MinimizeWindow'
+    StaticText, 0xa3804d040, {{277.0, 47.0}, {1031.0, 40.0}}, value: Trigo
+Path to element:
+ →Application, 0xa3760fc00, pid: 50505, title: 'Trigo UX Prototype', Disabled
+  ↳Window (Main), 0xa3760cc80, {{148.0, 47.0}, {1216.0, 864.0}}, title: 'Trigo', Keyboard Focused, Disabled
+Query chain:
+ →Find: Target Application 'io.github.apshenichniy.trigo.prototype.desktopux'
+  Output: {
+    Application, 0xa37d24a00, pid: 50505, title: 'Trigo UX Prototype', Disabled
+  }
+  ↪︎Find: Descendants matching type Window
+    Output: {
+      Window (Main), 0xa37d24b40, {{148.0, 47.0}, {1216.0, 864.0}}, title: 'Trigo', Keyboard Focused, Disabled
+    }
+    ↪︎Find: Elements matching predicate '"Trigo" IN identifiers'
+      Output: {
+        Window (Main), 0xa37d24b40, {{148.0, 47.0}, {1216.0, 864.0}}, title: 'Trigo', Keyboard Focused, Disabled
+      }

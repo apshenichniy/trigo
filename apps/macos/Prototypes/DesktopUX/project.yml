@@ -1,0 +1,60 @@
+# Disposable UI verification project; never include in the production workspace.
+name: TrigoDesktopUX
+options:
+  minimumXcodeGenVersion: 2.46.0
+  deploymentTarget:
+    macOS: "15.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: NO
+targets:
+  TrigoUXPrototype:
+    type: application
+    platform: macOS
+    sources:
+      - PrototypeApp.swift
+      - PrototypeModel.swift
+      - Library.swift
+      - RecordingAndSettings.swift
+      - CompactRecordingPanel.swift
+      - PrototypeRenders.swift
+    settings:
+      base:
+        PRODUCT_NAME: Trigo UX Prototype
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.prototype.desktopux
+        INFOPLIST_KEY_CFBundleDisplayName: Trigo UX Prototype
+  DesktopUXUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [UITests]
+    dependencies:
+      - target: TrigoUXPrototype
+      - target: FocusFixture
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.prototype.desktopux.uitests
+        TEST_TARGET_NAME: TrigoUXPrototype
+  FocusFixture:
+    type: application
+    platform: macOS
+    sources: [FocusFixture]
+    settings:
+      base:
+        PRODUCT_NAME: Trigo UI Focus Fixture
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.apshenichniy.trigo.prototype.desktopux.focusfixture
+schemes:
+  DesktopUX:
+    build:
+      targets:
+        TrigoUXPrototype: all
+        FocusFixture: all
+        DesktopUXUITests: [test]
+    test:
+      targets: [DesktopUXUITests]
+      parallelizable: false
+      randomExecutionOrder: false

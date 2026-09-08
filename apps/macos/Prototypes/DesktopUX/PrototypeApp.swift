@@ -6,7 +6,7 @@ import SwiftUI
     override var canBecomeMain: Bool { false }
 }
 
-@MainActor final class PrototypeAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate {
+@MainActor final class PrototypeAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate, NSToolbarDelegate, NSMenuItemValidation {
     let model = PrototypeModel()
     private var libraryWindow: NSWindow?
     private var panelWindow: NSPanel?
@@ -14,12 +14,15 @@ import SwiftUI
     private var controlsWindow: NSWindow?
     private var statusItem: NSStatusItem?
     private var quittingAfterSave = false
+    private let sidebarItemID = NSToolbarItem.Identifier("library-sidebar")
+    private let libraryMenuItemID = NSToolbarItem.Identifier("library-actions")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         installApplicationMenu()
         model.onCaptureChange = { [weak self] in self?.updateStatus() }
         model.onPanelVisibilityChange = { [weak self] in self?.updatePanel() }
         model.onAppearanceChange = { [weak self] in self?.updateAppearance() }
+        model.onSidebarVisibilityChange = { [weak self] in self?.updateSidebarControl() }
         model.openLibrary = { [weak self] in self?.showLibrary() }
         model.openSettings = { [weak self] in self?.showSettings() }
         model.openControls = { [weak self] in self?.showControls() }
@@ -44,6 +47,10 @@ import SwiftUI
         file.submenu?.addItem(item("Open Library", #selector(showLibrary), key: "l"))
         file.submenu?.addItem(item("Close Window", #selector(closeKeyWindow), key: "w"))
         menu.addItem(file)
+        let view = NSMenuItem(title: "View", action: nil, keyEquivalent: "")
+        view.submenu = NSMenu(title: "View")
+        view.submenu?.addItem(item("Toggle Sidebar", #selector(toggleSidebar)))
+        menu.addItem(view)
         let review = NSMenuItem(title: "Prototype", action: nil, keyEquivalent: "")
         review.submenu = NSMenu(title: "Prototype")
         review.submenu?.addItem(item("Design Controls…", #selector(showControls), key: "d"))
@@ -72,10 +79,16 @@ import SwiftUI
             window.title = "Trigo"
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .visible
+            window.toolbarStyle = .unifiedCompact
+            let toolbar = NSToolbar(identifier: "Trigo library")
+            toolbar.delegate = self
+            toolbar.displayMode = .iconOnly
+            window.toolbar = toolbar
             window.isReleasedWhenClosed = false
             window.contentMinSize = NSSize(width: 800, height: 590)
             window.collectionBehavior.insert(.fullScreenPrimary)
             window.contentView = NSHostingView(rootView: LibraryView(model: model))
+            window.contentView?.setAccessibilityLabel("Call archive")
             window.delegate = self
             window.center()
             libraryWindow = window
@@ -101,6 +114,7 @@ import SwiftUI
             window.title = "Trigo Settings · Design Study"
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: SettingsView(model: model))
+            window.contentView?.setAccessibilityLabel("Trigo settings")
             window.center()
             settingsWindow = window
         }
@@ -114,6 +128,7 @@ import SwiftUI
             window.title = "Trigo Prototype Controls"
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: PrototypeControlsView(model: model))
+            window.contentView?.setAccessibilityLabel("Prototype design controls")
             window.center()
             controlsWindow = window
         }
@@ -137,6 +152,7 @@ import SwiftUI
                 panel.isMovableByWindowBackground = true
                 panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
                 panel.contentView = NSHostingView(rootView: CompactRecordingPanelView(model: model))
+                panel.contentView?.setAccessibilityLabel("Recording controls")
                 if let screen = NSScreen.main {
                     panel.setFrameOrigin(NSPoint(x: screen.visibleFrame.maxX - 226, y: screen.visibleFrame.minY + 100))
                 }
@@ -152,6 +168,56 @@ import SwiftUI
         NSApp.appearance = model.appearance == "System" ? nil : NSAppearance(named: model.appearance == "Dark" ? .darkAqua : .aqua)
     }
 
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [sidebarItemID, .flexibleSpace, libraryMenuItemID]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarDefaultItemIdentifiers(toolbar)
+    }
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier identifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        if identifier == sidebarItemID {
+            let control = NSToolbarItem(itemIdentifier: identifier)
+            control.isNavigational = true
+            control.label = model.sidebarVisible ? "Hide sidebar" : "Show sidebar"
+            control.toolTip = control.label
+            control.image = NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: control.label)
+            control.target = self
+            control.action = #selector(toggleSidebar)
+            return control
+        }
+        if identifier == libraryMenuItemID {
+            let control = NSMenuToolbarItem(itemIdentifier: identifier)
+            control.label = "More library actions"
+            control.toolTip = control.label
+            control.image = NSImage(systemSymbolName: "ellipsis", accessibilityDescription: control.label)
+            control.showsIndicator = false
+            let menu = NSMenu()
+            menu.addItem(item("Settings…", #selector(showSettings)))
+            menu.addItem(.separator())
+            menu.addItem(item("Prototype controls…", #selector(showControls)))
+            control.menu = menu
+            return control
+        }
+        return nil
+    }
+
+    private func updateSidebarControl() {
+        guard let control = libraryWindow?.toolbar?.items.first(where: { $0.itemIdentifier == sidebarItemID }) else { return }
+        control.label = model.sidebarVisible ? "Hide sidebar" : "Show sidebar"
+        control.toolTip = control.label
+        control.image = NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: control.label)
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(toggleSidebar) {
+            menuItem.title = model.sidebarVisible ? "Hide Sidebar" : "Show Sidebar"
+            return libraryWindow?.isVisible == true
+        }
+        return true
+    }
+
     private func updateStatus() {
         if let button = statusItem?.button {
             button.title = " UX"
@@ -160,8 +226,15 @@ import SwiftUI
             button.contentTintColor = model.capture == .recording ? .systemRed : nil
             button.toolTip = "Trigo UX Prototype — \(model.capture.rawValue) — sample data"
         }
-        let menu = NSMenu()
-        menu.delegate = self
+        let menu: NSMenu
+        if let existingMenu = statusItem?.menu {
+            menu = existingMenu
+            menu.removeAllItems()
+        } else {
+            menu = NSMenu()
+            menu.delegate = self
+            statusItem?.menu = menu
+        }
         let heading = NSMenuItem(title: "Trigo · Design study", action: nil, keyEquivalent: "")
         heading.isEnabled = false
         menu.addItem(heading)
@@ -196,7 +269,7 @@ import SwiftUI
         menu.addItem(item("Quit Trigo UX Prototype", #selector(quit)))
         menu.autoenablesItems = false
         for entry in menu.items where entry.action == nil { entry.isEnabled = false }
-        statusItem?.menu = menu
+        menu.update()
         if quittingAfterSave {
             if model.capture == .saved || model.capture == .idle {
                 quittingAfterSave = false
@@ -231,6 +304,7 @@ import SwiftUI
         return .terminateNow
     }
     @objc private func closeKeyWindow() { NSApp.keyWindow?.performClose(nil) }
+    @objc private func toggleSidebar() { model.sidebarVisible.toggle() }
     @objc private func start() { model.start() }
     @objc private func mute() { model.toggleMicrophone() }
     @objc private func finish() { model.finish() }

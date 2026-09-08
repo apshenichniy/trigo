@@ -1,56 +1,87 @@
-# Design QA — desktop UX study
+# Design QA — floating desktop library
 
-**Final result: blocked**
+**Final result: passed for the local prototype**
 
-The owner approved the library and recording-panel bases. The complete prototype handoff is blocked on native interaction and remaining screen verification. The inspected panel render has no remaining actionable layout finding; this does not constitute a pass for the entire study.
+This review covers the disposable prototype for [design decision #67](https://github.com/apshenichniy/trigo/issues/67), including the owner's requested floating sidebar and Liquid Glass revision. The full native run passed all nine scenarios with zero failures or skips. Final light/dark, narrow, resized and hidden-sidebar captures were inspected at readable scale; no unresolved P0, P1 or P2 visual finding remains in the reviewed scope. Approval of the new design and production implementation remain separate decisions.
 
-The owner subsequently delegated reasonable first-version choices to the agent. The connection fixture was corrected to show Validate and Save / Retry Saved Connection instead of a speculative Disconnect operation. That source change compiles, but its screen and actions have not received new native UI verification. Delegated design choices do not close the verification findings below.
+## Findings and corrections
 
-## Findings
+- **P2, corrected — Window controls and custom toolbar did not share a baseline.** The first glass capture placed SwiftUI toolbar controls below the native traffic lights. The library now uses an actual `NSToolbar` in unified compact style. The sidebar action is a navigational item on the leading side; macOS positions the traffic lights, title and controls. The native test checks both vertical alignment and leading placement. Header and transcript text now share the same horizontal inset.
+- **P2, corrected — Divider movement varied with pointer events.** A full run moved the divider only 46.5 points for a 70-point drag, despite earlier focused checks passing. The gesture now uses the stable library coordinate space rather than the moving divider's local space. The final regression passed an actual 70-point drag within 3 points, then verified width restoration after hide/show within 1 point.
+- **P2, corrected — The initial native toolbar menu omitted Settings.** The complete `NSMenu` is now constructed before assigning it to `NSMenuToolbarItem`. The library-menu route to General, Connection and Diagnostics passed in the focused native rerun.
+- **P3 — Recording-strip surface polish.** The approved compact strip retains its flat dark material and restrained pulse; the generated image has broader glow. Its dimensions, control order, timer position and state semantics match the approved base. This library revision does not change that selected panel appearance.
 
-- **P1 — Required native interaction evidence is unavailable.** Native computer use returns `Sky Computer Use native pipe closed before response`; resetting its session and reacquiring the prototype did not restore access. The earlier library capture succeeded. Dragging, focus preservation, hiding/revealing, the full start/mute/finish walkthrough, fullscreen and the menu/settings screens remain unverified. Restore native computer use and complete the same synthetic scenarios before a full prototype handoff.
-- **P2 — Narrow/dark library coverage remains incomplete.** SwiftUI ImageRenderer omits this library's AppKit-backed scrolling content and inserts unsupported-view markers for menus and its slider. Those outputs were rejected and moved into ignored `.build/unsupported-library-renders/`. Keep the approved live library screenshot as evidence and capture narrow, long-title and dark states from the actual window when native automation is available. Do not redesign the application around a renderer limitation.
-- **P3 — Panel material and glow differ slightly from the generated artwork.** The native component uses a flat dark surface, SF Symbols, native color rendering and a restrained pulse. The selected image has soft shading and a broader glow. The control order, compact proportions, timer placement and semantic state colors are preserved. These surface differences are follow-up polish; the selected image remains the visual source of truth.
+## Visual sources and captures
 
-## Source and implementation artifacts
+The owner attached `codex-clipboard-e137e87c-c4eb-48a1-b5f2-2ca68241bf70.png` in the design conversation on 2026-09-08. The local source is `/var/folders/g3/ybh9tphn64v89zj_bv2322zh0000gn/T/codex-clipboard-e137e87c-c4eb-48a1-b5f2-2ca68241bf70.png`. It is a 2740 × 1776-pixel Telegram screenshot. Its floating navigation surfaces and control treatment are the reference; its private chat content, avatars, folder rail and messaging actions are not part of the Trigo brief. The private image is not copied into Git.
 
-| Surface | Source visual truth | Rendered implementation | State / dimensions |
-| --- | --- | --- | --- |
-| Library, original direction | `designs/library-option-1-original.png` | `evidence/library-first-pass.png` | Ready call, light theme; source 1487 × 1058 pixels; native window 1216 × 864 points; CUA output 1081 × 768 pixels |
-| Library, owner-approved type revision | Owner's request for ordinary standard macOS fonts, then approval of `evidence/library-standard-fonts.png` | `evidence/library-standard-fonts.png` | Same ready sample; 1216 × 864-point native window, CUA output 1081 × 768 pixels |
-| Recording panel | `designs/recording-panel-with-timer.png` | `evidence/rendered/panel-recording.png` | Active synthetic recording at 04:12; source 1774 × 886 pixels with surrounding canvas; native component 192 × 44 points rendered at 4× to 768 × 176 pixels |
-| Panel states | Approved compact layout plus the recording contract | `evidence/rendered/panel-*.png` | Muted, unavailable, pending, saving, start, interruption, save failure and uncertain stop; each 768 × 176 pixels |
+The earlier owner-approved library capture, `evidence/library-standard-fonts.png`, remains the system-typography and information-architecture reference. The compact-strip reference remains `designs/recording-panel-with-timer.png`.
 
-The generated panel source includes a light presentation canvas and magnification; the native render contains only the component. Comparisons align the component regions and their relative geometry, not the surrounding canvas. No claim of pixel-for-pixel density equivalence is made. The library source and native captures have effectively the same frame aspect ratio; the native screenshot was downsampled by the capture tool. Browser CSS dimensions and deviceScaleFactor do not apply to this native prototype.
+| Current native capture | Viewport / density | State |
+| --- | --- | --- |
+| `evidence/native/library-light.png` | 1216 × 864 points; 2432 × 1728 pixels; 2× | Ready Chrome call, light, default sidebar |
+| `evidence/native/library-narrow-long-title-dark.png` | 820 × 770 points; 1640 × 1540 pixels; 2× | Dark, long source title, narrow window |
+| `evidence/native/library-sidebar-resized.png` | 1216 × 864 points; 2× | Sidebar narrowed by pointer drag |
+| `evidence/native/library-sidebar-hidden.png` | 1216 × 864 points; 2× | Reader expanded after hiding the sidebar |
+| `evidence/native/library-narrow-scrolled.png` | 820 × 770 points; 2× | Last passage selected; player remains reachable |
+| `evidence/native/library-new-call-processing.png` | 1216 × 864 points; 2× | Finished sample call appears in Today |
+| `evidence/native/settings-connection.png` | 550 × 432 points; 1100 × 864 pixels; 2× | Sample replacement-token flow completed |
+| `evidence/native/panel-recording-native.png` | 192 × 44 points; 384 × 88 pixels; 2× | Live native compact recording strip |
+
+Native captures contain the actual app windows/components. Browser CSS dimensions and deviceScaleFactor do not apply. The Telegram reference has a different viewport and content model, so the comparison evaluates the requested floating-surface composition and native-control treatment, not pixel-identical chat content. System typography is compared with the earlier approved Trigo capture. No screenshot was edited to manufacture a comparison result.
 
 ## Comparison history
 
-1. The original selected library image and the first native screenshot were opened together in one comparison input. The sixth visible turn was clipped earlier in the implementation (**P2**), and menu glyphs were undersized. Turn spacing and the menu glyph frames were corrected. The owner then explicitly replaced the large typography with standard macOS sizes.
-2. The revised native library was captured and shown. It uses semantic system text styles and tighter supporting spacing. The owner explicitly approved that revision as the base. Original image typography and old window-title placement are superseded by this approval.
-3. The approved timer-panel image and `evidence/panel-first-render.png` were opened together. The initial renderer used a relatively heavy timer, a filled microphone glyph, a narrower meter and a brighter red (**P2**). The implementation was changed to a smaller light monospaced timer, an outline microphone, revised control/meter proportions and a darker red Finish button.
-4. The approved timer image and the revised `evidence/rendered/panel-recording.png` were opened together again. The muted, unavailable, pending and saving renders were inspected in that same comparison input. The remaining start/interruption/recovery renders were then opened. Controls fit their component bounds; the time sits above the single meter; microphone states remain distinct; inactive saving controls and levels are visible. No additional P0/P1/P2 layout issue was found in these component renders.
+1. The original library image and first native capture were opened together. Early passage clipping and small menu glyphs were corrected. The owner then requested standard macOS typography and approved `evidence/library-standard-fonts.png`.
+2. The timer-strip source and its native component renders were compared together. The timer weight, microphone outline, meter proportions and red Finish color were corrected. Remaining material/glow differences were classified as P3.
+3. The owner's Telegram reference and the first live glass library capture were opened in the same comparison input, alongside the narrow dark and hidden-sidebar states. The inset sidebar, plain transcript and floating player fit the brief. The misaligned custom top toolbar was a P2 finding.
+4. After switching to `NSToolbar`, the reference and revised library capture were opened together again. Navigational placement and toolbar alignment were corrected; the menu/settings interaction passed after complete-menu assignment. The live connection screen was also inspected at readable scale.
+5. After the divider correction, the owner reference, final light library, narrow dark layout and resized sidebar were opened in the same comparison input. Floating surfaces and native controls follow the requested composition; the toolbar alignment, wrapping and insets are coherent. Hidden-sidebar, narrow-scrolled, new-call processing, connection and live panel captures were then inspected. The last passage and player remain reachable after scrolling; processing rows fit their status line. No additional P0/P1/P2 visual defect was found.
+6. Four reading-state captures were initially obscured by the separate Design Controls window. The test now brings the library forward and asserts each heading is hittable. The focused rerun passed, and the unobstructed processing, no-speech, offline and failed states were inspected. Their messages, Retry actions, status rows and player fit the intended layout.
 
-The panel comparison is itself a focused component comparison: at 4×, each glyph, timer and level segment is readable. The live library capture and accessibility text supplied readable content and control names. Additional focused captures of the unverified native states remain part of the blocker above.
+The full-window captures are large enough to judge system type, insets and individual controls. The compact-strip screenshot is itself a focused component capture; its timer, microphone, meter and Finish glyph are legible at native 2×. No further crop is needed for those surfaces.
 
 ## Required fidelity surfaces
 
-- **Fonts and typography:** Approved library uses system body/headline 13 points, callout 12, subheadline 11 and title2 17 on the verified local macOS font scale. The compact panel uses small light monospaced digits. Cyrillic sample text and metadata remained readable in the live library capture. Narrow/dark native typography still needs live capture.
-- **Spacing and layout rhythm:** The library retains its date-grouped sidebar, paragraph reader and bottom player. The panel is 192 × 44 points with microphone, central timer/level stack, Finish and Hide. Rendered states do not clip. Narrow/fullscreen behavior is unverified.
-- **Colors and tokens:** The library follows native appearance colors. The panel explicitly uses dark appearance regardless of the library theme, with cyan activity, red Finish and gray inactive states. The inspected renders confirm the dark surface; window-level appearance switching still needs native verification.
-- **Image quality and assets:** App icons come from installed applications through NSWorkspace; controls use SF Symbols. No fabricated logos or handmade icon artwork replace native assets. The selected ImageGen outputs and their rejected alternatives are preserved. Offscreen panel renders are sharp 4× PNGs.
-- **Copy and content:** All transcript text is synthetic Russian; product controls use English. The library visibly says it is a design study. The panel's only normal visible text is elapsed time. Source names and explanations live in tooltips/accessibility labels and menu status. Speaker and processing semantics remain provisional until their own decisions are resolved.
+- **Fonts and typography:** Semantic macOS system styles preserve the approved 13-point body, 12-point supporting text and 17-point detail title. The sidebar headings and native toolbar establish hierarchy. Long titles wrap in the reader and have full hover/accessibility text in the single-line list. Cyrillic passages remain readable. The panel keeps its small monospaced timer.
+- **Spacing and layout rhythm:** The sidebar is inset from the window, with 22-point corners and a draggable gap. The player floats with matching corner treatment. The native toolbar aligns window and navigation controls. Non-ready call rows use 74 points for their third status line; Ready rows use 56. Narrow content scrolls while the player stays visible.
+- **Colors and materials:** Native `glassEffect(.regular)` is reserved for navigation and controls. The transcript has a plain content background, following Apple's [material guidance](https://developer.apple.com/design/human-interface-guidelines/materials). The library follows system appearance and accent color. The recording strip remains dark, with cyan activity, red Finish and gray inactive states.
+- **Images and assets:** Source-application icons come from `NSWorkspace`; control glyphs come from SF Symbols. There are no fabricated logos, copied Telegram avatars or replacement bitmap controls. Native screenshots are sharp 2× PNGs.
+- **Copy and content:** Transcript and state data are synthetic. The library identifies itself as a design study. The recording strip's normal visible text is elapsed time; source identity and explanations are available in help, accessibility text and menu status. The connection fixture uses `example.invalid` and saves no credentials.
 
-## Implementation checklist
+## Native verification
 
-- [x] Preserve the owner-selected source images and the standard-font native screenshot.
-- [x] Build the isolated native prototype with Swift 6.
-- [x] Render and inspect the compact panel states from actual SwiftUI components.
-- [x] Distinguish local-save uncertainty from unconfirmed stopping in the fixture explanations.
-- [ ] Restore native UI access and confirm that the running app uses the latest build.
-- [ ] Verify panel dragging, nonactivation, hide/reveal and the full action sequence.
-- [ ] Capture and review menu-bar idle/recording/processing layouts and setup/settings.
-- [ ] Capture narrow, long-title and dark library states from the actual native window.
-- [ ] Complete keyboard/VoiceOver and reduced-motion checks relevant to the design.
-- [ ] Obtain overall owner agreement before resolving the design decision.
+**Passed:** `run-20260908-113150-28307`, 2026-09-08, macOS 26.6.2 arm64. All 9 tests passed; 0 failed; 0 skipped. Xcode reported 228.459 seconds. The prior run was interrupted at the owner's request for a call; this run resumed with the same source. [Verification metadata](evidence/native/verification.json) records the command, timestamps, source hashes and capture hashes. The supplemental `run-20260908-114414-4233` passed the settings/reading-state scenario after a test-only capture correction. All application sources are identical to the full passing run; the metadata retains both test-source snapshots and identifies the four replaced captures.
 
-No capture, physical microphone, global gesture, ASR, network or durable-storage acceptance is claimed. No production code or build target is changed.
+The independent XcodeGen project uses public XCUITest APIs. Computer Use's earlier helper failure did not prevent this route from operating the app. macOS required local authentication twice; both requests were completed by the owner. Authentication timeouts are retained as failed environment runs, never treated as passes.
+
+The nine scenarios cover:
+
+1. Native library, call selection, Design Controls, panel actions and toolbar placement.
+2. Description accessibility audit for the library and panel.
+3. Keyboard commands for Design Controls, Settings and window closing.
+4. Light/dark, narrow/long-title, export, fullscreen, minimize/reopen and Dock activation policy.
+5. Cross-process text focus before and after panel clicks, including another application's fullscreen window.
+6. Sidebar resizing/hide/show, passage selection, silent playback, seeking, scrolling and recording details.
+7. Start/mute/unmute, 192 × 44-point panel, dragging/hide/reveal, Finish and background-processing menus.
+8. Unavailable and pending microphone, saving, save-failure retry, uncertain stop, interruption and cancellation.
+9. General/Connection/Diagnostics settings and processing/no-speech/offline/failed reading states.
+
+The accessibility audit excludes only an empty virtual Touch Bar with no controls on this Mac. Actual panel labels and enabled states are asserted separately. Focus checks send a real pointer event anchored to the foreground fixture; clicking a background XCUIElement directly would activate that app before delivering the event.
+
+Raw xcresult bundles, automatic screen recordings and complete device metadata remain in ignored `.build/ui-tests/`. Curated artifacts contain only named prototype captures, scoped accessibility descriptions and verification/source hashes.
+
+## Limits and acceptance boundary
+
+This is local prototype acceptance. Real capture, microphone input, global gestures, ASR, server requests, credentials, sync and durable storage are simulated or absent. Spoken VoiceOver output was not exercised; the automated check covers descriptions and the explicitly asserted control states. The macOS 15 fallback compiles behind availability checks but was not run on a macOS 15 host.
+
+The owner-selected recording contract remains unchanged. This report does not close #67, refine #68 or #70, authorize production work, or approve merging this throwaway prototype.
+
+## Checklist
+
+- [x] Inspect the owner reference and native implementation in the same comparison input.
+- [x] Use native Liquid Glass, system toolbar controls, menus, sliders and SF Symbols.
+- [x] Correct the toolbar alignment and verify its Settings route.
+- [x] Preserve the earlier selected typography and recording strip.
+- [x] Pass the complete native suite after the divider correction.
+- [x] Review the final corrected screenshots and record their verification hashes.

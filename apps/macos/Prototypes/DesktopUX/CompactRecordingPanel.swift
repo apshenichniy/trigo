@@ -54,6 +54,7 @@ struct CompactRecordingPanelView: View {
         .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(.white.opacity(0.16), lineWidth: 0.5) }
         .environment(\.colorScheme, .dark)
         .preferredColorScheme(.dark)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Sample recording controls. All levels are simulated.")
     }
 
@@ -78,6 +79,7 @@ struct CompactRecordingPanelView: View {
         .help(microphoneHelp)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(microphoneHelp)
+        .disabled(model.capture != .recording || !model.microphoneAvailable || model.microphonePending)
     }
 
     private var applicationLevel: some View {
@@ -97,8 +99,8 @@ struct CompactRecordingPanelView: View {
         .frame(width: 64, height: 28)
         .help("Google Chrome · \(clockText(model.elapsed)) · \(model.capture == .saving ? "Saving recording" : "Application audio") · simulated level")
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Application audio from Google Chrome, \(clockText(model.elapsed)), simulated")
-        .accessibilityValue(model.capture == .saving ? "Inactive" : model.applicationSignal ? "Signal present" : "Silent")
+        .accessibilityAddTraits(.isStaticText)
+        .accessibilityLabel("Application audio from Google Chrome, \(clockText(model.elapsed)), \(model.capture == .saving ? "Inactive" : model.applicationSignal ? "Signal present" : "Silent"), simulated")
     }
 
     private var microphoneHelp: String {

@@ -20,87 +20,95 @@ struct AppIcon: View {
 struct LibraryView: View {
     @ObservedObject var model: PrototypeModel
     @State private var showExport = false
+    @State private var showDetails = false
+    @State private var sidebarWidth: CGFloat?
+    @State private var dividerDragStart: CGFloat?
 
     var body: some View {
         GeometryReader { geometry in
+            let sidebarLimit = min(420, max(238, geometry.size.width - 476))
+            let width = min(sidebarLimit, max(238, sidebarWidth ?? min(336, geometry.size.width * 0.275)))
             VStack(spacing: 0) {
-                // The actual NSWindow supplies the title and traffic lights.
-                HStack(spacing: 18) {
-                    Spacer()
-                    Button { showExport = true } label: { Image(systemName: "square.and.arrow.up").font(.body) }
-                        .help("Export transcript").accessibilityLabel("Export transcript")
-                    libraryMenu
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 22)
-                .frame(height: 40)
-                .background(Color(nsColor: .windowBackgroundColor))
-                Divider()
                 HStack(spacing: 0) {
-                    sidebar.frame(width: min(352, max(238, geometry.size.width * 0.289)))
-                    Divider()
+                    if model.sidebarVisible {
+                        sidebar.frame(width: width)
+                            .glassSurface(radius: 22)
+                            .padding(.leading, 12)
+                            .padding(.bottom, 12)
+                        sidebarDivider(width: width, limit: sidebarLimit)
+                    }
                     detail
                 }
-                Divider()
-                HStack(spacing: 8) {
-                    Spacer()
-                    Text("Sample data  ·  Design study").font(.caption)
-                    Spacer()
-                }
-                .foregroundStyle(.secondary)
-                .frame(height: 26)
-                .background(Color(nsColor: .windowBackgroundColor))
+                .padding(.top, 6)
             }
             .background(Color(nsColor: .textBackgroundColor))
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea(.container, edges: .bottom)
+        .coordinateSpace(name: "library-layout")
         .sheet(isPresented: $showExport) { exportPreview }
+        .alert("Sample recording details", isPresented: $showDetails) {
+            Button("Done", role: .cancel) {}
+        } message: {
+            Text("\(model.selectedCall.source)\n\(model.selectedCall.date) · \(model.selectedCall.time) · \(model.selectedCall.minutes) min\nSynthetic recording with provisional speaker labels.")
+        }
     }
 
-    private var libraryMenu: some View {
-        Menu {
-            Button("Settings…") { model.openSettings?() }
-            Divider()
-            Button("Prototype controls…") { model.openControls?() }
-        } label: {
-            Image(systemName: "ellipsis.circle").resizable().scaledToFit().frame(width: 17, height: 17)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .accessibilityLabel("More library actions")
+    private func sidebarDivider(width: CGFloat, limit: CGFloat) -> some View {
+        Color.clear.frame(width: 12)
+            .overlay {
+                Color.clear.frame(width: 7).contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named("library-layout"))
+                        .onChanged { value in
+                            if dividerDragStart == nil { dividerDragStart = width }
+                            sidebarWidth = min(limit, max(238, (dividerDragStart ?? width) + value.translation.width))
+                        }
+                        .onEnded { _ in dividerDragStart = nil })
+                    .onHover { inside in
+                        if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                    }
+            }
+            .accessibilityRepresentation {
+                Slider(value: Binding(get: { width }, set: { sidebarWidth = $0 }), in: 238...limit) {
+                    Text("Call list width")
+                }
+            }
     }
 
     private var sidebar: some View {
-        ScrollView {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Library").font(.title3.weight(.semibold))
+                .padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 14)
+            ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(model.groups.enumerated()), id: \.element) { groupIndex, group in
-                    if groupIndex > 0 { Divider().padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 14) }
+                    if groupIndex > 0 { Spacer().frame(height: 20) }
                     Text(group)
-                        .font(.headline)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 26)
-                        .padding(.top, groupIndex == 0 ? 14 : 0)
-                        .padding(.bottom, 12)
+                        .padding(.horizontal, 22)
+                        .padding(.top, groupIndex == 0 ? 2 : 0)
+                        .padding(.bottom, 8)
                     ForEach(model.calls.filter { $0.group == group }) { call in
-                        callRow(call).padding(.horizontal, 14).padding(.bottom, 4)
+                        callRow(call).padding(.horizontal, 10).padding(.bottom, 4)
                     }
                 }
             }
             .padding(.bottom, 20)
         }
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.76))
-        .accessibilityLabel("Call library")
+            .accessibilityLabel("Call library")
+            Text("Sample data · Design study").font(.caption).foregroundStyle(.secondary)
+                .padding(.horizontal, 22).padding(.vertical, 14)
+        }
     }
 
     private func callRow(_ call: SampleCall) -> some View {
         let selected = call.id == model.selectedID
+        let title = model.longTitle && selected ? model.sourceTitle : call.source
         return Button { model.select(call) } label: {
             HStack(spacing: 12) {
                 AppIcon(bundle: call.bundle, size: 32)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(model.longTitle && selected ? model.sourceTitle : call.source)
+                    Text(title)
                         .font(.body)
                         .lineLimit(1)
                     Text("\(call.time)  ·  \(call.minutes) min")
@@ -113,13 +121,13 @@ struct LibraryView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)
-            .frame(minHeight: 56, alignment: .leading)
-            .contentShape(RoundedRectangle(cornerRadius: 9))
-            .background(selected ? Color.accentColor.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 9))
-            .overlay { RoundedRectangle(cornerRadius: 9).strokeBorder(selected ? Color.accentColor.opacity(0.3) : .clear, lineWidth: 0.8) }
+            .frame(minHeight: call.state == .ready ? 56 : 74, alignment: .leading)
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .background(selected ? Color.accentColor.opacity(0.16) : .clear, in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(call.source), \(call.date), \(call.time), \(call.minutes) minutes, \(call.state.rawValue)")
+        .help(title)
+        .accessibilityLabel("\(title), \(call.date), \(call.time), \(call.minutes) minutes, \(call.state.rawValue)")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -129,7 +137,7 @@ struct LibraryView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(model.sourceTitle)
                         .font(.title2.weight(.semibold))
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("\(model.selectedCall.date)  ·  \(model.selectedCall.time)  ·  \(model.selectedCall.minutes) min")
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -142,17 +150,18 @@ struct LibraryView: View {
                     }
                     Button { showExport = true } label: { Image(systemName: "square.and.arrow.up").font(.body) }
                 }
-                .buttonStyle(.plain)
+                .glassControl(circle: false)
                 .accessibilityLabel("Export this transcript")
                 Menu {
-                    Button("Show sample recording details") { model.notice = "Sample · Google Chrome · locally saved audio · provisional speaker labels" }
+                    Button("Show sample recording details") { showDetails = true }
                     Button("Prototype controls…") { model.openControls?() }
-                } label: { Image(systemName: "ellipsis.circle").resizable().scaledToFit().frame(width: 17, height: 17) }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                } label: { Image(systemName: "ellipsis").frame(width: 18, height: 18) }
+                .menuStyle(.button).menuIndicator(.hidden).fixedSize()
+                .glassControl(circle: true)
                 .accessibilityLabel("More recording actions")
             }
             .padding(.horizontal, 32)
-            .padding(.top, 22)
+            .padding(.top, 18)
             .padding(.bottom, 24)
 
             if model.selectedCall.state == .ready || model.selectedCall.state == .interrupted {
@@ -160,8 +169,11 @@ struct LibraryView: View {
             } else {
                 readingStatus
             }
-            Divider()
             player
+                .glassSurface(radius: 22)
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
@@ -212,6 +224,7 @@ struct LibraryView: View {
                     .padding(.bottom, 24)
                     .padding(.leading, 1)
                 }
+                .accessibilityLabel("Transcript passages")
                 .onChange(of: model.selectedID) { _, _ in reader.scrollTo(0, anchor: .top) }
             }
         }
@@ -257,7 +270,7 @@ struct LibraryView: View {
     }
 
     private var player: some View {
-        HStack(spacing: 21) {
+        HStack(spacing: 16) {
             Button { model.playing.toggle() } label: {
                 Image(systemName: model.playing ? "pause.fill" : "play.fill").font(.system(size: 18)).frame(width: 30, height: 40)
             }
@@ -273,8 +286,8 @@ struct LibraryView: View {
             }
             .buttonStyle(.plain).accessibilityLabel(model.volume ? "Mute sample playback" : "Unmute sample playback")
         }
-        .padding(.horizontal, 30)
-        .frame(height: 54)
+        .padding(.horizontal, 20)
+        .frame(height: 60)
     }
 
     private var exportPreview: some View {
@@ -292,5 +305,23 @@ struct LibraryView: View {
             }
         }
         .padding(28).frame(width: 520)
+    }
+}
+
+private extension View {
+    @ViewBuilder func glassSurface(radius: CGFloat) -> some View {
+        if #available(macOS 26.0, *) {
+            self.glassEffect(.regular, in: .rect(cornerRadius: radius))
+        } else {
+            self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: radius))
+        }
+    }
+
+    @ViewBuilder func glassControl(circle: Bool) -> some View {
+        if #available(macOS 26.0, *) {
+            self.buttonStyle(.glass).buttonBorderShape(circle ? .circle : .capsule).controlSize(.large)
+        } else {
+            self.buttonStyle(.bordered).controlSize(.large)
+        }
     }
 }

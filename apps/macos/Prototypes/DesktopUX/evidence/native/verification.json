@@ -1,0 +1,344 @@
+{
+  "scope": "Disposable desktop UX prototype; synthetic in-memory data",
+  "run": "run-20260908-113150-28307",
+  "command": "bash apps/macos/Prototypes/DesktopUX/run-ui-tests.sh",
+  "result": "Passed",
+  "passedTests": 9,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "startedAt": "2026-09-08T09:31:52.336000+00:00",
+  "finishedAt": "2026-09-08T09:35:40.795000+00:00",
+  "durationSeconds": 228.459,
+  "platform": "macOS",
+  "osVersion": "26.6.2",
+  "architecture": "arm64",
+  "sourceSha256": {
+    "CompactRecordingPanel.swift": "839be910603813d5a7dc95c8c56e33a3cf8113bfaa5f4f96fad0032943c97062",
+    "Library.swift": "344a86bf1e9e7a967817c1af32ac65650595e4ecd6794b19ef501d33bf6a1976",
+    "PrototypeApp.swift": "003fcf121057cb47e2746b1665a2efc3d8d1feb6a130193485d2e841addae1e7",
+    "PrototypeModel.swift": "bed3c457163eb36f594338913ed631beb71c61f41acf7e07cc70441d8e693248",
+    "PrototypeRenders.swift": "ebe75ef11e477781ee2a2db977ea1a14440e35c644d4ad28ae0917c5d4a08d76",
+    "RecordingAndSettings.swift": "79981fa9a4ff42e32dfc0bbc85c66588ef2dd8e2847d6902ab52ce92b1184d2d",
+    "UITests/DesktopUXUITests.swift": "a429cbbbd7a7bb56f9f0cf1288ebb0e582f358fe11ef0b519771220a366f98bc",
+    "FocusFixture/FocusFixture.swift": "9b35e506b300cff067edca8b939a1ed360cb79527f5135f9d831617a60b22971",
+    "project.yml": "49319c574ac20fed1ddf6e8893a01fefff0e5118355cf6623c0b0f1591c8b5df",
+    "run-ui-tests.sh": "ef95ce0882b56d05375ce3df4c53f821ec16580054a590c1a6af8aff1ff4b57d",
+    "collect-ui-evidence.py": "fb683b205d5fd8ed479d8d22a8939db6d1eb9d12f1a8b8fc44d7bedf3fbcd3f9",
+    "run.sh": "0dea2bda7f31017f628bf7b34f90927012c9b7798a7a0c30911525d60025fd75"
+  },
+  "artifacts": [
+    {
+      "file": "library-light.png",
+      "test": "DesktopUXUITests/testNativeControlAndSecondaryWindows()",
+      "sha256": "8a1783f273649f5e262c1159595b64ac8acf3553872dbc6638aa376276d1f9d9",
+      "pixelSize": [
+        2432,
+        1728
+      ]
+    },
+    {
+      "file": "library-narrow-long-title-dark.png",
+      "test": "DesktopUXUITests/testLibraryAppearanceAndWindowLifecycle()",
+      "sha256": "3d8fd6e03558c401f416553f5b762875b7da553e94b71578f469112987acbfd9",
+      "pixelSize": [
+        1640,
+        1540
+      ]
+    },
+    {
+      "file": "library-sidebar-resized.png",
+      "test": "DesktopUXUITests/testPlayerAndScrollableTranscript()",
+      "sha256": "31c9215e9809a999f1a0f51e77201d4e52d2f7794a9eb80a6cd3042fd86ea62c",
+      "pixelSize": [
+        2432,
+        1728
+      ]
+    },
+    {
+      "file": "library-sidebar-hidden.png",
+      "test": "DesktopUXUITests/testPlayerAndScrollableTranscript()",
+      "sha256": "b9a546d2ce7254e61b4aa0440ba8df8cd110194c5fe84612d07ed71e4e5bc995",
+      "pixelSize": [
+        2432,
+        1728
+      ]
+    },
+    {
+      "file": "library-narrow-scrolled.png",
+      "test": "DesktopUXUITests/testPlayerAndScrollableTranscript()",
+      "sha256": "5aa21ce3d6b6efd5221865ad6cab9767cff7fd0aba9679ad420b70af061a9f1e",
+      "pixelSize": [
+        1640,
+        1540
+      ]
+    },
+    {
+      "file": "library-new-call-processing.png",
+      "test": "DesktopUXUITests/testRecordingWalkthroughAndMenus()",
+      "sha256": "16f3888891d29a783e324a176c2af83df5eed02047d5edf42b13360a8fe5a493",
+      "pixelSize": [
+        2432,
+        1728
+      ]
+    },
+    {
+      "file": "library-processing.png",
+      "test": "DesktopUXUITests/testSettingsAndReadingStates()",
+      "sha256": "554b34d80a304f78ce4463aac88af57abf5e70d8d55804fd27d4672ee6118b77",
+      "pixelSize": [
+        2432,
+        1728
+      ],
+      "run": "run-20260908-114414-4233"
+    },
+    {
+      "file": "library-offline.png",
+      "test": "DesktopUXUITests/testSettingsAndReadingStates()",
+      "sha256": "47dc549afe9c6e215fd419cae0957443b745058c046a3feff14a24ded3610a75",
+      "pixelSize": [
+        2432,
+        1728
+      ],
+      "run": "run-20260908-114414-4233"
+    },
+    {
+      "file": "library-no-speech.png",
+      "test": "DesktopUXUITests/testSettingsAndReadingStates()",
+      "sha256": "30e380018a375ede878d2757eac13d5f3ddcbf40b4de83e18a41943a9fa31d1f",
+      "pixelSize": [
+        2432,
+        1728
+      ],
+      "run": "run-20260908-114414-4233"
+    },
+    {
+      "file": "library-failed.png",
+      "test": "DesktopUXUITests/testSettingsAndReadingStates()",
+      "sha256": "dcf1417161dfef43649a0b295d1f8ee3da36e0e84393dc406275e1531f697470",
+      "pixelSize": [
+        2432,
+        1728
+      ],
+      "run": "run-20260908-114414-4233"
+    },
+    {
+      "file": "settings-general.png",
+      "test": "DesktopUXUITests/testSettingsAndReadingStates()",
+      "sha256": "a22fcbd420f752d75adc9cbdd2be72dc846311086ab06331e0b37bd824765752",
+      "pixelSize": [
+        1100,
+        864
+      ]
+    },
+    {
+      "file": "settings-connection.png",
+      "test": "DesktopUXUITests/testSettingsAndReadingStates()",
+      "sha256": "3cd4b5cd708acdafc63dd5c994e00d4723827a3be6f7f5c882e85cfd3943549b",
+      "pixelSize": [
+        1100,
+        864
+      ]
+    },
+    {
+      "file": "settings-diagnostics.png",
+      "test": "DesktopUXUITests/testSettingsAndReadingStates()",
+      "sha256": "ded177e4ceb4d7133e565bdfe47c3bf49d91d58b9f9c84d72cce8b0c96cdc126",
+      "pixelSize": [
+        1100,
+        864
+      ]
+    },
+    {
+      "file": "menu-idle.png",
+      "test": "DesktopUXUITests/testRecordingWalkthroughAndMenus()",
+      "sha256": "eb3b8f0ac5dea94d386d616cbe90b75174f85f30b37a274252ccb9ebea571bf7",
+      "pixelSize": [
+        354,
+        352
+      ]
+    },
+    {
+      "file": "menu-recording-hidden-panel.png",
+      "test": "DesktopUXUITests/testRecordingWalkthroughAndMenus()",
+      "sha256": "34b49aaa1d3c6b6b26da53b3b9b38fcd8f655cf7afd94c54f233ad62a8885f22",
+      "pixelSize": [
+        492,
+        496
+      ]
+    },
+    {
+      "file": "menu-processing.png",
+      "test": "DesktopUXUITests/testRecordingWalkthroughAndMenus()",
+      "sha256": "0428fea2c792e1378bdce6a38ec18ccc48f64710bab3cb5da00f17f6008c0999",
+      "pixelSize": [
+        450,
+        400
+      ]
+    },
+    {
+      "file": "menu-save-recovery.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "9ec9090b1993f7c38cdc4a7a597a26dd12bf63c8eb4e9a3c9fec5a2202aeb491",
+      "pixelSize": [
+        564,
+        496
+      ]
+    },
+    {
+      "file": "panel-recording-native.png",
+      "test": "DesktopUXUITests/testNativeControlAndSecondaryWindows()",
+      "sha256": "58eb57d3a1fd985723dd4cba016787e445b401f905909b8bb975e55b524edbb7",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-muted-native.png",
+      "test": "DesktopUXUITests/testRecordingWalkthroughAndMenus()",
+      "sha256": "101b871b7bb022ab1ca598f8320882ee4f2b8c108ea449bbd71c468cea72cc2b",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-microphone-pending-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "b3a8b777b95a3864f57b96e58ecd16b8d332b87296e52ab39eafd969eca8dc90",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-microphone-unavailable-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "9b1f04a395b70e02bccad87b96b396a9bf7bf9bb74c776007485b6fa6f1f5bb7",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-saving-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "60adf60b6486da2e109190216fd27bd3554bcd784cae0c3a4696b470ab1a0617",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-save-failure-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "ae1f8cb05426484e2014b195de698647027ef2a8dbe47c9cfe7d05c091949704",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-stop-unconfirmed-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "ae1f8cb05426484e2014b195de698647027ef2a8dbe47c9cfe7d05c091949704",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-interrupted-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "52d8da35a0f8b94f2fab8e2f21587048a8edb6fafe1982acc5a73998d03fccc9",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-start-failed-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "52d8da35a0f8b94f2fab8e2f21587048a8edb6fafe1982acc5a73998d03fccc9",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "panel-starting-native.png",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "8f59a35203498608da0101a303e403c423fc93ec207a4423ac2217d4fde856ab",
+      "pixelSize": [
+        384,
+        88
+      ]
+    },
+    {
+      "file": "library-accessibility.txt",
+      "test": "DesktopUXUITests/testNativeControlAndSecondaryWindows()",
+      "sha256": "635cad21a84a9c0a7526de1af253dc6f10297804d6e55ff84c4bd0df515102cd"
+    },
+    {
+      "file": "recording-accessibility.txt",
+      "test": "DesktopUXUITests/testNativeControlAndSecondaryWindows()",
+      "sha256": "c92ef726b7cbae5148ed11afc3f9f16a6cd26fc95609fc325e860e5300fa1632"
+    },
+    {
+      "file": "unavailable-microphone-accessibility.txt",
+      "test": "DesktopUXUITests/testRecoveryAndMicrophoneStates()",
+      "sha256": "cbb61dc4273724c8a531ba5dabff051197be298689e5453c8abed0315d1f1f85"
+    }
+  ],
+  "limits": [
+    "Synthetic capture and silent playback only",
+    "Spoken VoiceOver not exercised",
+    "macOS 15 fallback not run on a macOS 15 host",
+    "No production acceptance or design approval implied"
+  ],
+  "currentSourceSha256": {
+    "CompactRecordingPanel.swift": "839be910603813d5a7dc95c8c56e33a3cf8113bfaa5f4f96fad0032943c97062",
+    "Library.swift": "344a86bf1e9e7a967817c1af32ac65650595e4ecd6794b19ef501d33bf6a1976",
+    "PrototypeApp.swift": "003fcf121057cb47e2746b1665a2efc3d8d1feb6a130193485d2e841addae1e7",
+    "PrototypeModel.swift": "bed3c457163eb36f594338913ed631beb71c61f41acf7e07cc70441d8e693248",
+    "PrototypeRenders.swift": "ebe75ef11e477781ee2a2db977ea1a14440e35c644d4ad28ae0917c5d4a08d76",
+    "RecordingAndSettings.swift": "79981fa9a4ff42e32dfc0bbc85c66588ef2dd8e2847d6902ab52ce92b1184d2d",
+    "UITests/DesktopUXUITests.swift": "549ef64aaf4b2aff67d129fa17bfefa6847523dee3975e36ca56150392f9aafc",
+    "FocusFixture/FocusFixture.swift": "9b35e506b300cff067edca8b939a1ed360cb79527f5135f9d831617a60b22971",
+    "project.yml": "49319c574ac20fed1ddf6e8893a01fefff0e5118355cf6623c0b0f1591c8b5df",
+    "run-ui-tests.sh": "ef95ce0882b56d05375ce3df4c53f821ec16580054a590c1a6af8aff1ff4b57d",
+    "collect-ui-evidence.py": "fb683b205d5fd8ed479d8d22a8939db6d1eb9d12f1a8b8fc44d7bedf3fbcd3f9",
+    "run.sh": "0dea2bda7f31017f628bf7b34f90927012c9b7798a7a0c30911525d60025fd75"
+  },
+  "supplementalRuns": [
+    {
+      "run": "run-20260908-114414-4233",
+      "command": "bash apps/macos/Prototypes/DesktopUX/run-ui-tests.sh -only-testing:DesktopUXUITests/DesktopUXUITests/testSettingsAndReadingStates",
+      "reason": "Bring the library forward for unobstructed reading-state screenshots and assert each heading is hittable.",
+      "result": "Passed",
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0,
+      "startedAt": "2026-09-08T09:44:15.988000+00:00",
+      "finishedAt": "2026-09-08T09:44:59.422000+00:00",
+      "durationSeconds": 43.434,
+      "changedFilesSinceFullRun": [
+        "UITests/DesktopUXUITests.swift"
+      ],
+      "sourceSha256": {
+        "CompactRecordingPanel.swift": "839be910603813d5a7dc95c8c56e33a3cf8113bfaa5f4f96fad0032943c97062",
+        "Library.swift": "344a86bf1e9e7a967817c1af32ac65650595e4ecd6794b19ef501d33bf6a1976",
+        "PrototypeApp.swift": "003fcf121057cb47e2746b1665a2efc3d8d1feb6a130193485d2e841addae1e7",
+        "PrototypeModel.swift": "bed3c457163eb36f594338913ed631beb71c61f41acf7e07cc70441d8e693248",
+        "PrototypeRenders.swift": "ebe75ef11e477781ee2a2db977ea1a14440e35c644d4ad28ae0917c5d4a08d76",
+        "RecordingAndSettings.swift": "79981fa9a4ff42e32dfc0bbc85c66588ef2dd8e2847d6902ab52ce92b1184d2d",
+        "UITests/DesktopUXUITests.swift": "549ef64aaf4b2aff67d129fa17bfefa6847523dee3975e36ca56150392f9aafc",
+        "FocusFixture/FocusFixture.swift": "9b35e506b300cff067edca8b939a1ed360cb79527f5135f9d831617a60b22971",
+        "project.yml": "49319c574ac20fed1ddf6e8893a01fefff0e5118355cf6623c0b0f1591c8b5df",
+        "run-ui-tests.sh": "ef95ce0882b56d05375ce3df4c53f821ec16580054a590c1a6af8aff1ff4b57d",
+        "collect-ui-evidence.py": "fb683b205d5fd8ed479d8d22a8939db6d1eb9d12f1a8b8fc44d7bedf3fbcd3f9",
+        "run.sh": "0dea2bda7f31017f628bf7b34f90927012c9b7798a7a0c30911525d60025fd75"
+      }
+    }
+  ]
+}
