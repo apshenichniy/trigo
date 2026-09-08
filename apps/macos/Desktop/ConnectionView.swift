@@ -2,30 +2,22 @@ import SwiftUI
 import TrigoNative
 
 struct ConnectionView: View {
-  let appName: String
-  @ObservedObject var model: RecordingCoordinator
+  @ObservedObject var model: DesktopShell
   @State private var serverURL = ""
   @State private var token = ""
   init(
-    appName: String,
-    model: RecordingCoordinator,
+    model: DesktopShell,
     localConfiguration: LocalDevelopmentConfiguration? = nil
   ) {
-    self.appName = appName
     self.model = model
     _serverURL = State(initialValue: localConfiguration?.serverURL.absoluteString ?? "")
     _token = State(initialValue: localConfiguration?.ownerToken ?? "")
   }
-  private var snapshot: ConnectionSnapshot { model.connectionSnapshot }
+  private var snapshot: ConnectionSnapshot { model.recording.connection }
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 24) {
-        VStack(alignment: .leading, spacing: 6) {
-          Text(appName).font(.largeTitle.bold())
-          Text("Your personal call archive").font(.title3).foregroundStyle(.secondary)
-        }
-
         GroupBox("Archive connection") {
           VStack(alignment: .leading, spacing: 14) {
             TextField("https://your-trigo-server.example", text: $serverURL)
@@ -43,9 +35,9 @@ struct ConnectionView: View {
                 Task { await model.connect(serverURL: serverURL, token: candidateToken) }
               }
               .keyboardShortcut(.defaultAction)
-              .disabled(model.isConnecting || serverURL.isEmpty || token.isEmpty)
+              .disabled(model.recording.isConnecting || serverURL.isEmpty || token.isEmpty)
               .accessibilityIdentifier("connect-button")
-              if model.isConnecting { ProgressView().controlSize(.small) }
+              if model.recording.isConnecting { ProgressView().controlSize(.small) }
             }
           }
           .padding(.top, 8)
@@ -53,12 +45,11 @@ struct ConnectionView: View {
 
         connectionStatus
         recordingStatus
-        CaptureReadinessView(coordinator: model)
       }
-      .padding(32)
+      .padding(20)
       .frame(maxWidth: 680, alignment: .leading)
     }
-    .frame(minWidth: 560, minHeight: 540)
+    .accessibilityIdentifier("settings-connection")
     .onChange(of: snapshot.binding?.serverURL, initial: true) { _, value in
       if let value, serverURL.isEmpty { serverURL = value.absoluteString }
     }
@@ -94,9 +85,9 @@ struct ConnectionView: View {
         }
         if snapshot.binding != nil || snapshot.recordingEligibility == .unavailableUntilRecovery {
           Button("Retry saved connection") {
-            Task { await model.restore() }
+            Task { await model.retryConnection() }
           }
-          .disabled(model.isConnecting)
+          .disabled(model.recording.isConnecting)
           .accessibilityIdentifier("retry-connection-button")
         }
       }
@@ -132,13 +123,6 @@ struct ConnectionView: View {
 
   @ViewBuilder private func archiveDetails(status: ServerStatus) -> some View {
     boundArchiveDetails
-    if status.readiness.callOperations == .unavailable {
-      Label("Call operations are not available on this server yet.", systemImage: "icloud.slash")
-        .foregroundStyle(.secondary)
-    }
-    ForEach(status.errors) { notice in
-      Text(notice.message).font(.callout).foregroundStyle(.secondary)
-    }
   }
 
   @ViewBuilder private var boundArchiveDetails: some View {

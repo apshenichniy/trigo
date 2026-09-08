@@ -4,7 +4,10 @@ import PackageDescription
 let package = Package(
   name: "TrigoNative",
   platforms: [.macOS(.v15)],
-  products: [.library(name: "TrigoNative", targets: ["TrigoNative"])],
+  products: [
+    .library(name: "TrigoNative", targets: ["TrigoNative"]),
+    .library(name: "TrigoDesktop", targets: ["TrigoDesktop"]),
+  ],
   dependencies: [.package(path: "../../packages/contracts")],
   targets: [
     .target(
@@ -12,6 +15,7 @@ let package = Package(
       dependencies: [.product(name: "TrigoContracts", package: "contracts")],
       path: "Native"
     ),
+    .target(name: "TrigoDesktop", dependencies: ["TrigoNative"], path: "Desktop"),
     .testTarget(name: "TrigoNativeTests", dependencies: ["TrigoNative"], path: "Tests"),
   ]
 )

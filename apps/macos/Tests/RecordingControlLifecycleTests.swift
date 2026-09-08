@@ -3,7 +3,7 @@ import Testing
 
 @testable import TrigoNative
 
-@Test @MainActor func shortcutCancelsPendingStartWithoutAcknowledgingRecordingOrAdmittingOverlap()
+@Test @MainActor func repeatedShortcutPreservesPendingStartAndExplicitCancelPreventsOverlap()
   async throws
 {
   let fixture = try RecordingControlFixture()
@@ -15,6 +15,9 @@ import Testing
   #expect(fixture.coordinator.phase == .starting)
   #expect(fixture.coordinator.microphoneState == .starting)
   await fixture.coordinator.shortcutPressed()
+  #expect(fixture.coordinator.phase == .starting)
+  #expect(fixture.os.application.startCalls == 1)
+  await fixture.coordinator.stop()
   #expect(fixture.coordinator.phase == .stopping)
   await fixture.coordinator.startPinnedSource()
   #expect(fixture.coordinator.phase == .stopping)
