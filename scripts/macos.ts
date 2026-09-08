@@ -23,10 +23,15 @@ import {
 } from "./macos-install.ts";
 import { restoreLock } from "./macos-lock.ts";
 import { lockedSwiftArguments, swiftPackages } from "./native-check.ts";
+import { runNativeUI } from "./native-ui.ts";
 import { run } from "./process.ts";
 import { beginTiming, timedRun } from "./timing.ts";
 import { requireNativeTools, toolOutput } from "./toolchain.ts";
 const action = process.argv[2] ?? "build";
+if (action === "ui") {
+  runNativeUI(process.argv.slice(3));
+  process.exit(0);
+}
 if (!["build", "archive", "run", "install", "dependencies", "setup", "prepare"].includes(action)) {
   throw new Error(`Unknown native action: ${action}`);
 }
