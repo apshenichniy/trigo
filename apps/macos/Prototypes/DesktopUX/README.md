@@ -4,11 +4,11 @@ This native prototype answers the visual question in [Choose the library, menu-b
 
 ## Accepted baseline and next iteration — 2026-09-08
 
-The owner accepted the prototype overall, including the floating-sidebar direction, and explicitly requested that it be retained for future work. This accepts the general structure and direction. Further UI work is deferred to the next iteration, with emphasis on the intermediate and recovery states already available in Design Controls.
+The owner accepted the prototype overall, including the floating-sidebar direction, and explicitly requested that it be retained for future work. This accepts the general structure and direction. Further invariant and intermediate/recovery-state UI refinement is deferred until after the first working release and hands-on use. The retained Design Controls workbench supports that later iteration; another prototype-polish round does not block v1 implementation.
 
 Keep the runnable source, selected references, native screenshots and verification evidence together. Do not remove this workbench during prototype cleanup or replace it with screenshots alone. The branch supports further iterations; the `desktop-ux-accepted-2026-09-08` tag preserves this baseline.
 
-The next design frontier is [library reading and truthful processing states #68](https://github.com/apshenichniy/trigo/issues/68). Use this workbench to review the observable state/action matrix and then refine those states' presentation. The later [implementation handoff #70](https://github.com/apshenichniy/trigo/issues/70) reconciles scopes, dependencies and acceptance. Production implementation still starts on a separate owner instruction.
+The owner delegated the [basic v1 reading defaults in #68](https://github.com/apshenichniy/trigo/issues/68#issuecomment-5583749276). Production implementation follows those defaults, the accepted visuals and the [completed handoff #70](https://github.com/apshenichniy/trigo/issues/70#issuecomment-5583897958). Gather real-use observations from the first working release before reopening invariant or intermediate-state UI refinement.
 
 ## Floating Liquid Glass revision — 2026-09-08
 
@@ -105,7 +105,7 @@ Design Controls also exposes **Hold microphone change pending** to inspect the p
 
 The connection fixture offers Validate and Save with a sample replacement token, and Retry Saved Connection. It does not introduce a Disconnect operation. Validation, credential persistence, archive-identity checks and failed-update handling remain responsibilities of the existing connection contract; these fixture buttons only change in-memory sample status.
 
-Speaker labels and reading-status examples are provisional visual fixtures. This study does not resolve [Specify library reading and truthful processing states](https://github.com/apshenichniy/trigo/issues/68) or [Define the UX and transcription handoff for autonomous delivery](https://github.com/apshenichniy/trigo/issues/70), and does not implement the separately approved [speaker-grouping contract](https://github.com/apshenichniy/trigo/issues/46#issuecomment-5580368018).
+Speaker labels and reading-status examples remain synthetic fixtures. Production reading behavior follows the [delegated v1 defaults](https://github.com/apshenichniy/trigo/issues/68#issuecomment-5583749276), with ownership in the [implementation handoff](https://github.com/apshenichniy/trigo/issues/70). This workbench does not implement the separately approved [speaker-grouping contract](https://github.com/apshenichniy/trigo/issues/46#issuecomment-5580368018).
 
 ## Accessibility notes
 

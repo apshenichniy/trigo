@@ -2,7 +2,7 @@
 
 **Final result: passed for the local prototype**
 
-This review covers the retained prototype for [design decision #67](https://github.com/apshenichniy/trigo/issues/67), including the owner's requested floating sidebar and Liquid Glass revision. The full native run passed all nine scenarios with zero failures or skips. Final light/dark, narrow, resized and hidden-sidebar captures were inspected at readable scale; no unresolved P0, P1 or P2 visual finding remains in the reviewed scope. The owner subsequently accepted the prototype overall and requested its preservation as a workbench. Further UI refinement of intermediate and recovery states is deferred to the next iteration. Production implementation remains a separate instruction.
+This review covers the retained prototype for [design decision #67](https://github.com/apshenichniy/trigo/issues/67), including the owner's requested floating sidebar and Liquid Glass revision. The full native run passed all nine scenarios with zero failures or skips. Final light/dark, narrow, resized and hidden-sidebar captures were inspected at readable scale; no unresolved P0, P1 or P2 visual finding remains in the reviewed scope. The owner accepted the prototype overall and requested its preservation as a workbench, then clarified that further invariant and intermediate/recovery-state UI refinement follows the first working release and hands-on use. The accepted baseline and delegated #68 defaults are sufficient for the implementation handoff.
 
 ## Retention and Quit correction — 2026-09-08
 
@@ -25,16 +25,16 @@ The owner attached `codex-clipboard-e137e87c-c4eb-48a1-b5f2-2ca68241bf70.png` in
 
 The earlier owner-approved library capture, `evidence/library-standard-fonts.png`, remains the system-typography and information-architecture reference. The compact-strip reference remains `designs/recording-panel-with-timer.png`.
 
-| Current native capture | Viewport / density | State |
-| --- | --- | --- |
-| `evidence/native/library-light.png` | 1216 × 864 points; 2432 × 1728 pixels; 2× | Ready Chrome call, light, default sidebar |
-| `evidence/native/library-narrow-long-title-dark.png` | 820 × 770 points; 1640 × 1540 pixels; 2× | Dark, long source title, narrow window |
-| `evidence/native/library-sidebar-resized.png` | 1216 × 864 points; 2× | Sidebar narrowed by pointer drag |
-| `evidence/native/library-sidebar-hidden.png` | 1216 × 864 points; 2× | Reader expanded after hiding the sidebar |
-| `evidence/native/library-narrow-scrolled.png` | 820 × 770 points; 2× | Last passage selected; player remains reachable |
-| `evidence/native/library-new-call-processing.png` | 1216 × 864 points; 2× | Finished sample call appears in Today |
-| `evidence/native/settings-connection.png` | 550 × 432 points; 1100 × 864 pixels; 2× | Sample replacement-token flow completed |
-| `evidence/native/panel-recording-native.png` | 192 × 44 points; 384 × 88 pixels; 2× | Live native compact recording strip |
+| Current native capture                               | Viewport / density                        | State                                           |
+| ---------------------------------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| `evidence/native/library-light.png`                  | 1216 × 864 points; 2432 × 1728 pixels; 2× | Ready Chrome call, light, default sidebar       |
+| `evidence/native/library-narrow-long-title-dark.png` | 820 × 770 points; 1640 × 1540 pixels; 2×  | Dark, long source title, narrow window          |
+| `evidence/native/library-sidebar-resized.png`        | 1216 × 864 points; 2×                     | Sidebar narrowed by pointer drag                |
+| `evidence/native/library-sidebar-hidden.png`         | 1216 × 864 points; 2×                     | Reader expanded after hiding the sidebar        |
+| `evidence/native/library-narrow-scrolled.png`        | 820 × 770 points; 2×                      | Last passage selected; player remains reachable |
+| `evidence/native/library-new-call-processing.png`    | 1216 × 864 points; 2×                     | Finished sample call appears in Today           |
+| `evidence/native/settings-connection.png`            | 550 × 432 points; 1100 × 864 pixels; 2×   | Sample replacement-token flow completed         |
+| `evidence/native/panel-recording-native.png`         | 192 × 44 points; 384 × 88 pixels; 2×      | Live native compact recording strip             |
 
 Native captures contain the actual app windows/components. Browser CSS dimensions and deviceScaleFactor do not apply. The Telegram reference has a different viewport and content model, so the comparison evaluates the requested floating-surface composition and native-control treatment, not pixel-identical chat content. System typography is compared with the earlier approved Trigo capture. No screenshot was edited to manufacture a comparison result.
 
@@ -83,7 +83,7 @@ Raw xcresult bundles, automatic screen recordings and complete device metadata r
 
 This is local prototype acceptance. Real capture, microphone input, global gestures, ASR, server requests, credentials, sync and durable storage are simulated or absent. Spoken VoiceOver output was not exercised; the automated check covers descriptions and the explicitly asserted control states. The macOS 15 fallback compiles behind availability checks but was not run on a macOS 15 host.
 
-The owner-selected recording contract remains unchanged. This report does not close #67, refine #68 or #70, authorize production work, or approve merging this throwaway prototype.
+The owner-selected recording contract remains unchanged. The later [#67 resolution](https://github.com/apshenichniy/trigo/issues/67#issuecomment-5583747807) records overall owner acceptance and retention; [#68](https://github.com/apshenichniy/trigo/issues/68#issuecomment-5583749276) records the delegated v1 defaults. This report remains local prototype evidence, not acceptance of production capture, ASR or persistence.
 
 ## Checklist
 
