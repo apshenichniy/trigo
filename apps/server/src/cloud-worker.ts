@@ -1,4 +1,4 @@
-import { WorkflowEntrypoint } from "cloudflare:workers";
+import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { Effect } from "effect";
 
 import { type AsrProbeEnvironment, AsrProbeError, asrProbeResponse } from "./asr-probe.ts";
@@ -7,6 +7,8 @@ import { hostedMasterProbeResponse } from "./hosted-master-probe.ts";
 import { errorResponse, ownerErrorResponses } from "./http-errors.ts";
 import { authenticateOwner } from "./owner-state.ts";
 import { productFetch } from "./product-handler.ts";
+import { runTranscriptionWorkflow } from "./transcription-workflow.ts";
+import { type TranscriptionWorkflowBinding } from "./transcriptions.ts";
 
 export interface PendingArchiveWorkflowInput {
   readonly operationId: string;
@@ -15,7 +17,7 @@ export interface PendingArchiveWorkflowInput {
 export interface CloudEnvironmentProbe extends AsrProbeEnvironment {
   readonly ARCHIVE: Pick<R2Bucket, "get" | "put" | "head" | "delete">;
   readonly CATALOG: Pick<D1Database, "prepare">;
-  readonly ARCHIVE_WORKFLOW: { readonly create: unknown };
+  readonly ARCHIVE_WORKFLOW: TranscriptionWorkflowBinding;
   readonly DEPLOYMENT_STAGE: "dev" | "personal";
   readonly DEPLOYMENT_IDENTITY: string;
 }
@@ -24,8 +26,12 @@ export class PendingArchiveWorkflow extends WorkflowEntrypoint<
   CloudEnvironmentProbe,
   PendingArchiveWorkflowInput
 > {
-  run(): Promise<never> {
-    return Promise.reject(new Error("Archive workflow execution is unavailable until Trigo #18"));
+  run(event: WorkflowEvent<PendingArchiveWorkflowInput>, step: WorkflowStep) {
+    return runTranscriptionWorkflow(
+      { ...this.env, TRANSCRIPTION_MODE: "hosted" },
+      event.payload.operationId,
+      step,
+    );
   }
 }
 
@@ -83,7 +89,11 @@ export default {
       );
     }
     if (url.pathname.startsWith("/v1/")) {
-      return productFetch(request, env);
+      return productFetch(request, {
+        ...env,
+        TRANSCRIPTION_WORKFLOW: env.ARCHIVE_WORKFLOW,
+        TRANSCRIPTION_MODE: "hosted",
+      });
     }
     if (request.method !== "GET") {
       return new Response(null, { status: 405 });

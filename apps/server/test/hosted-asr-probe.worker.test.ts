@@ -41,7 +41,7 @@ function bindings(
   return {
     ARCHIVE: env.LOCAL_ARCHIVE,
     CATALOG: env.CATALOG,
-    ARCHIVE_WORKFLOW: { create: vi.fn() },
+    ARCHIVE_WORKFLOW: { create: vi.fn(), get: vi.fn() },
     AI: { run },
     DEPLOYMENT_STAGE: "dev",
     DEPLOYMENT_IDENTITY: "trigo-dev-api:9236f745b86ef20f",

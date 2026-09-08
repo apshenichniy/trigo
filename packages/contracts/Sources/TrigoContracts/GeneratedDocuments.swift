@@ -19,6 +19,9 @@ enum GeneratedContract {
     "UploadPartReceipt",
     "FinalizeMasterUpload",
     "VerifiedMasterReceipt",
+    "RequestTranscription",
+    "AvailableTranscript",
+    "TranscriptionOperation",
   ]
 }
 
@@ -2164,5 +2167,289 @@ public struct VerifiedMasterReceipt: ContractDocument, Codable, Equatable, Senda
     try container.encode(self.channelMap, forKey: .channelMap)
     try container.encode(self.audioManifest, forKey: .audioManifest)
     try container.encode(self.storedAt, forKey: .storedAt)
+  }
+}
+
+public struct RequestTranscription: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "RequestTranscription"
+  public var schemaVersion: Int
+  public var operationId: ExchangeUUID
+  public var revisionId: ExchangeUUID
+  public var requestedLanguage: String
+  public var profileId: String
+  public init(
+    schemaVersion: Int,
+    operationId: ExchangeUUID,
+    revisionId: ExchangeUUID,
+    requestedLanguage: String,
+    profileId: String
+  ) {
+    self.schemaVersion = schemaVersion
+    self.operationId = operationId
+    self.revisionId = revisionId
+    self.requestedLanguage = requestedLanguage
+    self.profileId = profileId
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case operationId
+    case revisionId
+    case requestedLanguage
+    case profileId
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.operationId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .operationId
+    )
+    self.revisionId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .revisionId
+    )
+    self.requestedLanguage = try container.decode(
+      String.self,
+      forKey: .requestedLanguage
+    )
+    self.profileId = try container.decode(
+      String.self,
+      forKey: .profileId
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.operationId, forKey: .operationId)
+    try container.encode(self.revisionId, forKey: .revisionId)
+    try container.encode(self.requestedLanguage, forKey: .requestedLanguage)
+    try container.encode(self.profileId, forKey: .profileId)
+  }
+}
+
+public struct AvailableTranscript: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "AvailableTranscript"
+  public var revisionId: ExchangeUUID
+  public var createdAt: UTCDateTime
+  public var sha256: SHA256Digest
+  public var byteLength: PositiveInteger
+  public var provenanceSHA256: SHA256Digest
+  public var provenanceByteLength: PositiveInteger
+  public init(
+    revisionId: ExchangeUUID,
+    createdAt: UTCDateTime,
+    sha256: SHA256Digest,
+    byteLength: PositiveInteger,
+    provenanceSHA256: SHA256Digest,
+    provenanceByteLength: PositiveInteger
+  ) {
+    self.revisionId = revisionId
+    self.createdAt = createdAt
+    self.sha256 = sha256
+    self.byteLength = byteLength
+    self.provenanceSHA256 = provenanceSHA256
+    self.provenanceByteLength = provenanceByteLength
+  }
+  enum CodingKeys: String, CodingKey {
+    case revisionId
+    case createdAt
+    case sha256
+    case byteLength
+    case provenanceSHA256
+    case provenanceByteLength
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.revisionId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .revisionId
+    )
+    self.createdAt = try container.decode(
+      UTCDateTime.self,
+      forKey: .createdAt
+    )
+    self.sha256 = try container.decode(
+      SHA256Digest.self,
+      forKey: .sha256
+    )
+    self.byteLength = try container.decode(
+      PositiveInteger.self,
+      forKey: .byteLength
+    )
+    self.provenanceSHA256 = try container.decode(
+      SHA256Digest.self,
+      forKey: .provenanceSHA256
+    )
+    self.provenanceByteLength = try container.decode(
+      PositiveInteger.self,
+      forKey: .provenanceByteLength
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.revisionId, forKey: .revisionId)
+    try container.encode(self.createdAt, forKey: .createdAt)
+    try container.encode(self.sha256, forKey: .sha256)
+    try container.encode(self.byteLength, forKey: .byteLength)
+    try container.encode(self.provenanceSHA256, forKey: .provenanceSHA256)
+    try container.encode(self.provenanceByteLength, forKey: .provenanceByteLength)
+  }
+}
+
+public struct TranscriptionFailure: Codable, Equatable, Sendable {
+  public var code: String
+  public var retry: String
+  public var message: String
+  public init(
+    code: String,
+    retry: String,
+    message: String
+  ) {
+    self.code = code
+    self.retry = retry
+    self.message = message
+  }
+  enum CodingKeys: String, CodingKey {
+    case code
+    case retry
+    case message
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.code = try container.decode(
+      String.self,
+      forKey: .code
+    )
+    self.retry = try container.decode(
+      String.self,
+      forKey: .retry
+    )
+    self.message = try container.decode(
+      String.self,
+      forKey: .message
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.code, forKey: .code)
+    try container.encode(self.retry, forKey: .retry)
+    try container.encode(self.message, forKey: .message)
+  }
+}
+
+public struct TranscriptionOperation: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "TranscriptionOperation"
+  public var schemaVersion: Int
+  public var operationId: ExchangeUUID
+  public var archiveId: ExchangeUUID
+  public var callId: ExchangeUUID
+  public var revisionId: ExchangeUUID
+  public var state: String
+  public var attemptCount: Int
+  public var createdAt: UTCDateTime
+  public var updatedAt: UTCDateTime
+  public var result: AvailableTranscript?
+  public var failure: TranscriptionFailure?
+  public init(
+    schemaVersion: Int,
+    operationId: ExchangeUUID,
+    archiveId: ExchangeUUID,
+    callId: ExchangeUUID,
+    revisionId: ExchangeUUID,
+    state: String,
+    attemptCount: Int,
+    createdAt: UTCDateTime,
+    updatedAt: UTCDateTime,
+    result: AvailableTranscript?,
+    failure: TranscriptionFailure?
+  ) {
+    self.schemaVersion = schemaVersion
+    self.operationId = operationId
+    self.archiveId = archiveId
+    self.callId = callId
+    self.revisionId = revisionId
+    self.state = state
+    self.attemptCount = attemptCount
+    self.createdAt = createdAt
+    self.updatedAt = updatedAt
+    self.result = result
+    self.failure = failure
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case operationId
+    case archiveId
+    case callId
+    case revisionId
+    case state
+    case attemptCount
+    case createdAt
+    case updatedAt
+    case result
+    case failure
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.operationId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .operationId
+    )
+    self.archiveId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .archiveId
+    )
+    self.callId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .callId
+    )
+    self.revisionId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .revisionId
+    )
+    self.state = try container.decode(
+      String.self,
+      forKey: .state
+    )
+    self.attemptCount = try container.decode(
+      Int.self,
+      forKey: .attemptCount
+    )
+    self.createdAt = try container.decode(
+      UTCDateTime.self,
+      forKey: .createdAt
+    )
+    self.updatedAt = try container.decode(
+      UTCDateTime.self,
+      forKey: .updatedAt
+    )
+    self.result = try container.decode(
+      AvailableTranscript?.self,
+      forKey: .result
+    )
+    self.failure = try container.decode(
+      TranscriptionFailure?.self,
+      forKey: .failure
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.operationId, forKey: .operationId)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.revisionId, forKey: .revisionId)
+    try container.encode(self.state, forKey: .state)
+    try container.encode(self.attemptCount, forKey: .attemptCount)
+    try container.encode(self.createdAt, forKey: .createdAt)
+    try container.encode(self.updatedAt, forKey: .updatedAt)
+    try container.encode(self.result, forKey: .result)
+    try container.encode(self.failure, forKey: .failure)
   }
 }

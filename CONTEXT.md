@@ -30,7 +30,13 @@ A state in which Trigo excludes microphone input from a call's recording while r
 The recorded speech represented as text with time positions and speaker labels where available. A transcript can be useful even when speaker attribution is incomplete.
 
 **Transcript revision**:
-A retained version of a call's transcript, including the names assigned to its speaker labels. Re-transcribing a call produces a new revision while previous revisions remain available.
+An immutable version of a call's transcript with its original speech, timing and scoped speaker labels. User-assigned names belong to the canonical call document; re-transcribing creates another revision while previous revisions remain available.
+
+**Available transcript result**:
+A retained transcript revision ready to be imported into the canonical call document. Availability alone does not establish local import or a confirmed canonical replica.
+
+**Diarization scope**:
+The part of a transcription within which a provider's speaker labels can be compared. Equal labels in independent submissions or audio channels do not establish that the voice belongs to the same person.
 
 **Turn**:
 A time-bounded passage of a transcript associated with a speaker label when one is available.

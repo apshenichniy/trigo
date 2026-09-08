@@ -32,6 +32,7 @@ import type { CallDocument, TranscriptRevision, AudioManifest } from "./document
 export * from "./document-schema.ts";
 export * from "./schema-registry.ts";
 export * from "./upload-schema.ts";
+export * from "./transcription-schema.ts";
 function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   const decode = Schema.decodeUnknownResult(schema, { onExcessProperty: "error" });
   return (value: unknown): S["Type"] => {
@@ -43,6 +44,9 @@ function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   };
 }
 const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
+  RequestTranscription: decoder(documentSchemas.RequestTranscription),
+  AvailableTranscript: decoder(documentSchemas.AvailableTranscript),
+  TranscriptionOperation: decoder(documentSchemas.TranscriptionOperation),
   RegisterMasterUpload: decoder(documentSchemas.RegisterMasterUpload),
   MasterUploadSession: decoder(documentSchemas.MasterUploadSession),
   UploadPartDescriptor: decoder(documentSchemas.UploadPartDescriptor),

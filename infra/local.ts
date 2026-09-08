@@ -24,6 +24,10 @@ export default Stack(
     const workflow = Workflows.Workflow<{ runId: string }>("OfflineProbe", {
       className: "LocalProbeWorkflow",
     });
+    const transcription = Workflows.Workflow<{ operationId: string }>("ArchiveWorkflow", {
+      className: "LocalArchiveWorkflow",
+      limits: { steps: 16 },
+    });
     const archiveId = yield* Config.nonEmptyString("TRIGO_LOCAL_ARCHIVE_ID");
     const verifier = yield* Config.nonEmptyString("TRIGO_LOCAL_OWNER_VERIFIER");
     const worker = yield* Worker("Api", {
@@ -32,6 +36,7 @@ export default Stack(
         LOCAL_ARCHIVE: bucket,
         CATALOG: catalog,
         ARCHIVE_WORKFLOW: workflow,
+        TRANSCRIPTION_WORKFLOW: transcription,
         LOCAL_RUN_ID: runId,
         LOCAL_ARCHIVE_ID: archiveId,
         LOCAL_OWNER_VERIFIER: verifier,

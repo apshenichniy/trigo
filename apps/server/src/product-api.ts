@@ -7,13 +7,19 @@ import {
   FinalizeMasterUpload,
   MasterUploadSession,
   RegisterMasterUpload,
+  RequestTranscription,
   SHA256,
   StatusResponse,
+  TranscriptionOperation,
+  TranscriptRevision,
   UploadPartReceipt,
   VerifiedMasterReceipt,
 } from "@trigo/contracts";
 
 const uploadErrors = [400, 401, 404, 409, 410, 413, 503].map((httpApiStatus) =>
+  ErrorEnvelopeSchema.annotate({ httpApiStatus }),
+);
+const transcriptionErrors = [400, 401, 404, 409, 410, 413, 422, 501, 503].map((httpApiStatus) =>
   ErrorEnvelopeSchema.annotate({ httpApiStatus }),
 );
 
@@ -49,5 +55,32 @@ export const ProductApi = HttpApi.make("trigo").add(
       success: VerifiedMasterReceipt,
       error: uploadErrors,
     }),
+  ),
+  HttpApiGroup.make("transcriptions").add(
+    HttpApiEndpoint.post("requestTranscription", "/v1/calls/:callId/transcriptions", {
+      params: { callId: ExchangeUUID },
+      payload: RequestTranscription,
+      success: TranscriptionOperation,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get("transcriptionOperation", "/v1/operations/:operationId", {
+      params: { operationId: ExchangeUUID },
+      success: TranscriptionOperation,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get("transcriptRevision", "/v1/calls/:callId/revisions/:revisionId", {
+      params: { callId: ExchangeUUID, revisionId: ExchangeUUID },
+      success: TranscriptRevision,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get(
+      "transcriptProvenance",
+      "/v1/calls/:callId/revisions/:revisionId/provenance",
+      {
+        params: { callId: ExchangeUUID, revisionId: ExchangeUUID },
+        success: Schema.Unknown,
+        error: transcriptionErrors,
+      },
+    ),
   ),
 );

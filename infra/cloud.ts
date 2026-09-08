@@ -35,7 +35,7 @@ export default Stack(
       target.resources.workflow,
       {
         className: "PendingArchiveWorkflow",
-        limits: { steps: 1 },
+        limits: { steps: 16 },
       },
     );
     const api = yield* Cloudflare.Worker("Api", {
