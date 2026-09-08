@@ -24,7 +24,7 @@ extension LocalRepository {
     if exists { return }
     let operation = try await prepareOperation(
       .init(
-        operationID: synchronizationIdentity("trigo-replica:\(archiveID):\(callID):\(hash)"),
+        operationID: UUID().uuidString.lowercased(),
         archiveID: archiveID,
         callID: callID,
         kind: .replica,

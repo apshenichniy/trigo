@@ -38,9 +38,7 @@ extension LocalRepository {
     if value.captureState != "recording", value.audioManifest != nil {
       operation = try await prepareOperation(
         .init(
-          operationID: synchronizationIdentity(
-            "trigo-legacy-upgrade:\(archiveID):\(legacy.sha256)"
-          ),
+          operationID: UUID().uuidString.lowercased(),
           archiveID: archiveID,
           callID: value.callId,
           kind: .replica,

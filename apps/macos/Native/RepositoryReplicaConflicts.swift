@@ -137,6 +137,10 @@ extension LocalRepository {
         current.revisions.map(\.revisionId) + remote.snapshot.value.revisions.map(\.revisionId)
       )
     }
+    if scopes.isEmpty {
+      try await reconcileUnannotatedBase(remote, current: current, currentHash: currentHash)
+      return
+    }
     try database.access {
       try database.transaction(interruption: interruption) {
         try requireActiveCallLocked(callID)
@@ -163,6 +167,65 @@ extension LocalRepository {
           "UPDATE lifecycle SET replica='conflict',replica_failure='sync_conflict',replica_retry='after_correction',state_version=state_version+1 WHERE call_id=?",
           [.text(callID)]
         )
+      }
+    }
+  }
+
+  /// With no revisions there are no annotations or active transcript to choose between.
+  /// Immutable capture metadata has already matched. Adopt a newer current-format base,
+  /// or author a new version above both sides and retry its ordinary version check.
+  private func reconcileUnannotatedBase(
+    _ remote: PreparedServerReplica,
+    current: CallDocument,
+    currentHash: String
+  ) async throws {
+    let callID = current.callId
+    let currentFormat =
+      try Contract.validateCallSnapshot(remote.snapshot.storedBytes).kind == "CallDocument"
+    let mayAdopt = remote.snapshot.value.documentVersion > current.documentVersion && currentFormat
+    let snapshot: StoredDocument<CallDocument>
+    let operation: PreparedOperation?
+    if mayAdopt {
+      snapshot = remote.snapshot
+      operation = nil
+    } else {
+      var value = current
+      value.documentVersion =
+        max(current.documentVersion, remote.snapshot.value.documentVersion) + 1
+      snapshot = StoredDocument(value: value, storedBytes: try Contract.encode(value))
+      try await stageCall(snapshot)
+      operation = try await prepareOperation(
+        .init(
+          operationID: UUID().uuidString.lowercased(),
+          archiveID: archiveID,
+          callID: callID,
+          kind: .replica,
+          payload: snapshot.storedBytes
+        )
+      )
+    }
+    try database.access {
+      try database.transaction(interruption: interruption) {
+        try requireActiveCallLocked(callID)
+        guard try self.currentHashLocked(callID) == currentHash else {
+          throw LocalPersistenceError.concurrentMutation
+        }
+        try commitServerEvidence(remote)
+        try observeReplicaLocked(
+          callID: callID,
+          version: remote.snapshot.value.documentVersion,
+          hash: remote.snapshot.sha256
+        )
+        try supersedeReplicasLocked(callID: callID, through: current.documentVersion)
+        _ = try commitCall(snapshot.value, hash: snapshot.sha256, expected: currentHash)
+        try database.execute(
+          "UPDATE lifecycle SET replica='pending' WHERE call_id=?",
+          [.text(callID)]
+        )
+        if let operation {
+          try commitReplicaWork(operation, snapshot: snapshot, annotationRevisionIDs: [])
+        }
+        try updateReplicaConfirmationLocked(callID)
       }
     }
   }

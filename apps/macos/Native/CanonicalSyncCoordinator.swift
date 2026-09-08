@@ -340,7 +340,9 @@ public actor CanonicalSyncCoordinator {
         }
         let contents = try await downloadReplica(callID: callID, reference: nil, receipt: receipt)
         try await repository.recordReplicaConflict(contents)
-        report.conflictCallIDs.append(callID)
+        if try await repository.lifecycle(callID: callID)?.replica.state == .conflict {
+          report.conflictCallIDs.append(callID)
+        }
         report.didChange = true
         return
       }

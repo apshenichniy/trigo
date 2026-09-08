@@ -10,6 +10,7 @@ public struct PreparedRevisionImport: Sendable {
   let revision: StoredDocument<TranscriptRevision>
   let snapshot: StoredDocument<CallDocument>
   let operation: PreparedOperation
+  let publication: PreparedOperation?
   let provenanceHash: String?
   let serverResult: CatalogTranscriptResult?
 }
@@ -25,15 +26,8 @@ extension LocalRepository {
   {
     let revision = try Contract.decode(TranscriptRevision.self, bytes: bytes)
     if let serverResult {
-      guard let provenance,
-        serverResult.result.revisionId == revision.value.revisionId,
-        serverResult.result.createdAt == revision.value.createdAt,
-        serverResult.result.sha256 == revision.sha256,
-        serverResult.result.byteLength == bytes.count,
-        serverResult.result.provenanceSHA256 == Contract.hash(provenance),
-        serverResult.result.provenanceByteLength == provenance.count,
-        serverResult.generation > 0
-      else { throw CanonicalSyncError.invalidResult }
+      guard let provenance else { throw CanonicalSyncError.invalidResult }
+      try validateServerResult(serverResult, revision: revision, provenance: provenance)
     }
     guard associatedWork.callID == revision.value.callId else { throw ContractError.reference }
     try requireArchiveIdentity(associatedWork.archiveID)
@@ -47,7 +41,7 @@ extension LocalRepository {
       guard retained.sha256 == revision.sha256,
         try documentBytes(retained.sha256) == bytes
       else { throw LocalPersistenceError.immutableConflict(revision.value.revisionId) }
-      if associatedWork.kind == .replica { call.documentVersion += 1 }
+      if serverResult == nil, associatedWork.kind == .replica { call.documentVersion += 1 }
     } else {
       call.revisions.append(
         .init(
@@ -56,14 +50,47 @@ extension LocalRepository {
           sha256: revision.sha256
         )
       )
-      call.activeRevisionId = revision.value.revisionId
+      if let serverResult {
+        // Only proven newer results advance the active pointer. Restoration retains this
+        // ordering metadata; an unknown legacy generation is not guessed from timestamps.
+        let activeGeneration = try call.activeRevisionId.flatMap {
+          try serverResultMetadata(revisionID: $0)?.generation
+        }
+        if call.activeRevisionId == nil
+          || activeGeneration.map({ serverResult.generation > $0 }) == true
+        {
+          call.activeRevisionId = revision.value.revisionId
+        }
+      } else {
+        call.activeRevisionId = revision.value.revisionId
+      }
       call.documentVersion += 1
     }
-    let snapshotBytes = try Contract.encode(call)
-    let snapshot = StoredDocument(value: call, storedBytes: snapshotBytes)
+    let prior = try storedCall(hash: priorHash)
+    let snapshot =
+      call.documentVersion == prior.value.documentVersion
+      ? prior : StoredDocument(value: call, storedBytes: try Contract.encode(call))
     try await stageRevision(revision)
     try await stageCall(snapshot)
     let operation = try await prepareOperation(associatedWork)
+    let publication: PreparedOperation?
+    if serverResult != nil, snapshot.sha256 != priorHash {
+      // The local result association is replayable by revision; a publication is a distinct
+      // durable command authored by this installation against its own canonical snapshot.
+      publication = try await prepareOperation(
+        .init(
+          operationID: UUID().uuidString.lowercased(),
+          archiveID: archiveID,
+          callID: call.callId,
+          kind: .replica,
+          payload: snapshot.storedBytes
+        )
+      )
+    } else if serverResult == nil, associatedWork.kind == .replica {
+      publication = operation
+    } else {
+      publication = nil
+    }
     let provenanceHash = try await provenance.mapAsync { try await stageDocument($0) }
     return .init(
       root: root,
@@ -72,6 +99,7 @@ extension LocalRepository {
       revision: revision,
       snapshot: snapshot,
       operation: operation,
+      publication: publication,
       provenanceHash: provenanceHash,
       serverResult: serverResult
     )
@@ -145,7 +173,13 @@ extension LocalRepository {
       throw LocalPersistenceError.unsafeStore("Prepared import namespace differs")
     }
     let revision = prepared.revision
-    let semanticID = "import:\(revision.value.callId):\(revision.value.revisionId)"
+    let semanticID =
+      prepared.serverResult == nil
+      ? "import:\(revision.value.callId):\(revision.value.revisionId)"
+      : serverResultImportIdentity(
+        callID: revision.value.callId,
+        revisionID: revision.value.revisionId
+      )
     return try database.access {
       try database.transaction(interruption: interruption) {
         try requireActiveCallLocked(revision.value.callId)
@@ -189,37 +223,24 @@ extension LocalRepository {
           "UPDATE lifecycle SET import_state='imported',import_failure=NULL,import_retry=NULL WHERE call_id=?",
           [.text(revision.value.callId)]
         )
-        try commitSemanticWork(semanticID, operation: prepared.operation)
-        if prepared.operation.intent.kind == .replica {
+        if prepared.serverResult == nil {
+          try commitSemanticWork(semanticID, operation: prepared.operation)
+        }
+        if let publication = prepared.publication {
           try commitReplicaWork(
-            prepared.operation,
+            publication,
             snapshot: prepared.snapshot,
             annotationRevisionIDs: []
           )
         }
         if let hash = prepared.provenanceHash {
-          if let prior =
-            try database.rows(
-              "SELECT hash FROM transcript_provenance WHERE revision_id=?",
-              [.text(revision.value.revisionId)]
-            )
-            .first,
-            try prior.string(0) != hash
-          {
-            throw CanonicalSyncError.invalidResult
-          }
-          try database.execute(
-            "INSERT OR IGNORE INTO transcript_provenance VALUES (?,?)",
-            [.text(revision.value.revisionId), .text(hash)]
-          )
+          try commitTranscriptProvenanceLocked(revisionID: revision.value.revisionId, hash: hash)
         }
         if let result = prepared.serverResult {
-          try database.execute(
-            "INSERT INTO imported_server_results VALUES (?,?,?,?)",
-            [
-              .text(revision.value.revisionId), .text(prepared.operation.intent.operationID),
-              .text(result.operationId), .int(result.generation),
-            ]
+          try commitServerResultLocked(
+            result,
+            callID: revision.value.callId,
+            operation: prepared.operation
           )
         }
         return .committed
@@ -245,15 +266,7 @@ extension LocalRepository {
     revision: Data,
     provenance: Data
   ) async throws -> PublicationResult {
-    let intent = OperationIntent(
-      operationID: synchronizationIdentity(
-        "trigo-result-import:\(archiveID):\(callID):\(result.result.revisionId)"
-      ),
-      archiveID: archiveID,
-      callID: callID,
-      kind: .replica,
-      payload: try Contract.encode(result)
-    )
+    let intent = try serverResultImportIntent(result, callID: callID)
     let prepared = try await prepareRevisionImport(
       revision,
       associatedWork: intent,

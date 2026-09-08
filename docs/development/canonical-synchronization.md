@@ -31,6 +31,14 @@ snapshot hash. Server result availability, an old acknowledgement or a UI state
 alone cannot establish this condition. A failed later operation preserves earlier
 revisions and their annotations.
 
+Result association retains the server's generation in the same local transaction.
+Only a proven newer generation changes the active transcript. Restoration imports
+that ordering metadata with its referenced evidence, so an older unreferenced result
+can be retained afterward without demoting the active revision. Associating an
+already-retained result preserves the exact confirmed snapshot and creates no
+publication. Each new replica command has its own durable identity; a fresh Mac
+cannot reuse another installation's command for a different local snapshot.
+
 The initial language is persisted in each operation. The application reads the
 namespace's `initialTranscriptionLanguage` preference (`ru` by default; `en` is
 also supported). Changing it affects future commands. No automatic language
@@ -65,6 +73,12 @@ confirming or replacing a newer local edit. Conflicts retain both annotation
 alternatives. An explicit choice changes only the selected revision's names/groups
 against the latest local metadata and remains subject to the next server version
 check. Imports retain other revisions and their annotations.
+
+A conflict between finalized bases with no transcript revisions has no annotations
+to compare. After checking that all immutable capture metadata matches, the client
+adopts a newer current-format base or authors a new version above both sides and
+retries publication. Conflicts involving transcript revisions retain the explicit
+annotation-resolution path.
 
 Server migration `0005_canonical_sync.sql` retains admitted publication operations,
 all object writers, ordered changes and permanent deletion markers. R2 bytes and
@@ -114,6 +128,13 @@ uncertain writers, pagination and permanent deletion markers. Ordinary local
 acceptance uses the actual native HTTP transport and shared Worker composition
 with fake ASR, from capture/master cleanup through canonical import, confirmation
 and restoration. It makes no hosted-provider call.
+
+Review of candidate `58ecd22ad` identified late-generation pointer regression and
+an unresolvable base-only conflict. The actual local HTTP acceptance additionally
+found a reused publication identity during fresh restoration. Three focused
+repository tests reproduced these boundaries before the fixes (eight failed
+expectations). The regression suite also covers restored generation metadata,
+independent installation commands and older/equal base-version recovery.
 
 Run `bun run check:server`, `bun run check:quick --scope native` and
 `bun run check:macos:smoke` for component integration. The final candidate's CI

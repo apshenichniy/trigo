@@ -83,7 +83,10 @@ extension CanonicalSyncCoordinator {
       audioManifest: audio,
       revisions: revisions,
       provenance: provenance,
-      receipt: Contract.decode(VerifiedMasterReceipt.self, bytes: Contract.encode(receipt))
+      receipt: Contract.decode(VerifiedMasterReceipt.self, bytes: Contract.encode(receipt)),
+      results: available.filter { result in
+        call.revisions.contains { $0.revisionId == result.result.revisionId }
+      }
     )
   }
 }

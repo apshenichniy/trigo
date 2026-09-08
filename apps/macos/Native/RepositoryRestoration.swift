@@ -7,19 +7,22 @@ public struct ServerReplicaContents: Sendable {
   public let revisions: [String: Data]
   public let provenance: [String: Data]
   public let receipt: StoredDocument<VerifiedMasterReceipt>
+  public let results: [CatalogTranscriptResult]
 
   public init(
     document: Data,
     audioManifest: Data,
     revisions: [String: Data],
     provenance: [String: Data],
-    receipt: StoredDocument<VerifiedMasterReceipt>
+    receipt: StoredDocument<VerifiedMasterReceipt>,
+    results: [CatalogTranscriptResult] = []
   ) {
     self.document = document
     self.audioManifest = audioManifest
     self.revisions = revisions
     self.provenance = provenance
     self.receipt = receipt
+    self.results = results
   }
 }
 
@@ -29,6 +32,7 @@ struct PreparedServerReplica: Sendable {
   let revisions: [StoredDocument<TranscriptRevision>]
   let provenanceHashes: [String: String]
   let receiptHash: String
+  let results: [PreparedServerResult]
 }
 
 extension LocalRepository {
@@ -102,6 +106,12 @@ extension LocalRepository {
     )
     var revisions: [StoredDocument<TranscriptRevision>] = []
     var provenanceHashes: [String: String] = [:]
+    var results: [PreparedServerResult] = []
+    guard Set(contents.results.map { $0.result.revisionId }).count == contents.results.count,
+      contents.results.allSatisfy({ result in
+        snapshot.value.revisions.contains { $0.revisionId == result.result.revisionId }
+      })
+    else { throw CanonicalSyncError.invalidResult }
     for reference in snapshot.value.revisions {
       guard let bytes = contents.revisions[reference.revisionId] else {
         throw ContractError.reference
@@ -111,6 +121,21 @@ extension LocalRepository {
       revisions.append(revision)
       if let bytes = contents.provenance[reference.revisionId] {
         provenanceHashes[reference.revisionId] = try await stageDocument(bytes)
+      }
+      if let result = contents.results.first(where: { $0.result.revisionId == reference.revisionId }
+      ) {
+        guard let provenance = contents.provenance[reference.revisionId] else {
+          throw CanonicalSyncError.invalidResult
+        }
+        try validateServerResult(result, revision: revision, provenance: provenance)
+        results.append(
+          .init(
+            result: result,
+            operation: try await prepareOperation(
+              serverResultImportIntent(result, callID: snapshot.value.callId)
+            )
+          )
+        )
       }
     }
     let existingReceiptHash = try database.access {
@@ -137,7 +162,8 @@ extension LocalRepository {
       audio: audio,
       revisions: revisions,
       provenanceHashes: provenanceHashes,
-      receiptHash: receiptHash
+      receiptHash: receiptHash,
+      results: results
     )
   }
 
@@ -157,21 +183,11 @@ extension LocalRepository {
         hash: revision.sha256
       )
       if let hash = prepared.provenanceHashes[revision.value.revisionId] {
-        if let previous =
-          try database.rows(
-            "SELECT hash FROM transcript_provenance WHERE revision_id=?",
-            [.text(revision.value.revisionId)]
-          )
-          .first,
-          try previous.string(0) != hash
-        {
-          throw CanonicalSyncError.invalidResult
-        }
-        try database.execute(
-          "INSERT OR IGNORE INTO transcript_provenance VALUES (?,?)",
-          [.text(revision.value.revisionId), .text(hash)]
-        )
+        try commitTranscriptProvenanceLocked(revisionID: revision.value.revisionId, hash: hash)
       }
+    }
+    for result in prepared.results {
+      try commitServerResultLocked(result.result, callID: callID, operation: result.operation)
     }
     if let row =
       try database.rows("SELECT hash FROM server_storage_receipts WHERE call_id=?", [.text(callID)])
