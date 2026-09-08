@@ -48,6 +48,9 @@ func typedRoundTrip(_ kind: String, bytes: Data) throws -> Data {
   case "CallChangesPage": try typedRoundTrip(CallChangesPage.self, bytes: bytes)
   case "CatalogTranscriptResult": try typedRoundTrip(CatalogTranscriptResult.self, bytes: bytes)
   case "TranscriptResultsPage": try typedRoundTrip(TranscriptResultsPage.self, bytes: bytes)
+  case "RequestPlayback": try typedRoundTrip(RequestPlayback.self, bytes: bytes)
+  case "PlaybackManifest": try typedRoundTrip(PlaybackManifest.self, bytes: bytes)
+  case "PlaybackGrant": try typedRoundTrip(PlaybackGrant.self, bytes: bytes)
   default: throw ContractError.structure
   }
 }

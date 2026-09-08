@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Network
 import Testing
@@ -34,6 +35,132 @@ private struct LocalBridgeFixture: Decodable {
 }
 
 struct LocalDevelopmentTests {
+  @Test func playbackSourceAvailabilityErrorsKeepTheirSpecificMeaning() async throws {
+    for (status, code, expected) in [
+      (409, "playback_not_stored", CallPlaybackError.notStored),
+      (404, "playback_not_found", .notFound),
+      (503, "playback_catalog_invalid", .invalidMedia),
+      (409, "playback_no_audio", .noAudio),
+      (410, "playback_deleted", .deleted),
+    ] {
+      let body = String(
+        decoding: try Contract.encode(
+          ErrorEnvelope(
+            schemaVersion: 1,
+            error: .init(
+              code: code,
+              retry: "never",
+              message: "Fixture",
+              requestId: UUID().uuidString.lowercased()
+            )
+          )
+        ),
+        as: UTF8.self
+      )
+      let fixture = try await LoopbackResponse.start(status: status, body: body)
+      defer { fixture.stop() }
+      let url = try #require(fixture.url)
+      let support = try temporarySupport()
+      defer { try? FileManager.default.removeItem(at: support) }
+      let connection = try await localPlaybackConnection(url: url, support: support)
+      let transport = HTTPPlaybackTransport(
+        connection: connection,
+        archiveID: localNamespace,
+        timeout: 2
+      )
+      await #expect(throws: expected) {
+        try await transport.grant(
+          callID: playbackCallID,
+          operationID: UUID().uuidString.lowercased()
+        )
+      }
+    }
+  }
+
+  @Test func playbackRejectsRedirectsAndOversizedBodiesThroughTheRealSession() async throws {
+    let redirected = try await LoopbackResponse.start(status: 200, body: "{}")
+    defer { redirected.stop() }
+    let destination = try #require(redirected.url)
+    for (status, body, location, failure) in [
+      (
+        302, "", destination.absoluteString,
+        CallPlaybackError.transport(code: "playback_server_unavailable", retry: .retryable)
+      ),
+      (200, String(repeating: "x", count: 65_537), nil, .invalidMedia),
+      (401, "{}", nil, .accessBlocked),
+    ] {
+      let fixture = try await LoopbackResponse.start(status: status, body: body, location: location)
+      defer { fixture.stop() }
+      let url = try #require(fixture.url)
+      let support = try temporarySupport()
+      defer { try? FileManager.default.removeItem(at: support) }
+      let connection = try await localPlaybackConnection(url: url, support: support)
+      let transport = HTTPPlaybackTransport(
+        connection: connection,
+        archiveID: localNamespace,
+        timeout: 2
+      )
+      await #expect(throws: failure) {
+        try await transport.grant(
+          callID: playbackCallID,
+          operationID: UUID().uuidString.lowercased()
+        )
+      }
+      let requests = await fixture.requests.values
+      #expect(requests.count == 1)
+      #expect(
+        requests.first?.hasPrefix("POST /v1/calls/\(playbackCallID)/playback HTTP/1.1") == true
+      )
+      #expect(requests.first?.contains("Authorization: Bearer \(localToken)") == true)
+    }
+    #expect(await redirected.requests.count == 0)
+  }
+
+  @Test func playbackMediaUsesOnlyTheCapabilityAndRejectsAChangedArchiveBinding() async throws {
+    let fixture = try await LoopbackResponse.start(status: 503, body: "{}")
+    defer { fixture.stop() }
+    let url = try #require(fixture.url)
+    let support = try temporarySupport()
+    defer { try? FileManager.default.removeItem(at: support) }
+    let connection = try await localPlaybackConnection(url: url, support: support)
+    let binding = try #require(await connection.snapshot().binding)
+    var grant = try await PlaybackTransportFixture()
+      .grant(callID: playbackCallID, operationID: UUID().uuidString.lowercased()).grant
+    grant.archiveId = localNamespace
+    let access = PlaybackAccess(grant: grant, binding: binding)
+    let transport = HTTPPlaybackTransport(
+      connection: connection,
+      archiveID: localNamespace,
+      timeout: 2
+    )
+    await #expect(
+      throws: CallPlaybackError.transport(code: "playback_server_unavailable", retry: .retryable)
+    ) {
+      try await transport.segment(access: access, index: 0)
+    }
+    let requests = await fixture.requests.values
+    #expect(requests.count == 1)
+    #expect(
+      requests.first?
+        .hasPrefix("GET /v1/calls/\(playbackCallID)/playback/\(grant.grantId)/segments/0 HTTP/1.1")
+        == true
+    )
+    #expect(requests.first?.contains("Authorization: Bearer \(grant.token)") == true)
+    #expect(requests.first?.contains(localToken) == false)
+    let wrong = PlaybackAccess(
+      grant: grant,
+      binding: .init(
+        serverURL: URL(string: "https://another.example.test")!,
+        archiveId: localNamespace,
+        stage: .dev
+      )
+    )
+    await #expect(throws: CallPlaybackError.accessBlocked) {
+      try await transport.segment(access: wrong, index: 0)
+    }
+    #expect(await fixture.requests.count == 1)
+  }
+
   @Test func nativeFileBoundaryEnforcesSharedBridgeCorpus() throws {
     let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
       .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
@@ -251,7 +378,9 @@ struct LocalDevelopmentTests {
 /// Opt-in real Worker transport. Credentials are an isolated in-memory adapter; metadata uses the real file store.
 struct LocalServerAcceptanceTests {
   @Test(.enabled(if: ProcessInfo.processInfo.environment["TRIGO_LOCAL_ACCEPTANCE_CONFIG"] != nil))
-  func pairsRestoresAndRejectsWrongCredentialsAgainstTheActualLocalComposition() async throws {
+  @MainActor func pairsRestoresAndRejectsWrongCredentialsAgainstTheActualLocalComposition()
+    async throws
+  {
     let path = try #require(ProcessInfo.processInfo.environment["TRIGO_LOCAL_ACCEPTANCE_CONFIG"])
     let worktree = try #require(
       ProcessInfo.processInfo.environment["TRIGO_LOCAL_ACCEPTANCE_WORKTREE"]
@@ -312,7 +441,24 @@ struct LocalServerAcceptanceTests {
       directory: capture.mediaDirectory,
       identity: capture.mediaMasterIdentity
     )
-    try repository.commitMediaProgress(appendRepositorySecond(writer))
+    for second in 0..<31 {
+      var samples = [Int16](repeating: 0, count: 32_000)
+      for frame in 0..<16_000 {
+        samples[frame * 2] = Int16(1000 + second * 100)
+        samples[frame * 2 + 1] = Int16(-2000 - second * 100)
+      }
+      try repository.commitMediaProgress(
+        writer.append(
+          interleaved: samples,
+          microphoneIntervals: [
+            .init(startMs: second * 1000, endMs: (second + 1) * 1000, state: .recorded)
+          ],
+          applicationIntervals: [
+            .init(startMs: second * 1000, endMs: (second + 1) * 1000, state: .recorded)
+          ]
+        )
+      )
+    }
     let master = try writer.finish()
     _ = try await repository.completeCapture(capture, master: master, reason: "process_terminated")
     let fault = MasterUploadFault(.beforeReceiptCommit)
@@ -389,6 +535,34 @@ struct LocalServerAcceptanceTests {
         == confirmed.transcriptRevisions[revisionID]
     )
     #expect(try await fresh.captureSession(callID: capture.callID) == nil)
+    let playbackTransport = HTTPPlaybackTransport(
+      connection: resumedConnection,
+      archiveID: config.namespaceId
+    )
+    let engine = AVAudioEngine()
+    let audio = AVPlaybackAudioOutput(engine: engine)
+    let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 2))
+    try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: 4096)
+    let player = CallAudioPlayer(transport: playbackTransport, output: audio)
+    defer { player.clear() }
+    await player.load(callID: capture.callID)
+    #expect(player.state.phase == .paused && player.state.durationMs == 31_000)
+    for (position, left, right) in [(30_500, 4000, -5000), (250, 1000, -2000)] {
+      await player.seek(positionMs: position)
+      #expect(player.state.phase == .paused && player.state.positionMs == position)
+      await player.play()
+      #expect(player.state.phase == .playing)
+      let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 128))
+      #expect(try engine.renderOffline(128, to: buffer) == .success)
+      let channels = try #require(buffer.floatChannelData)
+      for frame in [0, 64, 127] {
+        #expect(abs(channels[0][frame] - Float(left) / 32768) < 0.0001)
+        #expect(abs(channels[1][frame] - Float(right) / 32768) < 0.0001)
+      }
+      player.pause()
+    }
+    player.clear(callID: capture.callID)
+    #expect(player.state.phase == .idle && !engine.isRunning)
     let rejected = await first.connect(serverURL: config.serverURL.absoluteString, token: "invalid")
     #expect(rejected.binding == paired.binding)
     #expect(rejected.lastAttemptIssue == .unauthorized)
@@ -404,7 +578,7 @@ struct LocalServerAcceptanceTests {
       try await FileConnectionMetadataStore(url: namespace.connection).load()
     }
     print(
-      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + upload/finalization + lost receipt replay + verified cleanup + canonical base + automatic fake ASR + exact result/provenance import + confirmed replica + fresh restoration passed"
+      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + upload/finalization + lost receipt replay + verified cleanup + canonical base + automatic fake ASR + exact result/provenance import + confirmed replica + fresh restoration + server playback/seek + stereo AVAudioEngine rendering passed"
     )
   }
 }
@@ -414,6 +588,43 @@ private actor DisposableLocalCredentials: CredentialStoring {
   func load(account: String) -> String? { items[account] }
   func save(token: String, account: String) { items[account] = token }
   func delete(account: String) { items.removeValue(forKey: account) }
+}
+
+private struct LocalPlaybackStatus: ServerStatusFetching {
+  func fetch(serverURL: URL, token: String) async throws -> ServerStatus {
+    ServerStatus(
+      schemaVersion: 1,
+      apiVersion: 1,
+      archiveId: localNamespace,
+      stage: .dev,
+      readiness: ServerReadiness(
+        archive: "ready",
+        ownerAuthentication: "ready",
+        transcription: .notVerified,
+        callOperations: .ready
+      ),
+      errors: []
+    )
+  }
+}
+
+private func localPlaybackConnection(url: URL, support: URL) async throws -> ServerConnection {
+  let policy = ServerTransportPolicy.localDevelopment(try localConfiguration(url))
+  let connection = ServerConnection(
+    expectedStage: .dev,
+    metadataStore: FileConnectionMetadataStore(
+      url: support.appending(path: "connection.json"),
+      transportPolicy: policy
+    ),
+    credentialStore: DisposableLocalCredentials(),
+    statusClient: LocalPlaybackStatus(),
+    transportPolicy: policy
+  )
+  #expect(
+    await connection.connect(serverURL: url.absoluteString, token: localToken)
+      .serverOperationsAvailable
+  )
+  return connection
 }
 
 private actor CapturedLocalRequests {
