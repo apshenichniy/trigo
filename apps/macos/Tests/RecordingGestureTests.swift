@@ -1,5 +1,6 @@
 import Carbon.HIToolbox
 import CoreGraphics
+import Darwin
 import Foundation
 import IOKit.hidsystem
 import Testing
@@ -324,7 +325,10 @@ private func assertGesture(
   gesture.stop()
 }
 
-@Test @MainActor func gestureControllersShareARealKernelLeaseAcrossSeparatePreferences() throws {
+@Test(arguments: [false, true])
+@MainActor func gestureControllersShareARealKernelLeaseAcrossSeparatePreferences(
+  retainDescriptorCopy: Bool
+) throws {
   let root = FileManager.default.temporaryDirectory.appendingPathComponent(
     "trigo-gesture-owner-\(UUID())"
   )
@@ -338,20 +342,51 @@ private func assertGesture(
   var actions = 0
   let dev = RecordingGestureController(system: firstSystem, action: { actions += 1 })
   let personal = RecordingGestureController(system: secondSystem, action: { actions += 10 })
+  defer { dev.stop(); personal.stop() }
   dev.start()
   personal.start()
-  #expect(dev.status == .available)
-  #expect(personal.status == .anotherTrigoOwner)
+  try #require(dev.status == .available)
+  try #require(personal.status == .anotherTrigoOwner)
+  var descriptorCopy: Int32? = retainDescriptorCopy ? try copyGestureOwnerDescriptor(root) : nil
+  defer { if let descriptorCopy { close(descriptorCopy) } }
   first.tap()
   dev.stop()
   personal.refresh()
-  #expect(personal.status == .available)
+  try #require(personal.status == .available)
+  if let descriptor = descriptorCopy {
+    #expect(fcntl(descriptor, F_GETFD) >= 0)
+    close(descriptor)
+    descriptorCopy = nil
+  }
+  #expect(throws: ExclusiveFileLeaseError.alreadyOwned) {
+    try acquireRecordingGestureOwnership(support: root)
+  }
   first.tap()
   second.tap()
   #expect(actions == 0)
   second.tap()
   #expect(actions == 10)
   personal.stop()
+}
+
+private func copyGestureOwnerDescriptor(_ support: URL) throws -> Int32 {
+  let file = support.appendingPathComponent(
+    "io.github.apshenichniy.trigo.shared/recording-gesture.lock"
+  )
+  var identity = stat()
+  try #require(stat(file.path, &identity) == 0)
+  // Match this fixture's inode while its controller keeps the descriptor open.
+  let descriptor = try #require(
+    (Int32(0)..<getdtablesize())
+      .first { candidate in
+        var metadata = stat()
+        return fstat(candidate, &metadata) == 0 && metadata.st_dev == identity.st_dev
+          && metadata.st_ino == identity.st_ino
+      }
+  )
+  let copy = fcntl(descriptor, F_DUPFD_CLOEXEC, 0)
+  try #require(copy >= 0)
+  return copy
 }
 
 @Test(arguments: [RecordingControlPhase.starting, .recording, .stopping, .recoveryRequired])

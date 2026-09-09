@@ -64,7 +64,7 @@ extension RecordingGestureSystem {
       "io.github.apshenichniy.trigo.shared/recording-gesture.lock"
     )
   )
-  return RecordingShortcutLease { withExtendedLifetime(lease) {} }
+  return RecordingShortcutLease { lease.relinquish() }
 }
 
 @MainActor private final class RecordingGestureCallback {
