@@ -77,8 +77,9 @@
     {
       "method": "POST",
       "path": "/v1/calls/{callId}/playback",
-      "documentSchema": "v1.schema.json#/$defs/AudioManifest",
-      "ownerIssue": 20
+      "documentSchema": "v1.schema.json#/$defs/RequestPlayback",
+      "ownerIssue": 73,
+      "receiptSchema": "v1.schema.json#/$defs/PlaybackGrant"
     },
     {
       "method": "DELETE",
@@ -101,6 +102,11 @@
       "path": "/v1/calls/{callId}/results",
       "ownerIssue": 19,
       "documentSchema": "v1.schema.json#/$defs/TranscriptResultsPage"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/calls/{callId}/playback/{grantId}/segments/{index}",
+      "ownerIssue": 73
     }
   ]
 }

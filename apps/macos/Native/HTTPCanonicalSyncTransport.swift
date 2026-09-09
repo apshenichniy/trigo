@@ -144,8 +144,9 @@ public actor HTTPCanonicalSyncTransport: CanonicalSyncTransport {
   ) async throws -> Data {
     try Task.checkCancellation()
     guard (body?.count ?? 0) <= 48_000_000 else { throw CanonicalSyncError.incompatibleDocument }
-    let authority: MasterUploadAuthorization
-    do { authority = try await connection.masterUploadAuthorization(archiveID: archiveID) } catch {
+    let authority: ServerOperationAuthorization
+    do { authority = try await connection.serverOperationAuthorization(archiveID: archiveID) } catch
+    {
       throw CanonicalSyncError.unauthorized
     }
     var components = URLComponents(
@@ -175,7 +176,7 @@ public actor HTTPCanonicalSyncTransport: CanonicalSyncTransport {
       response.expectedContentLength <= maximum
     else { throw CanonicalSyncError.incompatibleDocument }
     if http.statusCode == 401 || http.statusCode == 403 {
-      await connection.reportMasterUploadIssue(.unauthorized, authority: authority)
+      await connection.reportServerOperationIssue(.unauthorized, authority: authority)
       throw CanonicalSyncError.unauthorized
     }
     let bound = http.statusCode == 200 ? maximum : 65_536
