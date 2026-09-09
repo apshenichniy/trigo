@@ -13,6 +13,10 @@ struct DailyUseEvent: Codable, Sendable {
   var documentVersion: Int?
   var byteLength: Int?
   var sha256: String?
+  var freshLatencyMeasurement: Bool?
+  var warmStatusRoundTripMs: Double?
+  var preFinishUploadMbps: Double?
+  var finishToStoredMs: Double?
 }
 
 actor DailyUseJournal {

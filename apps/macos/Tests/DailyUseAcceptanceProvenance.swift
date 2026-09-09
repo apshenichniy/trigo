@@ -4,6 +4,28 @@ import TrigoContracts
 
 @testable import TrigoNative
 
+struct DailyUseProviderReceipt: Decodable {
+  struct Transport: Decodable {
+    let deliveryWitness: String
+    let deliveredByteLength: Int?
+    let responseBodyComplete: Bool?
+    let providerHttpStatus: Int?
+  }
+  let transport: Transport
+  let providerRequestId: String?
+  let reportedDurationSeconds: Double?
+
+  func validate(byteLength: Int, frameCount: Int) throws {
+    try requireDailyUse(
+      transport.deliveryWitness == "consumer-eof-v1"
+        && transport.deliveredByteLength == byteLength && transport.responseBodyComplete == true
+        && transport.providerHttpStatus == 200 && providerRequestId?.isEmpty == false
+        && reportedDurationSeconds.map { abs($0 * 16_000 - Double(frameCount)) <= 1 } != false,
+      "ASR submission lacks a complete provider receipt or reports a mismatched duration."
+    )
+  }
+}
+
 // This decoder inspects independent retained server evidence. The public transcript
 // still passes the shared contract validator before any acceptance assertions.
 private struct DailyUseProvenance: Decodable {
@@ -42,19 +64,13 @@ private struct DailyUseProvenance: Decodable {
       let startMs: Int
       let endMs: Int
     }
-    struct Transport: Decodable {
-      let deliveryWitness: String
-      let deliveredByteLength: Int?
-      let responseBodyComplete: Bool?
-      let providerHttpStatus: Int?
-    }
     struct Artifact: Decodable {
       let key: String
       let sha256: String
       let byteLength: Int
     }
     let extraction: Extraction
-    let transport: Transport
+    let transport: DailyUseProviderReceipt.Transport
     let rawArtifact: Artifact
     let providerRequestId: String?
     let reportedDurationSeconds: Double?
@@ -141,16 +157,12 @@ func verifyDailyUseProvenance(
       "ASR extraction \(index) did not preserve the complete planned frames, source channels or bytes."
     )
     if !local {
-      let transport = submission.transport
-      try requireDailyUse(
-        transport.deliveryWitness == "consumer-eof-v1"
-          && transport.deliveredByteLength == byteLength && transport.responseBodyComplete == true
-          && transport.providerHttpStatus == 200 && submission.providerRequestId?.isEmpty == false
-          && submission.reportedDurationSeconds.map {
-            abs($0 * 16_000 - Double((end - cursor) * 16)) <= 1
-          } == true,
-        "ASR submission \(index) lacks complete provider receipt and duration evidence."
+      try DailyUseProviderReceipt(
+        transport: submission.transport,
+        providerRequestId: submission.providerRequestId,
+        reportedDurationSeconds: submission.reportedDurationSeconds
       )
+      .validate(byteLength: byteLength, frameCount: (end - cursor) * 16)
     }
     cursor = end
   }
@@ -161,6 +173,10 @@ func verifyDailyUseProvenance(
     "completeFrameCount": master.frameCount, "completeByteLength": master.byteLength,
     "allConsumerEOFVerified": value.allConsumerEOFVerified,
     "sourceChannels": 2, "markerCoverage": markerProof,
+    "reportedDurationsSeconds": value.submissions.map {
+      $0.reportedDurationSeconds.map { $0 as Any } ?? NSNull()
+    },
+    "reportedDurationAvailable": value.submissions.map { $0.reportedDurationSeconds != nil },
   ]
 }
 

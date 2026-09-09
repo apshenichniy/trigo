@@ -100,7 +100,9 @@ The completion proof checks:
 1. Exact verified receipt, source-state hash and normal local master cleanup.
 2. Actual available operation, attempt count, revision/provenance hash and length.
 3. Every planned ASR frame interval and its independently computed WAV byte hash,
-   exact stereo mapping and complete provider consumer-EOF/duration evidence.
+   exact stereo mapping and complete provider consumer-EOF evidence. When the
+   provider reports duration, it must match the entire submitted interval;
+   absent optional duration remains explicitly null with availability reported.
 4. Controlled source markers at the beginning, middle and end; every repeated
    marker slot is also reported, so recognition gaps stay distinguishable from
    transport truncation. This is synthetic coverage, not real-call quality.
@@ -115,7 +117,11 @@ The completion proof checks:
    samples. No physical audio device is used by this proof.
 
 A private run directory retains stage timestamps, exact synthetic evidence and
-numeric/hash summaries. A fresh one-hour run passes the latency gate only when
+numeric/hash summaries. Each RTT, pre-Finish throughput and cleanup timing is
+journaled immediately; `latency.json` is written before provenance, marker,
+restoration or playback verification. A later assertion cannot discard those
+measurements, and a latency receipt alone does not claim full acceptance.
+A fresh one-hour run passes the latency gate only when
 pre-Finish upload throughput is at least 10 Mbps, all five warm authenticated status
 RTTs are at most 100 ms, the operation completes in its original attempt, and
 Finish-to-Ready is at most 300,000 ms. It reports time to verified cleanup and time
@@ -123,6 +129,33 @@ to confirmed Ready separately. Resuming after prior upload/Finish never invents 
 fresh latency measurement; the fixed IDs and earlier failures remain retained.
 Replaying a completed plan returns its original successful receipt and performs
 no new ASR request.
+
+### First hosted one-hour failure and correction
+
+The approved candidate `8a8e00c984b4c9ce85fd9a608b2e803c44e808d2` was deployed to
+the existing Dev archive on 2026-09-09. Its first one-hour plan
+`0e77776fe3511b103c2e41f52b7153ba063a7a53298e95de37300741108587f2`
+reached confirmed Ready with one original provider submission and all artifacts
+stored. It then failed because the harness required optional provider duration.
+The retained raw response contains `results` and `usage`, without `metadata`;
+the server correctly retained duration as null. There is no production adapter or
+immutable provenance change in this correction.
+
+The original run directory and its log remain retained. Full 57,600,000 stereo
+frames / 230,400,044 WAV bytes reached consumer EOF, HTTP status was 200 and the
+response body completed. Finish-to-Ready was 75.317 seconds, but the original
+harness did not persist RTT/upload metrics before the assertion. That run cannot
+retroactively qualify the one-hour latency gate. Naming, restoration and playback
+were not reached, and the conditional three-hour sequence stopped.
+
+The focused receipt regression reproduced the failure with absent duration
+(129.183 seconds including a fresh release build); malformed duration and
+incomplete delivery controls passed. After correction, six focused tests passed
+in 67.253 seconds including the updated release build; the separate external
+invocation test was disabled. The tests cover optional/present duration,
+partial/unobserved delivery, downstream-error measurement retention, unqualified
+latency rejection and exact reader pagination. Final committed-source CI and any
+subsequent admitted hosted plans/results belong in the PR evidence.
 
 A one-minute local rehearsal uses the same command with `--profile local-smoke`
 and `--local-config` instead of `--config`, against `bun run dev`. It rejects

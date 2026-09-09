@@ -284,6 +284,9 @@ struct DailyUseAcceptanceTests {
     let wasStopped = try repository.captureCompletion(callID: plan.callID) != nil
     let priorParts = try repository.masterUploadParts(callID: plan.callID)
     let freshMeasurement = !wasStopped && priorParts.isEmpty
+    try await journal.record(
+      .init(event: "latency_measurement_started", freshLatencyMeasurement: freshMeasurement)
+    )
     var roundTrips: [Double] = []
     for _ in 0..<5 {
       let began = ProcessInfo.processInfo.systemUptime
@@ -293,6 +296,9 @@ struct DailyUseAcceptanceTests {
         "Dev binding changed."
       )
       roundTrips.append((ProcessInfo.processInfo.systemUptime - began) * 1000)
+      try await journal.record(
+        .init(event: "warm_status_measured", warmStatusRoundTripMs: roundTrips.last)
+      )
     }
     var uploadMbps = 0.0
     var finishRequestedAt: Double?
@@ -333,7 +339,11 @@ struct DailyUseAcceptanceTests {
         uploadMbps =
           Double(sent * 8) / (ProcessInfo.processInfo.systemUptime - uploadStart) / 1_000_000
         try await journal.record(
-          .init(event: "full_parts_uploaded_while_capture_active", byteLength: sent)
+          .init(
+            event: "full_parts_uploaded_while_capture_active",
+            byteLength: sent,
+            preFinishUploadMbps: uploadMbps
+          )
         )
         finishRequestedAt = ProcessInfo.processInfo.systemUptime
         try await journal.record(.init(event: "finish_requested"))
@@ -369,7 +379,12 @@ struct DailyUseAcceptanceTests {
       to: runFolder.appending(path: "master-receipt.json")
     )
     let storedAt = ProcessInfo.processInfo.systemUptime
-    try await journal.record(.init(event: "verified_local_cleanup_complete"))
+    try await journal.record(
+      .init(
+        event: "verified_local_cleanup_complete",
+        finishToStoredMs: (storedAt - afterFinishStart) * 1000
+      )
+    )
     let transport = DailyUseAdmittedSync(
       underlying: .init(connection: connection, archiveID: archiveID),
       plan: plan,
@@ -402,37 +417,35 @@ struct DailyUseAcceptanceTests {
       try repository.automaticTranscription(callID: plan.callID)?.operation,
       "The initial automatic operation is missing."
     )
-    let proof = try await verifyDailyUseResult(
-      context: self,
-      plan: plan,
-      repository: repository,
-      transport: transport,
-      synchronization: synchronization,
-      runFolder: runFolder,
-      operation: operation
+    let latency = DailyUseLatencyMeasurement(
+      freshLatencyMeasurement: freshMeasurement,
+      preFinishUploadMbps: uploadMbps,
+      warmStatusRoundTripsMs: roundTrips,
+      finishToStoredMs: (storedAt - afterFinishStart) * 1000,
+      finishToReadyMs: (readyAt - afterFinishStart) * 1000,
+      attemptCount: operation.attemptCount
     )
-    let readyMilliseconds = (readyAt - afterFinishStart) * 1000
-    let conditions =
-      freshMeasurement && uploadMbps >= 10
-      && roundTrips.allSatisfy { $0 <= 100 } && operation.attemptCount == 1
-    let latencyPassed = conditions && readyMilliseconds <= 300_000
-    let passed = invocation.profile != "one-hour" || latencyPassed
-    let fields: [String: Any] = [
+    let proof = try await latency.verifyReadyEvidence(in: runFolder) {
+      try await verifyDailyUseResult(
+        context: self,
+        plan: plan,
+        repository: repository,
+        transport: transport,
+        synchronization: synchronization,
+        runFolder: runFolder,
+        operation: operation
+      )
+    }
+    let passed = invocation.profile != "one-hour" || latency.passed
+    var fields: [String: Any] = [
       "hostedAcceptancePassed": !invocation.local && passed,
       "localRehearsalPassed": invocation.local,
       "evidenceDirectory": runFolder.path,
       "sourceKind": "accelerated-native-synthetic-media",
-      "freshLatencyMeasurement": freshMeasurement,
-      "preFinishUploadMbps": uploadMbps,
-      "warmStatusRoundTripsMs": roundTrips,
-      "finishToStoredMs": (storedAt - afterFinishStart) * 1000,
-      "finishToReadyMs": readyMilliseconds,
-      "latencyConditionsSatisfied": conditions,
-      "qualifiedOneHourLatencyPassed": latencyPassed,
       "operationId": operation.operationId,
-      "attemptCount": operation.attemptCount,
       "proof": proof,
     ]
+    fields.merge(latency.fields) { _, measured in measured }
     try writeResult(plan: plan, planBytes: planBytes, fields: fields, passed: passed)
     if passed {
       try writeDailyUseBytes(
