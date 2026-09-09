@@ -112,6 +112,6 @@ extension Contract {
     -> StoredDocument<CallDocument>
   {
     _ = try validateArchive(bytes, references: references)
-    return try typed(CallDocument.self, bytes: bytes)
+    return try decodeCallSnapshot(bytes)
   }
 }

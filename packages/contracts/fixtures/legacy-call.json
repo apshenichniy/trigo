@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "archiveId": "00000000-0000-4000-8000-000000000012",
+  "callId": "00000000-0000-4000-8000-000000000001",
+  "documentVersion": 2,
+  "startedAt": "2026-09-05T10:00:00Z",
+  "endedAt": "2026-09-05T10:00:01Z",
+  "durationMs": 1000,
+  "captureState": "stopped",
+  "interruptionReason": null,
+  "source": {
+    "applicationName": "Google Chrome",
+    "bundleId": "com.google.Chrome",
+    "processId": 123,
+    "windowId": null,
+    "windowTitle": null
+  },
+  "tracks": [
+    {
+      "trackId": "00000000-0000-4000-8000-000000000002",
+      "role": "microphone",
+      "inputDevice": null,
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+      "intervals": [
+        {
+          "startMs": 0,
+          "endMs": 1000,
+          "state": "recorded",
+          "reason": null
+        }
+      ]
+    },
+    {
+      "trackId": "00000000-0000-4000-8000-000000000003",
+      "role": "application",
+      "inputDevice": null,
+      "mediaProfileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+      "intervals": [
+        {
+          "startMs": 0,
+          "endMs": 1000,
+          "state": "recorded",
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "audioManifest": {
+    "manifestId": "00000000-0000-4000-8000-000000000004",
+    "sha256": "88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2"
+  },
+  "revisions": [
+    {
+      "revisionId": "00000000-0000-4000-8000-000000000006",
+      "createdAt": "2026-09-05T10:01:00Z",
+      "sha256": "43807da39da1600c5395e9dcc3a60d18c34e9e6967726566ec5d44aa327a972c"
+    },
+    {
+      "revisionId": "00000000-0000-4000-8000-000000000011",
+      "createdAt": "2026-09-05T10:01:00Z",
+      "sha256": "6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d"
+    }
+  ],
+  "activeRevisionId": "00000000-0000-4000-8000-000000000011",
+  "speakerNames": {
+    "00000000-0000-4000-8000-000000000006": {
+      "00000000-0000-4000-8000-000000000007": "Саша"
+    }
+  }
+}

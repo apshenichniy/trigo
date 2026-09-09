@@ -86,6 +86,7 @@ export function fixtureRuntime(
 export async function createUploadedCall(
   runtime: TranscriptionExecutionEnvironment,
   durationMs = 1000,
+  fillPCM?: (samples: DataView) => void,
 ) {
   const callId = crypto.randomUUID();
   const uploadId = crypto.randomUUID();
@@ -98,7 +99,7 @@ export async function createUploadedCall(
     intervals: [],
   }));
   const call = validateDocument("CallDocument", {
-    schemaVersion: 1,
+    schemaVersion: 2,
     archiveId: transcriptionArchiveId,
     callId,
     documentVersion: 1,
@@ -119,9 +120,11 @@ export async function createUploadedCall(
     revisions: [],
     activeRevisionId: null,
     speakerNames: {},
+    speakerGroups: {},
   });
   const bytes = new Uint8Array(68 + durationMs * 64);
   bytes.set(cafMasterHeader);
+  fillPCM?.(new DataView(bytes.buffer, 68));
   const sha256 = await storedByteHash(bytes);
   const audioManifest = JSON.stringify({
     schemaVersion: 1,

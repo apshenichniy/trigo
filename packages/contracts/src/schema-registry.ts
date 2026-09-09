@@ -4,12 +4,15 @@ import { CaptureMasterProfile } from "./capture-master-profile.ts";
 import {
   AudioManifest,
   CallDocument,
+  LegacyCallDocument,
   CommandIdentity,
   ErrorEnvelope,
   LocalDevelopmentBridge,
   StatusResponse,
   TranscriptRevision,
 } from "./document-schema.ts";
+import { playbackSchemas } from "./playback-schema.ts";
+import { syncSchemas } from "./sync-schema.ts";
 import { transcriptionSchemas } from "./transcription-schema.ts";
 import { uploadSchemas } from "./upload-schema.ts";
 
@@ -18,6 +21,7 @@ export const documentSchemas = {
   LocalDevelopmentBridge,
   CaptureMasterProfile,
   CallDocument,
+  LegacyCallDocument,
   TranscriptRevision,
   AudioManifest,
   StatusResponse,
@@ -25,6 +29,8 @@ export const documentSchemas = {
   ErrorEnvelope,
   ...uploadSchemas,
   ...transcriptionSchemas,
+  ...syncSchemas,
+  ...playbackSchemas,
 };
 export type Documents = {
   [K in keyof typeof documentSchemas]: Schema.Schema.Type<(typeof documentSchemas)[K]>;

@@ -13,6 +13,9 @@
       "$ref": "#/$defs/CallDocument"
     },
     {
+      "$ref": "#/$defs/LegacyCallDocument"
+    },
+    {
       "$ref": "#/$defs/TranscriptRevision"
     },
     {
@@ -53,6 +56,45 @@
     },
     {
       "$ref": "#/$defs/TranscriptionOperation"
+    },
+    {
+      "$ref": "#/$defs/ReplicaReference"
+    },
+    {
+      "$ref": "#/$defs/PublishCallReplica"
+    },
+    {
+      "$ref": "#/$defs/ReplicaReceipt"
+    },
+    {
+      "$ref": "#/$defs/CallDeletionMarker"
+    },
+    {
+      "$ref": "#/$defs/CallCatalogEntry"
+    },
+    {
+      "$ref": "#/$defs/CallCatalogPage"
+    },
+    {
+      "$ref": "#/$defs/CallChange"
+    },
+    {
+      "$ref": "#/$defs/CallChangesPage"
+    },
+    {
+      "$ref": "#/$defs/CatalogTranscriptResult"
+    },
+    {
+      "$ref": "#/$defs/TranscriptResultsPage"
+    },
+    {
+      "$ref": "#/$defs/RequestPlayback"
+    },
+    {
+      "$ref": "#/$defs/PlaybackManifest"
+    },
+    {
+      "$ref": "#/$defs/PlaybackGrant"
     }
   ],
   "$defs": {
@@ -376,7 +418,166 @@
       "required": ["revisionId", "createdAt", "sha256"],
       "additionalProperties": false
     },
+    "SpeakerGroup": {
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "displayName": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "speakerIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExchangeUUID"
+          },
+          "minItems": 2
+        }
+      },
+      "required": ["groupId", "displayName", "speakerIds"],
+      "additionalProperties": false
+    },
     "CallDocument": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [2]
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "documentVersion": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "startedAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "endedAt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UTCDateTime"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "durationMs": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NonNegativeInteger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "captureState": {
+          "type": "string",
+          "enum": ["recording", "stopped", "interrupted"]
+        },
+        "interruptionReason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/CaptureSourceDocument"
+        },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AudioTrack"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "audioManifest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AudioManifestReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RevisionReference"
+          }
+        },
+        "activeRevisionId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExchangeUUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "speakerNames": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/$defs/ExchangeUUID"
+            }
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/ExchangeUUID"
+          }
+        },
+        "speakerGroups": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/SpeakerGroup"
+            }
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/ExchangeUUID"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "archiveId",
+        "callId",
+        "documentVersion",
+        "startedAt",
+        "endedAt",
+        "durationMs",
+        "captureState",
+        "interruptionReason",
+        "source",
+        "tracks",
+        "audioManifest",
+        "revisions",
+        "activeRevisionId",
+        "speakerNames",
+        "speakerGroups"
+      ],
+      "additionalProperties": false
+    },
+    "LegacyCallDocument": {
       "type": "object",
       "properties": {
         "schemaVersion": {
@@ -1377,6 +1578,435 @@
         "updatedAt",
         "result",
         "failure"
+      ],
+      "additionalProperties": false
+    },
+    "ReplicaReference": {
+      "type": "object",
+      "properties": {
+        "documentVersion": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1, 2]
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "byteLength": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      },
+      "required": ["documentVersion", "schemaVersion", "sha256", "byteLength"],
+      "additionalProperties": false
+    },
+    "PublishCallReplica": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "expectedDocumentVersion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PositiveInteger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "document": {
+          "type": "string",
+          "minLength": 1
+        },
+        "annotationRevisionIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExchangeUUID"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operationId",
+        "expectedDocumentVersion",
+        "document",
+        "annotationRevisionIds"
+      ],
+      "additionalProperties": false
+    },
+    "ReplicaReceipt": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "documentVersion": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "sha256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "byteLength": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "publishedAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operationId",
+        "archiveId",
+        "callId",
+        "documentVersion",
+        "sha256",
+        "byteLength",
+        "publishedAt"
+      ],
+      "additionalProperties": false
+    },
+    "CallDeletionMarker": {
+      "type": "object",
+      "properties": {
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "markedAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "phase": {
+          "type": "string",
+          "enum": ["requested", "draining", "deleting", "complete"]
+        }
+      },
+      "required": ["callId", "markedAt", "phase"],
+      "additionalProperties": false
+    },
+    "CallCatalogEntry": {
+      "type": "object",
+      "properties": {
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "replica": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReplicaReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "audio": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VerifiedMasterReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latestTranscriptionOperationId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExchangeUUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resultCount": {
+          "$ref": "#/$defs/NonNegativeInteger"
+        },
+        "deletion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CallDeletionMarker"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "callId",
+        "replica",
+        "audio",
+        "latestTranscriptionOperationId",
+        "resultCount",
+        "deletion"
+      ],
+      "additionalProperties": false
+    },
+    "CallCatalogPage": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CallCatalogEntry"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "changesCursor": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["schemaVersion", "archiveId", "calls", "nextCursor", "changesCursor"],
+      "additionalProperties": false
+    },
+    "CallChange": {
+      "type": "object",
+      "properties": {
+        "sequence": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "call": {
+          "$ref": "#/$defs/CallCatalogEntry"
+        }
+      },
+      "required": ["sequence", "call"],
+      "additionalProperties": false
+    },
+    "CallChangesPage": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CallChange"
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hasMore": {
+          "type": "boolean"
+        }
+      },
+      "required": ["schemaVersion", "archiveId", "changes", "nextCursor", "hasMore"],
+      "additionalProperties": false
+    },
+    "CatalogTranscriptResult": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "generation": {
+          "$ref": "#/$defs/PositiveInteger"
+        },
+        "result": {
+          "$ref": "#/$defs/AvailableTranscript"
+        }
+      },
+      "required": ["operationId", "generation", "result"],
+      "additionalProperties": false
+    },
+    "TranscriptResultsPage": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CatalogTranscriptResult"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["schemaVersion", "archiveId", "callId", "results", "nextCursor"],
+      "additionalProperties": false
+    },
+    "RequestPlayback": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        }
+      },
+      "required": ["schemaVersion", "operationId"],
+      "additionalProperties": false
+    },
+    "PlaybackChannel": {
+      "type": "object",
+      "properties": {
+        "channelIndex": {
+          "type": "number",
+          "enum": [0, 1]
+        },
+        "trackId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["microphone", "application"]
+        }
+      },
+      "required": ["channelIndex", "trackId", "role"],
+      "additionalProperties": false
+    },
+    "PlaybackManifest": {
+      "type": "object",
+      "properties": {
+        "masterId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "masterSHA256": {
+          "$ref": "#/$defs/SHA256Digest"
+        },
+        "profileId": {
+          "type": "string",
+          "enum": ["wav-pcm-s16le-16000-stereo-segment-v1"]
+        },
+        "sampleRateHz": {
+          "type": "number",
+          "enum": [16000]
+        },
+        "frameCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 172800000
+        },
+        "segmentFrames": {
+          "type": "number",
+          "enum": [480000]
+        },
+        "segmentCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaybackChannel"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "masterId",
+        "masterSHA256",
+        "profileId",
+        "sampleRateHz",
+        "frameCount",
+        "segmentFrames",
+        "segmentCount",
+        "channels"
+      ],
+      "additionalProperties": false
+    },
+    "PlaybackGrant": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "enum": [1]
+        },
+        "operationId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "grantId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "archiveId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "callId": {
+          "$ref": "#/$defs/ExchangeUUID"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/UTCDateTime"
+        },
+        "token": {
+          "type": "string",
+          "pattern": "^trigo_playback_v1_[0-9a-f]{64}$"
+        },
+        "media": {
+          "$ref": "#/$defs/PlaybackManifest"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "operationId",
+        "grantId",
+        "archiveId",
+        "callId",
+        "expiresAt",
+        "token",
+        "media"
       ],
       "additionalProperties": false
     }

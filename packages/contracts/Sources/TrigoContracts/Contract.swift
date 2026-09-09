@@ -85,7 +85,7 @@ public enum Contract {
   public static func validate(_ kind: String, bytes: Data) throws -> ValidatedDocument {
     let result = try validateStructure(kind, bytes: bytes)
     switch kind {
-    case "CallDocument": try validateCall(result.value)
+    case "CallDocument", "LegacyCallDocument": try validateCall(result.value)
     case "TranscriptRevision": try validateRevision(result.value)
     case "AudioManifest": try validateAudio(result.value)
     default: break
@@ -98,7 +98,7 @@ public enum Contract {
   ) throws
     -> ValidatedDocument
   {
-    let result = try validate("CallDocument", bytes: bytes)
+    let result = try validateCallSnapshot(bytes)
     let call = result.value
     func resolve(_ kind: String, _ id: String, _ hash: String) throws -> JSONValue {
       guard let bytes = references[id] else { throw ContractError.reference }
@@ -185,6 +185,17 @@ public enum Contract {
           revision["speakers"].items.contains { $0["speakerId"].text == speakerId },
           .reference
         )
+      }
+    }
+    for (revisionId, groups) in call["speakerGroups"].object ?? [:] {
+      guard let revision = revisions[revisionId] else { throw ContractError.reference }
+      for group in groups.items {
+        for speakerId in group["speakerIds"].items {
+          try require(
+            revision["speakers"].items.contains { $0["speakerId"] == speakerId },
+            .reference
+          )
+        }
       }
     }
     return result

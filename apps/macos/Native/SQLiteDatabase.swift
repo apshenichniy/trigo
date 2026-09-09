@@ -153,11 +153,17 @@ final class SQLiteDatabase: @unchecked Sendable {
           try execute("PRAGMA application_id=\(Self.applicationID)")
           try execute("PRAGMA user_version=\(repositorySchemaVersion)")
         }
-      } else if try scalarInt("PRAGMA user_version") == 2 {
+      } else if try scalarInt("PRAGMA user_version") < repositorySchemaVersion {
         // Identity, exact old schema and integrity were validated read-only before admission.
         // Add upload metadata atomically; every existing document and media row is retained.
         try transaction {
-          for statement in repositoryUploadSchema { try execute(statement) }
+          if try scalarInt("PRAGMA user_version") == 2 {
+            for statement in repositoryUploadSchema { try execute(statement) }
+          }
+          for statement in repositorySyncSchema { try execute(statement) }
+          try execute(
+            "INSERT INTO server_storage_receipts SELECT call_id,storage_receipt_hash FROM master_uploads WHERE storage_receipt_hash IS NOT NULL"
+          )
           try execute("PRAGMA user_version=\(repositorySchemaVersion)")
         }
         try validateExistingStore()
@@ -174,7 +180,7 @@ final class SQLiteDatabase: @unchecked Sendable {
   private func validateExistingStore() throws {
     let version = try scalarInt("PRAGMA user_version")
     guard try scalarInt("PRAGMA application_id") == Self.applicationID,
-      version == 2 || version == repositorySchemaVersion,
+      version == 2 || version == 3 || version == repositorySchemaVersion,
       try scalarString("PRAGMA journal_mode") == "delete"
     else {
       throw LocalPersistenceError.unsupportedStore("Unsupported SQLite identity, schema or journal")
@@ -195,7 +201,8 @@ final class SQLiteDatabase: @unchecked Sendable {
       .map {
         normalized(try $0.string(0))
       }
-    let expectedSchema = version == 2 ? repositorySchemaV2 : repositorySchema
+    let expectedSchema =
+      version == 2 ? repositorySchemaV2 : version == 3 ? repositorySchemaV3 : repositorySchema
     guard Set(actual) == Set(expectedSchema.map(normalized)) else {
       throw LocalPersistenceError.unsupportedStore(
         "SQLite schema does not match its declared version"

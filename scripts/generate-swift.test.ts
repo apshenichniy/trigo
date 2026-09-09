@@ -50,3 +50,10 @@ it("qualifies wire fields that overlap generated decoder locals", () => {
   expect(source).toContain("self.container = try container.decode(");
   expect(source).toContain("try container.encode(self.container, forKey: .container)");
 });
+
+it("keeps the shared long operation field compatible with native formatting", () => {
+  const document = Schema.toJsonSchemaDocument(documentSchemas.CallCatalogEntry);
+  const source = generateSwift(document.definitions, ["CallCatalogEntry"]);
+  expect(source).toContain("self.latestTranscriptionOperationId,");
+  expect(source.split("\n").every((line) => line.length <= 100)).toBe(true);
+});

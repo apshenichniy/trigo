@@ -20,7 +20,7 @@ public final class LocalRepository: Sendable {
   }
 
   public func publishManifest(_ bytes: Data) async throws -> PublicationResult {
-    let proposed = try Contract.decode(CallDocument.self, bytes: bytes)
+    let proposed = try Contract.decodeCallSnapshot(bytes)
     try requireArchiveIdentity(proposed.value.archiveId)
     if let retained = try database.access({
       try database
@@ -46,6 +46,9 @@ public final class LocalRepository: Sendable {
       return .alreadyPresent
     }
     if let priorHash {
+      guard try Contract.validateCallSnapshot(bytes).kind != "LegacyCallDocument" else {
+        throw CanonicalSyncError.incompatibleDocument
+      }
       let current = try callValue(hash: priorHash)
       try validatePublication(from: current, to: proposed.value)
       if try hasSession(proposed.value.callId), captureChanged(current, proposed.value) {
@@ -54,9 +57,24 @@ public final class LocalRepository: Sendable {
     }
     _ = try Contract.validateArchive(bytes, references: referenceBytes(proposed.value))
     try await stageCall(proposed)
+    let upgrade =
+      try await
+      (Contract.validateCallSnapshot(bytes).kind == "LegacyCallDocument"
+      ? prepareLegacyUpgrade(proposed) : nil)
     return try database.access {
       try database.transaction(interruption: interruption) {
-        try commitCall(proposed.value, hash: proposed.sha256, expected: priorHash)
+        let result = try commitCall(proposed.value, hash: proposed.sha256, expected: priorHash)
+        if let upgrade {
+          _ = try commitCall(
+            upgrade.snapshot.value,
+            hash: upgrade.snapshot.sha256,
+            expected: proposed.sha256
+          )
+          if let operation = upgrade.operation {
+            try commitReplicaWork(operation, snapshot: upgrade.snapshot, annotationRevisionIDs: [])
+          }
+        }
+        return result
       }
     }
   }
@@ -116,7 +134,9 @@ public final class LocalRepository: Sendable {
       try database.rows(
         """
         SELECT c.call_id, v.version, v.started_at, v.duration_ms, v.capture_state, v.reason
-        FROM calls c JOIN call_values v ON v.hash=c.hash WHERE c.call_id>? ORDER BY c.call_id LIMIT ?
+        FROM calls c JOIN call_values v ON v.hash=c.hash JOIN lifecycle l ON l.call_id=c.call_id
+        WHERE c.call_id>? AND l.deletion='active' AND NOT EXISTS(SELECT 1 FROM local_deletion_markers d WHERE d.call_id=c.call_id)
+        ORDER BY c.call_id LIMIT ?
         """,
         [.text(callID ?? ""), .int(limit)]
       )
@@ -207,60 +227,6 @@ public final class LocalRepository: Sendable {
     )
   }
 
-  public func setSpeakerName(
-    _ name: String?,
-    callID: String,
-    revisionID: String,
-    speakerID: String
-  )
-    async throws -> LocalCallAggregate
-  {
-    try requireCanonicalIdentifier(revisionID)
-    try requireCanonicalIdentifier(speakerID)
-    guard let priorHash = try currentHash(callID) else {
-      throw LocalPersistenceError.callNotFound(callID)
-    }
-    var value = try callValue(hash: priorHash)
-    let prior = value
-    guard let revision = value.revisions.first(where: { $0.revisionId == revisionID }),
-      try database.access({
-        try
-          !database.rows(
-            "SELECT speaker_id FROM revision_speakers WHERE hash=? AND speaker_id=?",
-            [.text(revision.sha256), .text(speakerID)]
-          )
-          .isEmpty
-      })
-    else {
-      throw LocalPersistenceError.invalidSpeakerReference(
-        revisionID: revisionID,
-        speakerID: speakerID
-      )
-    }
-    if value.speakerNames[revisionID]?[speakerID] == name {
-      return try await loadCall(callID: callID)
-    }
-    var names = value.speakerNames[revisionID] ?? [:]
-    names[speakerID] = name
-    value.speakerNames[revisionID] = names.isEmpty ? nil : names
-    value.documentVersion += 1
-    try validatePublication(
-      from: prior,
-      to: value,
-      allowedSpeakerNameChange: .init(revisionID: revisionID, speakerID: speakerID, name: name)
-    )
-    // Encode the new exchange publication once. The unchanged typed evidence and verified
-    // speaker membership do not need to be decoded back through the import boundary.
-    let document = StoredDocument(value: value, storedBytes: try Contract.encode(value))
-    try await stageCall(document)
-    try database.access {
-      try database.transaction(interruption: interruption) {
-        _ = try commitCall(value, hash: document.sha256, expected: priorHash)
-      }
-    }
-    return try await loadCall(callID: callID)
-  }
-
   /// Bounded typed transcript query; staged and unreferenced revisions remain unreachable.
   public func turns(
     callID: String,
@@ -277,9 +243,11 @@ public final class LocalRepository: Sendable {
     let rows = try database.access {
       try database.rows(
         """
-        SELECT t.ordinal,t.turn_id,t.track_id,t.speaker_id,t.start_ms,t.end_ms,t.text,n.name
+        SELECT t.ordinal,t.turn_id,t.track_id,t.speaker_id,t.start_ms,t.end_ms,t.text,coalesce(g.display_name,n.name)
         FROM call_revisions r JOIN revision_turns t ON t.hash=r.revision_hash
         LEFT JOIN speaker_names n ON n.hash=r.hash AND n.revision_id=r.revision_id AND n.speaker_id=t.speaker_id
+        LEFT JOIN call_group_members m ON m.hash=r.hash AND m.revision_id=r.revision_id AND m.speaker_id=t.speaker_id
+        LEFT JOIN call_speaker_groups g ON g.hash=m.hash AND g.group_id=m.group_id
         WHERE r.hash=? AND r.revision_id=? AND t.ordinal>? ORDER BY t.ordinal LIMIT ?
         """,
         [.text(hash), .text(revisionID), .int(ordinal), .int(limit)]
@@ -302,7 +270,10 @@ public final class LocalRepository: Sendable {
 
   func currentHash(_ callID: String) throws -> String? {
     try requireCanonicalIdentifier(callID)
-    return try database.access { try currentHashLocked(callID) }
+    return try database.access {
+      try requireActiveCallLocked(callID)
+      return try currentHashLocked(callID)
+    }
   }
 
   func currentHashLocked(_ callID: String) throws -> String? {
@@ -363,7 +334,7 @@ public final class LocalRepository: Sendable {
   func validatePublication(
     from current: CallDocument,
     to proposed: CallDocument,
-    allowedSpeakerNameChange: SpeakerNameChange? = nil
+    allowedAnnotationRevisionIDs: Set<String> = []
   ) throws {
     guard proposed.documentVersion > current.documentVersion else {
       throw LocalPersistenceError.staleDocumentVersion(
@@ -383,7 +354,7 @@ public final class LocalRepository: Sendable {
     try validateEvolution(
       from: current,
       to: proposed,
-      allowedSpeakerNameChange: allowedSpeakerNameChange
+      allowedAnnotationRevisionIDs: allowedAnnotationRevisionIDs
     )
   }
 
@@ -396,6 +367,7 @@ public final class LocalRepository: Sendable {
   /// Called only while the connection owner holds a semantic transaction.
   func commitCall(_ call: CallDocument, hash: String, expected: String?) throws -> PublicationResult
   {
+    try requireActiveCallLocked(call.callId)
     let current = try currentHashLocked(call.callId)
     if current == hash { return .alreadyPresent }
     guard current == expected else { throw LocalPersistenceError.concurrentMutation }
@@ -426,6 +398,7 @@ public final class LocalRepository: Sendable {
         [.text(call.callId)]
       )
     }
+    try retainGroupHistoryLocked(call)
     return .committed
   }
 

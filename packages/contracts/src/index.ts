@@ -1,4 +1,4 @@
-import { Result, Schema } from "effect";
+import { Result, Schema, Struct } from "effect";
 
 import { selectedMediaProfile } from "./media-profile.ts";
 import { documentSchemas, type Documents, type DocumentKind } from "./schema-registry.ts";
@@ -28,11 +28,18 @@ export type {
   MediaProfile as MediaProfileDocument,
   WaveObjectInspection,
 } from "./media-profile.ts";
-import type { CallDocument, TranscriptRevision, AudioManifest } from "./document-schema.ts";
+import type {
+  CallDocument,
+  LegacyCallDocument,
+  TranscriptRevision,
+  AudioManifest,
+} from "./document-schema.ts";
 export * from "./document-schema.ts";
 export * from "./schema-registry.ts";
 export * from "./upload-schema.ts";
 export * from "./transcription-schema.ts";
+export * from "./sync-schema.ts";
+export * from "./playback-schema.ts";
 function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   const decode = Schema.decodeUnknownResult(schema, { onExcessProperty: "error" });
   return (value: unknown): S["Type"] => {
@@ -44,6 +51,19 @@ function decoder<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
   };
 }
 const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
+  ReplicaReference: decoder(documentSchemas.ReplicaReference),
+  PublishCallReplica: decoder(documentSchemas.PublishCallReplica),
+  ReplicaReceipt: decoder(documentSchemas.ReplicaReceipt),
+  CallDeletionMarker: decoder(documentSchemas.CallDeletionMarker),
+  CallCatalogEntry: decoder(documentSchemas.CallCatalogEntry),
+  CallCatalogPage: decoder(documentSchemas.CallCatalogPage),
+  CallChange: decoder(documentSchemas.CallChange),
+  CallChangesPage: decoder(documentSchemas.CallChangesPage),
+  CatalogTranscriptResult: decoder(documentSchemas.CatalogTranscriptResult),
+  TranscriptResultsPage: decoder(documentSchemas.TranscriptResultsPage),
+  RequestPlayback: decoder(documentSchemas.RequestPlayback),
+  PlaybackManifest: decoder(documentSchemas.PlaybackManifest),
+  PlaybackGrant: decoder(documentSchemas.PlaybackGrant),
   RequestTranscription: decoder(documentSchemas.RequestTranscription),
   AvailableTranscript: decoder(documentSchemas.AvailableTranscript),
   TranscriptionOperation: decoder(documentSchemas.TranscriptionOperation),
@@ -56,6 +76,7 @@ const decoders: { [K in DocumentKind]: (value: unknown) => Documents[K] } = {
   LocalDevelopmentBridge: decoder(documentSchemas.LocalDevelopmentBridge),
   CaptureMasterProfile: decoder(documentSchemas.CaptureMasterProfile),
   CallDocument: decoder(documentSchemas.CallDocument),
+  LegacyCallDocument: decoder(documentSchemas.LegacyCallDocument),
   TranscriptRevision: decoder(documentSchemas.TranscriptRevision),
   AudioManifest: decoder(documentSchemas.AudioManifest),
   StatusResponse: decoder(documentSchemas.StatusResponse),
@@ -70,6 +91,14 @@ export function validateDocument<K extends DocumentKind>(kind: K, value: unknown
   const document = validateStructure(kind, value);
   if (kind === "CallDocument") {
     validateCall(document as CallDocument);
+  }
+  if (kind === "LegacyCallDocument") {
+    validateCall(
+      Struct.assign(document as LegacyCallDocument, {
+        schemaVersion: 2 as const,
+        speakerGroups: {},
+      }),
+    );
   }
   if (kind === "TranscriptRevision") {
     validateRevision(document as TranscriptRevision);
@@ -92,6 +121,26 @@ export function parseStored<K extends DocumentKind>(kind: K, bytes: Uint8Array):
   }
   return validateDocument(kind, value);
 }
+
+/** Read an older snapshot as an ungrouped current typed view. This does not publish
+ * an upgrade: the repository must commit a new document version and retain these input bytes. */
+export function parseCallDocument(bytes: Uint8Array): CallDocument {
+  let value: unknown;
+  try {
+    value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    throw new Error("structure");
+  }
+  const legacy = Schema.decodeUnknownResult(documentSchemas.LegacyCallDocument, {
+    onExcessProperty: "error",
+  })(value);
+  if (Result.isSuccess(legacy)) {
+    const current: CallDocument = { ...legacy.success, schemaVersion: 2, speakerGroups: {} };
+    validateCall(current);
+    return current;
+  }
+  return validateDocument("CallDocument", value);
+}
 export interface ValidatedArchive {
   call: CallDocument;
   audio: AudioManifest | null;
@@ -102,7 +151,7 @@ export async function validateArchive(
   callBytes: Uint8Array,
   references: ReadonlyMap<string, Uint8Array>,
 ): Promise<ValidatedArchive> {
-  const call = parseStored("CallDocument", callBytes);
+  const call = parseCallDocument(callBytes);
   const stored = new Map<string, Uint8Array>();
   async function resolve<K extends DocumentKind>(
     kind: K,
@@ -201,6 +250,15 @@ export async function validateArchive(
     check(revision);
     for (const speakerId of Object.keys(names)) {
       check(revision?.speakers.some((s) => s.speakerId === speakerId));
+    }
+  }
+  for (const [revisionId, groups] of Object.entries(call.speakerGroups)) {
+    const revision = revisions.get(revisionId);
+    check(revision);
+    for (const group of groups) {
+      for (const speakerId of group.speakerIds) {
+        check(revision?.speakers.some((speaker) => speaker.speakerId === speakerId));
+      }
     }
   }
   return { call, audio, revisions, stored };

@@ -5,7 +5,7 @@ import {
   RegisterMasterUpload,
   UploadPartDescriptor,
   UploadPartReceipt,
-  parseStored,
+  parseCallDocument,
   maximumMasterBytes,
   uploadPartBytes,
   type VerifiedMasterReceipt,
@@ -61,7 +61,7 @@ const registerMaster = Effect.fn("MasterUpload.register")(function* (
   yield* requireUploadOwner(db, owner);
   const input = yield* decodeUpload(RegisterMasterUpload, value);
   const call = yield* Effect.try({
-    try: () => parseStored("CallDocument", new TextEncoder().encode(input.callDocument)),
+    try: () => parseCallDocument(new TextEncoder().encode(input.callDocument)),
     catch: () => invalidUpload("The initial call document is invalid."),
   });
   const microphone = call.tracks.find((track) => track.role === "microphone");

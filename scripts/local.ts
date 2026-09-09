@@ -262,7 +262,6 @@ try {
     for (const [path, headers, expected, code] of [
       ["/v1/status", {}, 401, "owner_unauthorized"],
       ["/v1/status", { authorization: "Bearer invalid" }, 401, "owner_unauthorized"],
-      ["/v1/calls", ownerHeaders, 501, "operation_unavailable"],
     ] as const) {
       const response = await request(path, { headers });
       const error = validateDocument("ErrorEnvelope", await response.json());
@@ -273,6 +272,16 @@ try {
       ) {
         throw new Error(`Local contract mismatch: ${path}`);
       }
+    }
+    const catalogResponse = await request("/v1/calls", { headers: ownerHeaders });
+    const catalog = validateDocument("CallCatalogPage", await catalogResponse.json());
+    if (
+      catalogResponse.status !== 200 ||
+      catalog.archiveId !== configuration.namespaceId ||
+      catalog.calls.length !== 0 ||
+      catalog.nextCursor !== null
+    ) {
+      throw new Error("Initial local call catalog differs");
     }
     const created = await request("/__local/probe", { method: "POST", headers: probeHeaders });
     if (created.status !== 201) {

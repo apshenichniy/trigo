@@ -1,12 +1,6 @@
 import Foundation
 import TrigoContracts
 
-struct MasterUploadAuthorization: Sendable {
-  let binding: ArchiveBinding
-  let credentialAccount: String
-  let token: String
-}
-
 /// One authenticated, same-archive transport. Audio requests and response metadata have fixed bounds.
 public actor HTTPMasterUploadTransport: MasterUploadTransport {
   private let connection: ServerConnection
@@ -87,7 +81,9 @@ public actor HTTPMasterUploadTransport: MasterUploadTransport {
       throw MasterUploadError.transport(code: "upload_too_large", retry: .afterCorrection)
     }
     try Task.checkCancellation()
-    let authority = try await connection.masterUploadAuthorization(archiveID: archiveID)
+    let authority: ServerOperationAuthorization
+    do { authority = try await connection.serverOperationAuthorization(archiveID: archiveID) } catch
+    { throw MasterUploadError.remoteBlocked }
     let endpoint = authority.binding.serverURL.appending(path: path)
     var request = URLRequest(url: endpoint)
     request.httpMethod = method
@@ -108,7 +104,7 @@ public actor HTTPMasterUploadTransport: MasterUploadTransport {
     guard let http = response as? HTTPURLResponse, http.url == endpoint,
       response.expectedContentLength <= 65_536
     else {
-      await connection.reportMasterUploadIssue(.incompatible, authority: authority)
+      await connection.reportServerOperationIssue(.incompatible, authority: authority)
       throw MasterUploadError.remoteBlocked
     }
     var data = Data()
@@ -118,14 +114,14 @@ public actor HTTPMasterUploadTransport: MasterUploadTransport {
         data.append(byte)
       }
     } catch let error as MasterUploadError {
-      await connection.reportMasterUploadIssue(.incompatible, authority: authority)
+      await connection.reportServerOperationIssue(.incompatible, authority: authority)
       throw error
     } catch {
       if Task.isCancelled { throw CancellationError() }
       throw MasterUploadError.transport(code: "upload_response_lost", retry: .retryable)
     }
     if http.statusCode == 401 || http.statusCode == 403 {
-      await connection.reportMasterUploadIssue(.unauthorized, authority: authority)
+      await connection.reportServerOperationIssue(.unauthorized, authority: authority)
       throw MasterUploadError.remoteBlocked
     }
     guard http.statusCode == 200 else {
@@ -137,11 +133,11 @@ public actor HTTPMasterUploadTransport: MasterUploadTransport {
       if (500...599).contains(http.statusCode) {
         throw MasterUploadError.transport(code: "upload_server_unavailable", retry: .retryable)
       }
-      await connection.reportMasterUploadIssue(.incompatible, authority: authority)
+      await connection.reportServerOperationIssue(.incompatible, authority: authority)
       throw MasterUploadError.remoteBlocked
     }
     do { return try Contract.decode(type, bytes: data) } catch {
-      await connection.reportMasterUploadIssue(.incompatible, authority: authority)
+      await connection.reportServerOperationIssue(.incompatible, authority: authority)
       throw MasterUploadError.invalidReceipt
     }
   }
