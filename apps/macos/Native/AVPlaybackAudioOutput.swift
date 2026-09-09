@@ -19,7 +19,9 @@ import Foundation
 
   var renderedFrames: Int {
     guard let renderTime = node.lastRenderTime,
-      let playerTime = node.playerTime(forNodeTime: renderTime)
+      renderTime.isSampleTimeValid || renderTime.isHostTimeValid,
+      let playerTime = node.playerTime(forNodeTime: renderTime),
+      playerTime.isSampleTimeValid
     else { return 0 }
     return max(0, Int(playerTime.sampleTime))
   }
