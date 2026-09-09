@@ -401,8 +401,8 @@ import XCTest
 
   func testReaderSelectionRevisionsPlaybackAndNarrowDarkLayout() throws {
     try openReader()
-    XCTAssertTrue(readerRow("Today").exists)
-    XCTAssertTrue(readerRow("Yesterday").exists)
+    XCTAssertTrue(library.outlines["library-call-list"].staticTexts["Today"].exists)
+    XCTAssertTrue(library.outlines["library-call-list"].staticTexts["Yesterday"].exists)
     XCTAssertTrue(readerText("Unknown speaker").exists)
     XCTAssertTrue(readerText("controlled transcript paragraph").exists)
     capture("shell-reader-light", library)
@@ -418,10 +418,7 @@ import XCTest
     )
     library.buttons["library-play-pause"].click()
     XCTAssertTrue(waitState { $0["readerPlaybackPhase"] as? String == "paused" })
-    let picker = library.descendants(matching: .any).matching(identifier: "library-revision-picker")
-      .firstMatch
-    picker.click()
-    app.menuItems.matching(NSPredicate(format: "label CONTAINS %@", "Retained")).firstMatch.click()
+    chooseReaderRevision("Retained")
     XCTAssertTrue(
       waitState { $0["selectedRevisionID"] as? String != $0["activeRevisionID"] as? String }
     )
@@ -586,9 +583,12 @@ import XCTest
   }
 
   private func chooseReaderRevision(_ marker: String) {
-    library.descendants(matching: .any).matching(identifier: "library-revision-picker").firstMatch
-      .click()
-    app.menuItems.matching(NSPredicate(format: "label CONTAINS %@", marker)).firstMatch.click()
+    let picker = library.popUpButtons["library-revision-picker"]
+    picker.click()
+    let item = picker.menuItems.matching(NSPredicate(format: "title CONTAINS %@", marker))
+      .firstMatch
+    XCTAssertTrue(item.waitForExistence(timeout: 5))
+    item.click()
   }
 
   func testReaderNoSpeechUnavailablePlaybackAndRecovery() throws {
@@ -642,24 +642,10 @@ import XCTest
   }
 
   private func selectReaderCall(_ callID: String) {
-    let title: String
-    switch callID {
-    case "00000000-0000-4000-8000-000000000200": title = "Synthetic review"
-    case "00000000-0000-4000-8000-000000000201": title = "Synthetic capture"
-    case "00000000-0000-4000-8000-000000000202": title = "Synthetic quiet recording"
-    case "00000000-0000-4000-8000-000000000203": title = "Synthetic annotation conflict"
-    default: XCTFail("Unknown reader fixture call"); return
-    }
-    let row = readerRow(title)
+    let row = library.staticTexts["library-call-\(callID)"]
     XCTAssertTrue(row.waitForExistence(timeout: 5))
     row.click()
     XCTAssertTrue(waitState { $0["selectedCallID"] as? String == callID })
-  }
-
-  private func readerRow(_ title: String) -> XCUIElement {
-    library.outlineRows
-      .matching(NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", title, title))
-      .firstMatch
   }
 
   private static func level(_ state: [String: Any], _ role: String) -> Double {

@@ -165,3 +165,28 @@ before conversion and preserves the selected position while no frames have
 rendered. Its minimized failing regression and seven-test passing result are
 recorded in [retained call playback](playback-service.md). The PR records the
 original reader/Worker smoke rerun after integrating that service fix.
+
+## Performed XCTest integration and selector correction
+
+The first complete thirteen-scenario invocation on `6fe2e0193` initialized and
+executed all tests. Its ten shell/panel scenarios passed; all three reader tests
+failed on inaccessible query matches in run `2026-09-09T08-18-20.466Z-f45a42cb`
+(659.063 s). The retained accessibility hierarchy shows the model's four calls
+already rendered: row content and day headings are child static-text elements,
+while the test queried text on their parent outline rows. The opened revision
+menu stores its text in `title`, while the test queried `label`.
+
+The tests now select call content through its existing stable accessibility
+identifier, check day-heading static text inside the call list, and select a
+revision by its title within the actual popup. These are native pointer actions;
+all subsequent model/evidence assertions and all thirteen scenarios are retained.
+No production view, repository, text or timing contract changes for this fix.
+
+The focused three-reader selection passed without failures or skips in run
+`2026-09-09T08-33-01.712Z-f91764cd`: 230.308 s overall, 217.588 s in the test
+command. It exercised no-speech playback failure/recovery, revisions and timestamp
+playback, keyboard navigation, reopen/narrow Dark Aqua layout, Unicode names,
+group merge/removal/Ungroup and explicit server conflict selection. Both successful
+and failed commands verified restoration of the original keyboard input source
+through the [host coordinator](verification.md). Final committed integration,
+the full thirteen-scenario result and required CI remain in the PR evidence.
