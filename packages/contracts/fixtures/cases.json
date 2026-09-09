@@ -521,5 +521,26 @@
       "00000000-0000-4000-8000-000000000011": "valid-no-speech.json"
     },
     "expected": "semantics"
+  },
+  {
+    "name": "approximate-timing",
+    "kind": "TranscriptRevision",
+    "document": "approximate-timing.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "legacy-approximate-timing",
+    "kind": "TranscriptRevision",
+    "document": "legacy-approximate-timing.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "unmarked-approximate-timing",
+    "kind": "TranscriptRevision",
+    "document": "unmarked-approximate-timing.json",
+    "references": {},
+    "expected": "semantics"
   }
 ]

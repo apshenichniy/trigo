@@ -1108,22 +1108,26 @@ public struct Word: Codable, Equatable, Sendable {
   public var startMs: NonNegativeInteger
   public var endMs: NonNegativeInteger
   public var confidence: Double?
+  public var timingUncertain: Bool?
   public init(
     text: String,
     startMs: NonNegativeInteger,
     endMs: NonNegativeInteger,
-    confidence: Double?
+    confidence: Double?,
+    timingUncertain: Bool? = nil
   ) {
     self.text = text
     self.startMs = startMs
     self.endMs = endMs
     self.confidence = confidence
+    self.timingUncertain = timingUncertain
   }
   enum CodingKeys: String, CodingKey {
     case text
     case startMs
     case endMs
     case confidence
+    case timingUncertain
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -1143,6 +1147,9 @@ public struct Word: Codable, Equatable, Sendable {
       Double?.self,
       forKey: .confidence
     )
+    self.timingUncertain =
+      try container.contains(.timingUncertain)
+      ? container.decode(Bool.self, forKey: .timingUncertain) : nil
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
@@ -1150,6 +1157,7 @@ public struct Word: Codable, Equatable, Sendable {
     try container.encode(self.startMs, forKey: .startMs)
     try container.encode(self.endMs, forKey: .endMs)
     try container.encode(self.confidence, forKey: .confidence)
+    try container.encodeIfPresent(self.timingUncertain, forKey: .timingUncertain)
   }
 }
 

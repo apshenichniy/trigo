@@ -57,3 +57,18 @@ it("keeps the shared long operation field compatible with native formatting", ()
   expect(source).toContain("self.latestTranscriptionOperationId,");
   expect(source.split("\n").every((line) => line.length <= 100)).toBe(true);
 });
+
+it("rejects optional nullable fields until absence and null have distinct Swift representation", () => {
+  expect(() =>
+    generateSwift(
+      {
+        Wire: {
+          type: "object",
+          additionalProperties: false,
+          properties: { value: { anyOf: [{ type: "string" }, { type: "null" }] } },
+        },
+      },
+      [],
+    ),
+  ).toThrow("Unsupported optional nullable Swift property");
+});

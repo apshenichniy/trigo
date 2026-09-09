@@ -78,6 +78,10 @@ extension Contract {
       var cursor = start
       for word in turn["words"].items {
         try require(
+          revision["normalizationVersion"].integerValue == 2 || word["timingUncertain"].isNull
+        )
+        if word["timingUncertain"] == .boolean(true) { continue }
+        try require(
           word["startMs"].integerValue >= cursor
             && word["endMs"].integerValue >= word["startMs"].integerValue
             && word["endMs"].integerValue <= end

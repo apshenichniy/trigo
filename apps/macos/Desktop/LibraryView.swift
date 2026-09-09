@@ -268,10 +268,17 @@ struct LibraryView: View {
         Button(LibraryDate.clock(turn.startMs)) {
           Task { await model.seek(to: turn.startMs, play: true) }
         }
-        .buttonStyle(.plain).disabled(!model.canPlay).monospacedDigit()
+        .buttonStyle(.plain).disabled(!model.canPlay || turn.endMs == turn.startMs)
+        .monospacedDigit()
         .help(model.playbackReason ?? "Play this passage")
         .accessibilityLabel("Play from \(LibraryDate.clock(turn.startMs))")
         .accessibilityIdentifier("library-timestamp-\(turn.turnID)")
+        if turn.hasApproximateTiming {
+          Text("Approximate timing")
+            .font(.caption).foregroundStyle(.secondary)
+            .help("The provider's word timing is uncertain. Playback stays within the recording.")
+            .accessibilityIdentifier("library-approximate-timing-\(turn.turnID)")
+        }
         if let speaker = model.speakers.first(where: { $0.speakerID == turn.speakerID }) {
           Menu {
             Button("Rename…") {

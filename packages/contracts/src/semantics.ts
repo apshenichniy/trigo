@@ -71,6 +71,10 @@ export function validateRevision(
     }
     let cursor = turn.startMs;
     for (const word of turn.words) {
+      requireValid(revision.normalizationVersion === 2 || word.timingUncertain === undefined);
+      if (word.timingUncertain === true) {
+        continue;
+      }
       requireValid(
         word.startMs >= cursor && word.endMs >= word.startMs && word.endMs <= turn.endMs,
       );

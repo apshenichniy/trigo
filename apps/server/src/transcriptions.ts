@@ -30,6 +30,7 @@ import {
   transcriptionJSON,
   transcriptionStorage,
 } from "./transcription-errors.ts";
+import { recoverFailedNormalization } from "./transcription-results.ts";
 import { uploadOwnerFence, uploadOwnerParameters } from "./upload-catalog.ts";
 
 export interface TranscriptionWorkflowInput {
@@ -125,7 +126,21 @@ const requestTranscription = Effect.fn("Transcription.request")(function* (
       return yield* transcriptionError("asr_conflict", "after_correction", 409);
     }
     yield* requireStoredMaster(env, owner.archiveId, callId);
-    yield* dispatchTranscription(env.TRANSCRIPTION_WORKFLOW, existing);
+    if (existing.state === "failed" && existing.failure_code === "asr_result_invalid") {
+      yield* recoverFailedNormalization(env, existing.operation_id).pipe(
+        Effect.catchTag("Transcription.Error", (failure) =>
+          Effect.gen(function* () {
+            // Another identical recovery may have published while this request was reading.
+            const latest = yield* readTranscription(env.CATALOG, existing.operation_id);
+            if (latest.state !== "result_available") {
+              return yield* failure;
+            }
+          }),
+        ),
+      );
+    } else {
+      yield* dispatchTranscription(env.TRANSCRIPTION_WORKFLOW, existing);
+    }
     return yield* operationDocument(
       env.CATALOG,
       yield* readTranscription(env.CATALOG, input.operationId),

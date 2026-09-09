@@ -243,7 +243,8 @@ public final class LocalRepository: Sendable {
     let rows = try database.access {
       try database.rows(
         """
-        SELECT t.ordinal,t.turn_id,t.track_id,t.speaker_id,t.start_ms,t.end_ms,t.text,coalesce(g.display_name,n.name)
+        SELECT t.ordinal,t.turn_id,t.track_id,t.speaker_id,t.start_ms,t.end_ms,t.text,coalesce(g.display_name,n.name),
+          EXISTS(SELECT 1 FROM revision_timing_flags f WHERE f.hash=t.hash AND f.turn_ordinal=t.ordinal)
         FROM call_revisions r JOIN revision_turns t ON t.hash=r.revision_hash
         LEFT JOIN speaker_names n ON n.hash=r.hash AND n.revision_id=r.revision_id AND n.speaker_id=t.speaker_id
         LEFT JOIN call_group_members m ON m.hash=r.hash AND m.revision_id=r.revision_id AND m.speaker_id=t.speaker_id
@@ -263,7 +264,8 @@ public final class LocalRepository: Sendable {
           startMs: $0.int(4),
           endMs: $0.int(5),
           text: $0.string(6),
-          speakerName: $0.optionalString(7)
+          speakerName: $0.optionalString(7),
+          hasApproximateTiming: $0.int(8) == 1
         )
       }
   }
@@ -448,6 +450,29 @@ public struct LocalTurn: Sendable, Equatable {
   public let endMs: Int
   public let text: String
   public let speakerName: String?
+  public let hasApproximateTiming: Bool
+
+  public init(
+    ordinal: Int,
+    turnID: String,
+    trackID: String,
+    speakerID: String?,
+    startMs: Int,
+    endMs: Int,
+    text: String,
+    speakerName: String?,
+    hasApproximateTiming: Bool = false
+  ) {
+    self.ordinal = ordinal
+    self.turnID = turnID
+    self.trackID = trackID
+    self.speakerID = speakerID
+    self.startMs = startMs
+    self.endMs = endMs
+    self.text = text
+    self.speakerName = speakerName
+    self.hasApproximateTiming = hasApproximateTiming
+  }
 }
 
 func captureState(_ value: String) throws -> CaptureLifecycleState {

@@ -7,6 +7,11 @@ const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 export const shellTestAttachments: Readonly<Record<string, readonly string[]>> = {
+  testReaderApproximateTimingRetainsTextAndDisablesEmptyPlayback: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-reader-approximate-timing.png",
+  ],
   testReaderSelectionRevisionsPlaybackAndNarrowDarkLayout: [
     "fixture-configuration.txt",
     "fixture-final-state.txt",

@@ -105,3 +105,22 @@ func typedRoundTrip(_ kind: String, bytes: Data) throws -> Data {
     #expect(published[key] is NSNull, "Missing required explicit null: \(key)")
   }
 }
+
+@Test func optionalWordTimingOmitsAbsenceAndRejectsExplicitNull() throws {
+  let absent = Data(#"{"text":"word","startMs":1,"endMs":2,"confidence":null}"#.utf8)
+  let word = try JSONDecoder().decode(Word.self, from: absent)
+  #expect(word.timingUncertain == nil)
+  let encoded = try JSONEncoder().encode(word)
+  let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+  #expect(object["timingUncertain"] == nil)
+  #expect(object["confidence"] is NSNull)
+  let presentNull = Data(
+    #"{"text":"word","startMs":1,"endMs":2,"confidence":null,"timingUncertain":null}"#.utf8
+  )
+  #expect(throws: DecodingError.self) { try JSONDecoder().decode(Word.self, from: presentNull) }
+  let bytes = try Data(contentsOf: fixtureRoot.appendingPathComponent("approximate-timing.json"))
+  let revision = try Contract.decode(TranscriptRevision.self, bytes: bytes)
+  #expect(revision.value.turns[0].words[1].timingUncertain == true)
+  #expect(revision.value.turns[0].words[1].endMs == 1100)
+  #expect(revision.storedBytes == bytes)
+}

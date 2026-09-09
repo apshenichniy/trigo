@@ -124,6 +124,44 @@ function textFor(word: DecodedWord): string {
   return word.punctuated_word ?? word.word;
 }
 
+/** Provider alignment is evidence, not a playback boundary. Flag conflicting words without
+ * rewriting their times or letting an out-of-interval outlier invalidate later alignment. */
+function alignedWords(words: readonly DecodedWord[], start: number, end: number) {
+  const reported = words.map((word) => {
+    const startMs = start + Math.round(word.start * 1000);
+    const endMs = start + Math.round(word.end * 1000);
+    if (!Number.isSafeInteger(startMs) || !Number.isSafeInteger(endMs)) {
+      throw failure("Nova3.normalize", "Provider word timing exceeds representable milliseconds");
+    }
+    return { word, startMs, endMs };
+  });
+  const uncertain = new Set<number>();
+  let furthest: { index: number; endMs: number } | undefined;
+  for (const [index, word] of reported.entries()) {
+    if (word.endMs < word.startMs || word.startMs < start || word.endMs > end) {
+      uncertain.add(index);
+      continue;
+    }
+    if (furthest !== undefined && word.startMs < furthest.endMs) {
+      uncertain.add(furthest.index);
+      uncertain.add(index);
+    }
+    if (furthest === undefined || word.endMs > furthest.endMs) {
+      furthest = { index, endMs: word.endMs };
+    }
+  }
+  return reported.map(({ word, startMs, endMs }, index) => ({
+    label: labelFor(word),
+    normalized: {
+      text: textFor(word),
+      startMs,
+      endMs,
+      confidence: word.confidence ?? null,
+      ...(uncertain.has(index) ? { timingUncertain: true as const } : {}),
+    },
+  }));
+}
+
 export const normalizeNova3 = Effect.fn("Nova3.normalize")(function* (
   unknownInput: unknown,
 ): Effect.fn.Return<TranscriptRevision, Nova3NormalizationError> {
@@ -231,12 +269,9 @@ function buildRevision(
       }
       let currentWords: Array<TranscriptRevision["turns"][number]["words"][number]> = [];
       let currentLabel = labelFor(firstProviderWord);
-      let previousWordEndMs: number = object.startMs;
 
       const finishTurn = () => {
-        const firstWord = currentWords[0];
-        const lastWord = currentWords[currentWords.length - 1];
-        if (firstWord === undefined || lastWord === undefined) {
+        if (currentWords.length === 0) {
           return;
         }
         const scopeKey = `${object.objectId}:${expectedChannel.index}`;
@@ -260,44 +295,31 @@ function buildRevision(
             });
           }
         }
+        const bounded = (time: number) => Math.min(object.endMs, Math.max(object.startMs, time));
+        let startMs: number = object.endMs;
+        let endMs: number = object.startMs;
+        for (const word of currentWords) {
+          startMs = Math.min(startMs, bounded(Math.min(word.startMs, word.endMs)));
+          endMs = Math.max(endMs, bounded(Math.max(word.startMs, word.endMs)));
+        }
         turns.push({
           turnId: CanonicalUUIDv4.make(input.makeId()),
           trackId: channelMapping.trackId,
           speakerId,
-          startMs: firstWord.startMs,
-          endMs: lastWord.endMs,
+          startMs,
+          endMs,
           text: currentWords.map((word) => word.text).join(" "),
           words: currentWords,
         });
         currentWords = [];
       };
 
-      for (const word of words) {
-        const startMs = object.startMs + Math.round(word.start * 1000);
-        const endMs = object.startMs + Math.round(word.end * 1000);
-        if (
-          endMs < startMs ||
-          startMs < previousWordEndMs ||
-          startMs < object.startMs ||
-          endMs > object.endMs
-        ) {
-          throw failure(
-            "Nova3.normalize",
-            `Object ${object.index} channel ${expectedChannel.index} has invalid word timing`,
-          );
-        }
-        const label = labelFor(word);
+      for (const { label, normalized } of alignedWords(words, object.startMs, object.endMs)) {
         if (label !== currentLabel) {
           finishTurn();
           currentLabel = label;
         }
-        currentWords.push({
-          text: textFor(word),
-          startMs,
-          endMs,
-          confidence: word.confidence ?? null,
-        });
-        previousWordEndMs = endMs;
+        currentWords.push(normalized);
       }
       finishTurn();
     }
@@ -316,7 +338,7 @@ function buildRevision(
     revisionId: input.revisionId,
     createdAt: DateTime.formatIso(input.createdAt),
     audioManifest: input.audioManifest,
-    normalizationVersion: 1,
+    normalizationVersion: 2,
     asr: {
       adapter: "cloudflare-workers-ai",
       model: selectedMediaProfile.asr.model,

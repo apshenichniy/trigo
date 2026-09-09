@@ -460,6 +460,34 @@ import XCTest
     capture("shell-reader-narrow-dark", library)
   }
 
+  func testReaderApproximateTimingRetainsTextAndDisablesEmptyPlayback() throws {
+    try openReader()
+    let turns = try XCTUnwrap(state()["turnIDs"] as? [String])
+    let first = try XCTUnwrap(turns.first)
+    let last = try XCTUnwrap(turns.last)
+    XCTAssertTrue(library.staticTexts["library-approximate-timing-\(first)"].exists)
+    XCTAssertTrue(library.staticTexts["library-approximate-timing-\(last)"].exists)
+    XCTAssertTrue(readerText("controlled transcript paragraph").exists)
+    XCTAssertTrue(readerText("unknown speaker attribution").exists)
+    XCTAssertTrue(library.buttons["library-timestamp-\(first)"].isEnabled)
+    XCTAssertFalse(library.buttons["library-timestamp-\(last)"].isEnabled)
+    library.buttons["library-timestamp-\(first)"].click()
+    XCTAssertTrue(waitState { $0["readerPlaybackPositionMs"] as? Int == 100 })
+    capture("shell-reader-approximate-timing", library)
+    chooseReaderRevision("Retained")
+    XCTAssertFalse(readerText("Approximate timing").exists)
+    chooseReaderRevision("Current")
+    app.terminate()
+    app.launch()
+    XCTAssertTrue(waitState { $0["bootstrapped"] as? Bool == true })
+    openMenu(); clickMenuItem("menu-open-library")
+    XCTAssertTrue(library.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      library.staticTexts["library-approximate-timing-\(first)"].waitForExistence(timeout: 5)
+    )
+    XCTAssertFalse(library.buttons["library-timestamp-\(last)"].isEnabled)
+  }
+
   func testReaderUnicodeNamesGroupingAndExplicitConflictChoice() throws {
     try openReader()
     chooseReaderRevision("Retained")
