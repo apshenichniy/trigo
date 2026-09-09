@@ -189,7 +189,7 @@ struct RecordingPanel: View {
           "rectangle.split.2x1",
           label: "Open library",
           identifier: "recording-open-library"
-        ) { shell.reopen() }
+        ) { shell.reopen(callID: state.finalization.callID) }
       } else {
         iconButton("gearshape", label: "Open settings", identifier: "recording-open-settings") {
           shell.showSettings(settingsDestination)

@@ -20,20 +20,30 @@ import TrigoDesktop
       } else {
         makeShortcut = nil
       }
+      let reader =
+        configuration.scenario == .reader
+        ? FixtureLibrary.model(configuration: configuration, namespace: composition.namespace) : nil
       let delegate = try DesktopAppDelegate(
         fixture: composition,
         loginService: FixtureLoginService(),
-        reader: .empty,
+        reader: reader.map(DesktopReader.live) ?? .empty,
         makeShortcut: makeShortcut
       )
       let application = NSApplication.shared
+      // Launch defaults alone do not change AppKit's effective appearance on every macOS.
+      // Set the fixture's appearance explicitly without changing the system preference.
+      application.appearance = NSAppearance(
+        named: UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+          ? .darkAqua : .aqua
+      )
       application.delegate = delegate
       let evidence = FixtureEvidence(
         root: root,
         composition: composition,
         shell: delegate.shell!,
         shortcut: environment.shortcut,
-        panel: environment.panel
+        panel: environment.panel,
+        reader: reader
       )
       withExtendedLifetime((delegate, environment, evidence)) { application.run() }
     } catch {

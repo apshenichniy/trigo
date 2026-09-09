@@ -7,6 +7,29 @@ const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 export const shellTestAttachments: Readonly<Record<string, readonly string[]>> = {
+  testReaderSelectionRevisionsPlaybackAndNarrowDarkLayout: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-reader-light.png",
+    "shell-reader-accessibility.txt",
+    "shell-reader-retained-state.txt",
+    "shell-reader-narrow-dark.png",
+  ],
+  testReaderUnicodeNamesGroupingAndExplicitConflictChoice: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-reader-group-editor.png",
+    "shell-reader-grouped-state.txt",
+    "shell-reader-conflict-comparison.png",
+    "shell-reader-conflict-resolved-state.txt",
+  ],
+  testReaderNoSpeechUnavailablePlaybackAndRecovery: [
+    "fixture-configuration.txt",
+    "fixture-final-state.txt",
+    "shell-reader-playback-unavailable.png",
+    "shell-reader-no-speech-playback.png",
+    "shell-reader-playback-recovered-state.txt",
+  ],
   testBackgroundMenuLibraryReopenAndSettings: [
     "fixture-configuration.txt",
     "fixture-final-state.txt",

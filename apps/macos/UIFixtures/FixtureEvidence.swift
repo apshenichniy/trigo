@@ -11,6 +11,7 @@ import Foundation
   private let shell: DesktopShell
   private let shortcut: GlobalRecordingShortcut?
   private let panel: FixturePanelControl?
+  private let reader: LibraryModel?
   private var observations: [AnyCancellable] = []
   private var timer: Timer?
 
@@ -19,13 +20,15 @@ import Foundation
     composition: DesktopComposition,
     shell: DesktopShell,
     shortcut: GlobalRecordingShortcut? = nil,
-    panel: FixturePanelControl? = nil
+    panel: FixturePanelControl? = nil,
+    reader: LibraryModel? = nil
   ) {
     self.root = root
     self.composition = composition
     self.shell = shell
     self.shortcut = shortcut
     self.panel = panel
+    self.reader = reader
     observations.append(
       shell.objectWillChange.sink { [weak self] in
         Task { @MainActor in await self?.write() }
@@ -54,6 +57,7 @@ import Foundation
         "recordingVisible": shell.recordingVisible,
         "microphoneEnabled": shell.recording.microphoneEnabled,
         "activationPolicy": NSApp.activationPolicy().rawValue,
+        "appearance": NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])?.rawValue ?? "",
         "credentialAdapter": "memory-fixture", "statusAdapter": "in-process-fixture",
         "captureAdapter": panel == nil ? "no-input-fixture" : "synthetic-pcm-fixture",
         "globalShortcut": shortcut == nil ? "disabled" : "in-process-fixture",
@@ -87,6 +91,27 @@ import Foundation
         value["microphoneRunning"] = panel.microphone.running
         value["applicationBuffers"] = panel.application.emittedBuffers
         value["microphoneBuffers"] = panel.microphone.emittedBuffers
+      }
+      if let reader {
+        value["readerAdapter"] = "synthetic-validated-repository"
+        value["playbackAdapter"] = "synthetic-held-output-no-device"
+        value["selectedCallID"] = reader.selectedCallID ?? ""
+        value["selectedRevisionID"] = reader.selectedRevisionID ?? ""
+        value["activeRevisionID"] = reader.selectedCall?.activeRevisionID ?? ""
+        value["revisionHash"] = reader.selectedRevision?.sha256 ?? ""
+        value["turnIDs"] = reader.turns.map(\.turnID)
+        value["readerFailure"] = reader.failure ?? ""
+        value["readerCallCount"] = reader.calls.count
+        value["readerCanPlay"] = reader.canPlay
+        value["readerCanRetryPlayback"] = reader.canRetryPlayback
+        value["readerPlaybackPhase"] = String(describing: reader.playback.phase)
+        value["readerPlaybackPositionMs"] = reader.playback.positionMs
+        value["readerSpeakers"] = reader.speakers.map {
+          [
+            "id": $0.speakerID, "name": $0.displayName, "neutralLabel": $0.neutralLabel,
+            "groupID": $0.groupID ?? "", "scopeID": $0.diarizationScopeID,
+          ]
+        }
       }
       try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys, .prettyPrinted])
         .write(to: root.appendingPathComponent("state.json"), options: .atomic)

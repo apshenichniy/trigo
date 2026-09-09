@@ -290,6 +290,18 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     await synchronization?.retry(callID: callID)
   }
 
+  public func makeLibrarySession() async throws -> LibrarySession? {
+    guard let binding = await connection.snapshot().binding else { return nil }
+    return try LibrarySession(
+      repository: LocalRepository(root: namespace.archive, archiveID: binding.archiveId),
+      player: .live(connection: connection, archiveID: binding.archiveId),
+      retry: { [weak self] callID in
+        await self?.uploads?.wake()
+        await self?.retrySynchronization(callID: callID)
+      }
+    )
+  }
+
   public var microphoneState: MicrophoneRecordingState {
     guard phase == .recording || phase == .starting else { return .inactive }
     if phase == .starting { return .starting }

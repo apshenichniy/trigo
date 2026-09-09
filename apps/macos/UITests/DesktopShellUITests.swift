@@ -399,6 +399,269 @@ import XCTest
     app.descendants(matching: .any).matching(identifier: "recording-notification").firstMatch
   }
 
+  func testReaderSelectionRevisionsPlaybackAndNarrowDarkLayout() throws {
+    try openReader()
+    XCTAssertTrue(readerRow("Today").exists)
+    XCTAssertTrue(readerRow("Yesterday").exists)
+    XCTAssertTrue(readerText("Unknown speaker").exists)
+    XCTAssertTrue(readerText("controlled transcript paragraph").exists)
+    capture("shell-reader-light", library)
+    attach("shell-reader-accessibility", library.debugDescription)
+    let timestamp = library.buttons
+      .matching(NSPredicate(format: "identifier BEGINSWITH %@", "library-timestamp-")).firstMatch
+    timestamp.click()
+    XCTAssertTrue(
+      waitState {
+        $0["readerPlaybackPhase"] as? String == "playing"
+          && $0["readerPlaybackPositionMs"] as? Int == 100
+      }
+    )
+    library.buttons["library-play-pause"].click()
+    XCTAssertTrue(waitState { $0["readerPlaybackPhase"] as? String == "paused" })
+    let picker = library.descendants(matching: .any).matching(identifier: "library-revision-picker")
+      .firstMatch
+    picker.click()
+    app.menuItems.matching(NSPredicate(format: "label CONTAINS %@", "Retained")).firstMatch.click()
+    XCTAssertTrue(
+      waitState { $0["selectedRevisionID"] as? String != $0["activeRevisionID"] as? String }
+    )
+    XCTAssertTrue(readerText("retained revision stays readable").exists)
+    try attachState("shell-reader-retained-state")
+    selectReaderCall("00000000-0000-4000-8000-000000000201")
+    XCTAssertTrue(readerText("Saved on this Mac").exists)
+    XCTAssertFalse(library.buttons["library-play-pause"].isEnabled)
+    // The native List receives ordinary keyboard navigation and keeps its visible focus.
+    app.typeKey(.upArrow, modifierFlags: [])
+    XCTAssertTrue(
+      waitState { $0["selectedCallID"] as? String == "00000000-0000-4000-8000-000000000200" }
+    )
+    selectReaderCall("00000000-0000-4000-8000-000000000201")
+    library.buttons[XCUIIdentifierCloseWindow].click()
+    wait(library, "exists == false")
+    openMenu(); clickMenuItem("menu-open-library")
+    XCTAssertTrue(library.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      waitState { $0["selectedCallID"] as? String == "00000000-0000-4000-8000-000000000201" }
+    )
+    app.terminate()
+    app.launchArguments = app.launchArguments.map { $0 == "Light" ? "Dark" : $0 }
+    app.launch()
+    XCTAssertTrue(waitState { $0["bootstrapped"] as? Bool == true })
+    XCTAssertTrue(waitState { $0["appearance"] as? String == NSAppearance.Name.darkAqua.rawValue })
+    openMenu(); clickMenuItem("menu-open-library")
+    XCTAssertTrue(library.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      waitState { $0["selectedCallID"] as? String == "00000000-0000-4000-8000-000000000201" }
+    )
+    selectReaderCall("00000000-0000-4000-8000-000000000200")
+    let corner = library.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+      .withOffset(CGVector(dx: -2, dy: -2))
+    corner.press(forDuration: 0.2, thenDragTo: corner.withOffset(CGVector(dx: -280, dy: -90)))
+    XCTAssertLessThanOrEqual(library.frame.width, 850)
+    XCTAssertTrue(readerText("controlled transcript paragraph").exists)
+    XCTAssertTrue(library.buttons["library-play-pause"].isHittable)
+    capture("shell-reader-narrow-dark", library)
+  }
+
+  func testReaderUnicodeNamesGroupingAndExplicitConflictChoice() throws {
+    try openReader()
+    chooseReaderRevision("Retained")
+    XCTAssertTrue(
+      waitState { $0["selectedRevisionID"] as? String != $0["activeRevisionID"] as? String }
+    )
+    let baseline = try state()
+    let speakers = try XCTUnwrap(baseline["readerSpeakers"] as? [[String: String]])
+    let turns = try XCTUnwrap(baseline["turnIDs"] as? [String])
+    XCTAssertEqual(speakers.count, 4)
+    XCTAssertNotEqual(speakers[0]["scopeID"], speakers[1]["scopeID"])
+    XCTAssertNotEqual(speakers[0]["neutralLabel"], speakers[1]["neutralLabel"])
+    let first = library.descendants(matching: .any)
+      .matching(identifier: "library-speaker-\(turns[0])").firstMatch
+    let second = library.descendants(matching: .any)
+      .matching(identifier: "library-speaker-\(turns[1])").firstMatch
+    first.click(); app.menuItems["Rename…"].click()
+    let name = app.textFields["speaker-display-name"]
+    XCTAssertTrue(name.waitForExistence(timeout: 5))
+    name.click(); name.typeText("Zoë · Олена 🎙️")
+    app.buttons["speaker-save"].click()
+    XCTAssertTrue(
+      waitState { ($0["readerSpeakers"] as? [[String: String]])?.first?["name"] == "Zoë · Олена 🎙️" }
+    )
+    first.click(); app.menuItems["Group with…"].click()
+    setReaderGroupName("Review group")
+    app.checkBoxes["speaker-choice-\(try XCTUnwrap(speakers[2]["id"]))"].click()
+    capture("shell-reader-group-editor", app.sheets.firstMatch)
+    app.buttons["speaker-save"].click()
+    XCTAssertTrue(
+      waitState {
+        ($0["readerSpeakers"] as? [[String: String]])?.filter { $0["name"] == "Review group" }.count
+          == 2
+      }
+    )
+    second.click(); app.menuItems["Group with…"].click()
+    setReaderGroupName("Second group")
+    app.checkBoxes["speaker-choice-\(try XCTUnwrap(speakers[3]["id"]))"].click()
+    app.buttons["speaker-save"].click()
+    XCTAssertTrue(
+      waitState {
+        ($0["readerSpeakers"] as? [[String: String]])?.filter { $0["name"] == "Second group" }.count
+          == 2
+      }
+    )
+    let beforeMerge = try XCTUnwrap(try state()["readerSpeakers"] as? [[String: String]])
+    let secondGroup = try XCTUnwrap(beforeMerge[1]["groupID"])
+    first.click(); app.menuItems["Group with…"].click()
+    XCTAssertTrue(name.waitForExistence(timeout: 5))
+    app.checkBoxes["speaker-choice-\(secondGroup)"].click()
+    app.buttons["speaker-save"].click()
+    XCTAssertTrue(
+      waitState {
+        ($0["readerSpeakers"] as? [[String: String]])?
+          .allSatisfy { $0["name"] == "Review group" && $0["groupID"] != "" } == true
+      }
+    )
+    XCTAssertTrue(readerText("Sync pending").exists)
+    try attachState("shell-reader-grouped-state")
+    first.click(); app.menuItems["Manage group…"].click()
+    let removal = app.checkBoxes["speaker-remove-\(try XCTUnwrap(speakers[0]["id"]))"]
+    XCTAssertTrue(removal.waitForExistence(timeout: 5))
+    removal.click(); app.buttons["speaker-save"].click()
+    XCTAssertTrue(
+      waitState { ($0["readerSpeakers"] as? [[String: String]])?.first?["name"] == "Zoë · Олена 🎙️" }
+    )
+    XCTAssertEqual(
+      (try state()["readerSpeakers"] as? [[String: String]])?
+        .filter { $0["name"] == "Review group" }.count,
+      3
+    )
+    second.click(); app.menuItems["Manage group…"].click()
+    XCTAssertTrue(app.buttons["speaker-ungroup"].waitForExistence(timeout: 5))
+    app.buttons["speaker-ungroup"].click()
+    XCTAssertTrue(
+      waitState {
+        ($0["readerSpeakers"] as? [[String: String]])?.allSatisfy { $0["groupID"] == "" } == true
+      }
+    )
+    let after = try state()
+    XCTAssertEqual(after["revisionHash"] as? String, baseline["revisionHash"] as? String)
+    XCTAssertEqual(after["turnIDs"] as? [String], baseline["turnIDs"] as? [String])
+    XCTAssertEqual(after["activeRevisionID"] as? String, baseline["activeRevisionID"] as? String)
+    XCTAssertNotEqual(after["selectedRevisionID"] as? String, after["activeRevisionID"] as? String)
+    chooseReaderRevision("Current")
+    XCTAssertTrue(
+      waitState { $0["selectedRevisionID"] as? String == $0["activeRevisionID"] as? String }
+    )
+    XCTAssertTrue(
+      (try state()["readerSpeakers"] as? [[String: String]])?
+        .allSatisfy { $0["name"] == $0["neutralLabel"] && $0["groupID"] == "" } == true
+    )
+    selectReaderCall("00000000-0000-4000-8000-000000000203")
+    library.buttons["library-compare-names"].click()
+    XCTAssertTrue(app.buttons["library-conflict-use-server"].waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.staticTexts
+        .matching(
+          NSPredicate(
+            format: "label CONTAINS %@ OR value CONTAINS %@",
+            "This Mac's fixture name",
+            "This Mac's fixture name"
+          )
+        )
+        .firstMatch.exists
+    )
+    capture("shell-reader-conflict-comparison", app.sheets.firstMatch)
+    app.buttons["library-conflict-use-server"].click()
+    XCTAssertTrue(
+      waitState {
+        ($0["readerSpeakers"] as? [[String: String]])?.first?["name"] == "Server fixture name"
+      }
+    )
+    try attachState("shell-reader-conflict-resolved-state")
+  }
+
+  private func setReaderGroupName(_ value: String) {
+    let name = app.textFields["speaker-display-name"]
+    XCTAssertTrue(name.waitForExistence(timeout: 5))
+    name.click(); app.typeKey("a", modifierFlags: .command); name.typeText(value)
+  }
+
+  private func chooseReaderRevision(_ marker: String) {
+    library.descendants(matching: .any).matching(identifier: "library-revision-picker").firstMatch
+      .click()
+    app.menuItems.matching(NSPredicate(format: "label CONTAINS %@", marker)).firstMatch.click()
+  }
+
+  func testReaderNoSpeechUnavailablePlaybackAndRecovery() throws {
+    try openReader()
+    selectReaderCall("00000000-0000-4000-8000-000000000202")
+    XCTAssertTrue(readerText("No speech detected").exists)
+    XCTAssertTrue(library.buttons["library-play-pause"].isEnabled)
+    library.buttons["library-play-pause"].click()
+    XCTAssertTrue(
+      waitState {
+        $0["readerCanPlay"] as? Bool == false && $0["readerCanRetryPlayback"] as? Bool == true
+      }
+    )
+    XCTAssertFalse(library.buttons["library-play-pause"].isEnabled)
+    XCTAssertFalse(library.sliders["library-playback-slider"].isEnabled)
+    XCTAssertTrue(readerText("audio server is unavailable").exists)
+    XCTAssertTrue(readerText("No speech detected").exists)
+    capture("shell-reader-playback-unavailable", library)
+    library.buttons["library-retry-playback"].click()
+    XCTAssertTrue(
+      waitState {
+        $0["readerCanPlay"] as? Bool == true && $0["readerPlaybackPhase"] as? String == "paused"
+      }
+    )
+    library.buttons["library-play-pause"].click()
+    XCTAssertTrue(waitState { $0["readerPlaybackPhase"] as? String == "playing" })
+    capture("shell-reader-no-speech-playback", library)
+    try attachState("shell-reader-playback-recovered-state")
+    library.buttons[XCUIIdentifierCloseWindow].click()
+    XCTAssertTrue(waitState { $0["readerPlaybackPhase"] as? String == "paused" })
+  }
+
+  private func openReader() throws {
+    try launch(scenario: "reader")
+    openMenu(); clickMenuItem("menu-open-library")
+    XCTAssertTrue(library.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      waitState {
+        $0["readerCallCount"] as? Int == 4 && $0["readerFailure"] as? String == ""
+          && ($0["readerSpeakers"] as? [[String: String]])?.count == 4
+      }
+    )
+    XCTAssertEqual(try state()["readerAdapter"] as? String, "synthetic-validated-repository")
+    XCTAssertEqual(try state()["playbackAdapter"] as? String, "synthetic-held-output-no-device")
+  }
+
+  private func readerText(_ text: String) -> XCUIElement {
+    library.staticTexts
+      .matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", text, text))
+      .firstMatch
+  }
+
+  private func selectReaderCall(_ callID: String) {
+    let title: String
+    switch callID {
+    case "00000000-0000-4000-8000-000000000200": title = "Synthetic review"
+    case "00000000-0000-4000-8000-000000000201": title = "Synthetic capture"
+    case "00000000-0000-4000-8000-000000000202": title = "Synthetic quiet recording"
+    case "00000000-0000-4000-8000-000000000203": title = "Synthetic annotation conflict"
+    default: XCTFail("Unknown reader fixture call"); return
+    }
+    let row = readerRow(title)
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.click()
+    XCTAssertTrue(waitState { $0["selectedCallID"] as? String == callID })
+  }
+
+  private func readerRow(_ title: String) -> XCUIElement {
+    library.outlineRows
+      .matching(NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", title, title))
+      .firstMatch
+  }
+
   private static func level(_ state: [String: Any], _ role: String) -> Double {
     state["\(role)RMS"] as? Double ?? -1
   }
@@ -471,6 +734,7 @@ import XCTest
     app.launch()
     XCTAssertTrue(waitState { $0["bootstrapped"] as? Bool == true })
     let evidence = try state()
+    XCTAssertEqual(evidence["appearance"] as? String, NSAppearance.Name.aqua.rawValue)
     XCTAssertEqual(evidence["fixture"] as? Bool, true)
     XCTAssertEqual(evidence["bundleId"] as? String, "io.github.apshenichniy.trigo.fixture.desktop")
     XCTAssertEqual(evidence["credentialAdapter"] as? String, "memory-fixture")

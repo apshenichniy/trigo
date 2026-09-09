@@ -4,6 +4,9 @@ import TrigoNative
 /// #20 owns reader contents inside this host. #72 can supply seeded views without a live store.
 @MainActor public struct DesktopReader {
   let makeContent: (DesktopShell) -> AnyView
+  var configureWindow: (NSWindow, DesktopShell) -> AnyObject? = { _, _ in nil }
+  var willOpen: (String?) -> Void = { _ in }
+  var didClose: () -> Void = {}
 
   public init<Content: View>(@ViewBuilder content: @escaping (DesktopShell) -> Content) {
     makeContent = { AnyView(content($0)) }
@@ -15,6 +18,14 @@ import TrigoNative
 
   public static var empty: Self {
     Self { LibraryPlaceholder(shell: $0, isEmpty: true) }
+  }
+
+  public static func live(model: LibraryModel) -> Self {
+    var reader = Self { LibraryView(model: model, shell: $0) }
+    reader.configureWindow = { window, _ in LibraryToolbar(window: window, model: model) }
+    reader.willOpen = { model.start(selecting: $0) }
+    reader.didClose = { model.close() }
+    return reader
   }
 }
 
@@ -33,6 +44,7 @@ private struct LibraryPlaceholder: View {
       .padding(22)
       .frame(width: 270, alignment: .leading)
       .libraryGlass()
+      .accessibilityElement(children: .contain)
       .accessibilityIdentifier("library-sidebar")
       VStack(alignment: .leading, spacing: 16) {
         Image(systemName: "text.bubble").font(.largeTitle).foregroundStyle(.secondary)
@@ -58,10 +70,12 @@ private struct LibraryPlaceholder: View {
       }
       .padding(32)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+      .accessibilityElement(children: .contain)
       .accessibilityIdentifier("library-detail")
     }
     .padding(12)
     .background(Color(nsColor: .textBackgroundColor))
+    .accessibilityElement(children: .contain)
     .accessibilityIdentifier("library-content")
   }
 }

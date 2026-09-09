@@ -25,7 +25,7 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
   private var menuMayStart = false
   private var lastPhase: RecordingControlPhase
   private var lastSavedCallID: String?
-  public var openLibrary: () -> Void = {}
+  public var openLibrary: (String?) -> Void = { _ in }
   public var openSettings: () -> Void = {}
 
   public init(composition: DesktopComposition) {
@@ -53,10 +53,10 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
 
   public func launch(_ reason: DesktopLaunchReason) {
     bootstrap()
-    if reason == .explicit { openLibrary() }
+    if reason == .explicit { openLibrary(nil) }
   }
 
-  public func reopen() { openLibrary() }
+  public func reopen(callID: String? = nil) { openLibrary(callID) }
 
   /// Called synchronously by the native menu's will-open callback, before it is presented.
   /// An intent shown during a busy operation must not become a queued Start after it settles.
