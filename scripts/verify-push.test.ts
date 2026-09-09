@@ -178,6 +178,36 @@ it("checks the actual pushed commit and rejects dirty or hidden working changes"
   expect(() => checkedSource(root, env)).toThrow("assume-unchanged");
 });
 
+it("rejects a clean HEAD change between push admission and the first verification snapshot", async () => {
+  const { root, git, env } = fixture();
+  const admitted = checkedSource(root, env);
+  expect(
+    assertPushMatchesHead(
+      `refs/heads/main ${admitted.head} refs/heads/main ${"0".repeat(40)}\n`,
+      root,
+      admitted.head,
+      env,
+    ),
+  ).toBe(true);
+  writeFileSync(resolve(root, "source.txt"), "different clean commit\n");
+  git("add", "source.txt");
+  git("commit", "-qm", "test: move head after push admission");
+  let ran = false;
+  await expect(
+    verifyPush({
+      directory: resolve(root, ".local/proof"),
+      source: () => checkedSource(root, env, admitted.head),
+      environment: () => "fixture",
+      check: async (log) => {
+        ran = true;
+        writeFileSync(log, "wrong commit checked\n");
+      },
+      reusable: true,
+    }),
+  ).rejects.toThrow("HEAD changed");
+  expect(ran).toBe(false);
+});
+
 it("installs one shared hook for worktrees and preserves custom hooks and configuration", () => {
   const { root, git } = fixture();
   mkdirSync(resolve(root, ".githooks"));

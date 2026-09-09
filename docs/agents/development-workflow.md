@@ -54,6 +54,11 @@ package setup). Commit the stable candidate, run `bun run verify:push`, then pus
 and include its source/tree and result in the PR. A matching successful receipt
 is reused by the hook. Keep the worktree clean during verification.
 
+Before merging, fetch current main and incorporate it into the PR candidate if
+needed. Verify that integration locally, then confirm that main has not moved
+and the proposed merge tree matches the verified tree. Reconcile and verify again
+if either changed; unchanged trees may reuse matching evidence.
+
 Automatic GitHub Actions are paused during active development. Full Actions checks
 remain an explicit manual operation; do not start a paid runner merely to repeat
 matching local evidence. Main requires a pull request, while the local hook supplies

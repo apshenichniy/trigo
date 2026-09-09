@@ -61,7 +61,11 @@ export function verificationEnvironment(root: string): NodeJS.ProcessEnv {
   return env;
 }
 
-export function checkedSource(root: string, env = process.env): Source {
+export function checkedSource(root: string, env = process.env, expectedHead?: string): Source {
+  const head = git(root, ["rev-parse", "HEAD"], env);
+  if (expectedHead !== undefined && head !== expectedHead) {
+    throw new Error("HEAD changed after verification admission; check the intended commit again");
+  }
   if (git(root, ["status", "--porcelain=v1", "--untracked-files=all"], env)) {
     throw new Error(
       "Commit or preserve your working changes before verification; only a clean pushed HEAD can be checked",
@@ -76,11 +80,15 @@ export function checkedSource(root: string, env = process.env): Source {
       "Clear assume-unchanged/skip-worktree flags before verifying the pushed source",
     );
   }
-  return {
-    head: git(root, ["rev-parse", "HEAD"], env),
-    tree: git(root, ["rev-parse", "HEAD^{tree}"], env),
+  const source = {
+    head,
+    tree: git(root, ["rev-parse", `${head}^{tree}`], env),
     fingerprint: inputFingerprint(["."], root),
   };
+  if (git(root, ["rev-parse", "HEAD"], env) !== head) {
+    throw new Error("HEAD changed while reading source; check the intended commit again");
+  }
+  return source;
 }
 
 export function assertPushMatchesHead(
@@ -291,7 +299,7 @@ if (import.meta.main) {
     ];
     const result = await verifyPush({
       directory: resolve(root, ".local/push-verification"),
-      source: () => checkedSource(root, env),
+      source: () => checkedSource(root, env, head),
       environment: () =>
         digest(
           JSON.stringify({

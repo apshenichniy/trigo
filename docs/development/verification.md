@@ -134,6 +134,9 @@ Main requires a pull request and retains its force-push/deletion restrictions.
 It no longer requires automatic Actions status checks during this phase. Git
 hooks run locally and can be bypassed by Git options or web edits, so reviewers
 must check the PR's actual local evidence; this is not a remote attestation.
+Before merging, follow the [current-main integration check](../agents/development-workflow.md#implementation-and-handoff).
+The evidence must cover the proposed merge tree with current main; a passing
+receipt from an older base alone does not establish that integration.
 
 ## Explicit manual Actions
 
