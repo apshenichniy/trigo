@@ -557,9 +557,11 @@ struct LocalServerAcceptanceTests {
     #expect(reader.selectedRevisionID == revisionID)
     let selectedCall = try #require(reader.selectedCall)
     #expect(LibraryCallStatus(selectedCall).title == "Ready — saved on this Mac and server")
-    let firstTurn = try #require(reader.turns.first)
-    await reader.seek(to: firstTurn.startMs, play: true)
-    #expect(reader.playback.phase == .playing && reader.playback.positionMs == firstTurn.startMs)
+    // The local provider intentionally returns no speech. Its retained audio must still
+    // be usable through the same reader; transcript-button dispatch has a seeded UI test.
+    #expect(reader.turns.isEmpty && reader.selectedRevision?.turnCount == 0)
+    await reader.seek(to: 0, play: true)
+    #expect(reader.playback.phase == .playing && reader.playback.positionMs == 0)
     #expect(reader.playback.durationMs == 31_000)
     await reader.togglePlayback()
     #expect(reader.playback.phase == .paused)
@@ -594,7 +596,7 @@ struct LocalServerAcceptanceTests {
       try await FileConnectionMetadataStore(url: namespace.connection).load()
     }
     print(
-      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + upload/finalization + lost receipt replay + verified cleanup + canonical base + automatic fake ASR + exact result/provenance import + confirmed replica + fresh restoration + library projection/timestamp playback/seek + stereo AVAudioEngine rendering passed"
+      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + upload/finalization + lost receipt replay + verified cleanup + canonical base + automatic fake ASR + exact result/provenance import + confirmed replica + fresh restoration + no-speech library projection/playback/seek + stereo AVAudioEngine rendering passed"
     )
   }
 }

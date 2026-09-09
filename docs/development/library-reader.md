@@ -71,10 +71,11 @@ The native/local Worker acceptance creates a 31-second two-source master, loses
 the first local receipt commit, replays upload/finalization, verifies normal local
 master removal, runs automatic fake ASR, imports exact result/provenance bytes,
 confirms the canonical replica and restores it into a fresh repository. The
-reader then selects the restored transcript and plays its timestamp, seeks across
+reader then selects the restored no-speech transcript, plays its audio, seeks across
 the 30-second segment boundary and back, and checks distinct stereo samples with
 real AVAudioEngine offline rendering. This is local shared-service integration;
-it is not a hosted-ASR or audible-device claim.
+it is not a hosted-ASR or audible-device claim. Timestamp-button dispatch is
+covered separately by the seeded native UI scenario and focused reader tests.
 
 The `reader` UI scenario uses the production views and real canonical repository
 with a validated synthetic archive. Its playback transport and held output are
@@ -144,3 +145,13 @@ The PR records final source identity, complete local/CI results and any remainin
 GUI limitation after this document is committed. Signed installed controls,
 hosted playback and the complete one-/three-hour provider path remain integrated
 #24 acceptance; fixture text alone is not first-use delivery.
+
+The first full native check on `9fe2b3c21ae5c02583cd01a9d502fff5ce92b192`
+passed nine contract tests, 267 fast native tests, three contention tests, all
+seven resource proofs and both app builds. The final local Worker smoke failed
+because its new reader assertion incorrectly expected a speech turn from the
+deliberately empty fake provider. The corrected assertion requires the no-speech
+revision and exercises retained-audio playback and seeking through the reader.
+The failed full invocation is retained at 552.200 s; focused rerun and final CI
+outcomes belong in the PR. No provider or product behavior was changed for this
+test correction.
