@@ -5,14 +5,17 @@ import { TranscriptRevision, validateDocument, type VerifiedMasterReceipt } from
 import { nova3StreamProfile } from "../../../packages/contracts/src/asr-profile.ts";
 import { normalizeNova3Master, type Nova3MasterSubmission } from "./nova-3-master.ts";
 import {
-  currentAttemptFence,
+  AttemptRow,
   currentTranscriptionFence,
   executeTranscriptionSQL,
   readTranscription,
   requireCurrentAttempt,
+  resultAttemptFence,
+  resultOperationStateFence,
+  transcriptionRows,
   transcriptionTimestamp,
-  type AttemptRow,
   type TranscriptionRow,
+  type TranscriptionResultRecovery,
 } from "./transcription-catalog.ts";
 import { transcriptionError, transcriptionJSON } from "./transcription-errors.ts";
 import {
@@ -20,10 +23,13 @@ import {
   deterministicTranscriptionIDs,
   loadTranscriptionMaster,
   recoverSubmission,
-  type TranscriptionExecutionEnvironment,
 } from "./transcription-submissions.ts";
 import { storeTranscriptionArtifact } from "./transcription-writers.ts";
-import { maximumProvenanceBytes, maximumRevisionBytes } from "./transcriptions.ts";
+import {
+  maximumProvenanceBytes,
+  maximumRevisionBytes,
+  type TranscriptionEnvironment,
+} from "./transcriptions.ts";
 
 function emptyMasterResult(operation: TranscriptionRow, receipt: VerifiedMasterReceipt) {
   return {
@@ -61,7 +67,7 @@ function emptyMasterResult(operation: TranscriptionRow, receipt: VerifiedMasterR
 }
 
 const normalizeAttempt = Effect.fn("Transcription.normalizeAttempt")(function* (
-  env: TranscriptionExecutionEnvironment,
+  env: TranscriptionEnvironment,
   operation: TranscriptionRow,
   attempt: AttemptRow,
 ) {
@@ -131,13 +137,18 @@ const normalizeAttempt = Effect.fn("Transcription.normalizeAttempt")(function* (
 /** Artifact durability precedes the one atomic available-result publication. It never changes
  * a canonical manifest, imports a local revision, or acknowledges replica synchronization. */
 export const recoverAndPublishTranscription = Effect.fn("Transcription.recoverAndPublish")(
-  function* (env: TranscriptionExecutionEnvironment, operationId: string, attempt: AttemptRow) {
+  function* (
+    env: TranscriptionEnvironment,
+    operationId: string,
+    attempt: AttemptRow,
+    recovery: TranscriptionResultRecovery = "active",
+  ) {
     const operation = yield* readTranscription(env.CATALOG, operationId);
     yield* loadTranscriptionMaster(env, operation);
     if (operation.state === "result_available") {
       return operation;
     }
-    yield* requireCurrentAttempt(env.CATALOG, attempt.attempt_id);
+    yield* requireCurrentAttempt(env.CATALOG, attempt.attempt_id, recovery);
     const normalized = yield* normalizeAttempt(env, operation, attempt);
     const revision = yield* Effect.try({
       try: () => validateDocument("TranscriptRevision", normalized.revision),
@@ -164,6 +175,7 @@ export const recoverAndPublishTranscription = Effect.fn("Transcription.recoverAn
       attempt,
       "provenance",
       provenanceBytes,
+      recovery,
     );
     const result = yield* storeTranscriptionArtifact(
       env,
@@ -171,6 +183,7 @@ export const recoverAndPublishTranscription = Effect.fn("Transcription.recoverAn
       attempt,
       "revision",
       revisionBytes,
+      recovery,
     );
     const now = yield* transcriptionTimestamp();
     yield* executeTranscriptionSQL(
@@ -178,8 +191,8 @@ export const recoverAndPublishTranscription = Effect.fn("Transcription.recoverAn
       `UPDATE trigo_transcription_operations AS o SET state='result_available',updated_at=?,
      result_key=?,result_sha256=?,result_byte_length=?,provenance_key=?,provenance_sha256=?,provenance_byte_length=?,
      failure_code=NULL,failure_retry=NULL
-     WHERE o.operation_id=? AND o.state IN ('queued','running') AND ${currentTranscriptionFence}
-     AND EXISTS (SELECT 1 FROM trigo_transcription_attempts a WHERE a.attempt_id=? AND a.operation_id=o.operation_id AND ${currentAttemptFence})
+     WHERE o.operation_id=? AND ${resultOperationStateFence(recovery)} AND ${currentTranscriptionFence}
+     AND EXISTS (SELECT 1 FROM trigo_transcription_attempts a WHERE a.attempt_id=? AND a.operation_id=o.operation_id AND ${resultAttemptFence(recovery)})
      AND EXISTS (SELECT 1 FROM trigo_transcription_writers w WHERE w.writer_id=? AND w.operation_id=o.operation_id AND w.attempt_id=? AND w.kind='revision' AND w.state='stored')
      AND EXISTS (SELECT 1 FROM trigo_transcription_writers w WHERE w.writer_id=? AND w.operation_id=o.operation_id AND w.attempt_id=? AND w.kind='provenance' AND w.state='stored')`,
       [
@@ -212,5 +225,27 @@ export const recoverAndPublishTranscription = Effect.fn("Transcription.recoverAn
       [attempt.attempt_id],
     );
     return published;
+  },
+);
+
+/** An explicit replay of the same failed initial command can repair normalization from
+ * retained complete responses. This boundary has no provider runner capability. */
+export const recoverFailedNormalization = Effect.fn("Transcription.recoverFailedNormalization")(
+  function* (env: TranscriptionEnvironment, operationId: string) {
+    const [attempt] = yield* transcriptionRows(
+      env.CATALOG,
+      AttemptRow,
+      "SELECT * FROM trigo_transcription_attempts WHERE operation_id=? ORDER BY attempt_index DESC LIMIT 1",
+      [operationId],
+    );
+    if (!attempt) {
+      return yield* transcriptionError("asr_result_invalid");
+    }
+    return yield* recoverAndPublishTranscription(
+      env,
+      operationId,
+      attempt,
+      "retained-normalization",
+    );
   },
 );

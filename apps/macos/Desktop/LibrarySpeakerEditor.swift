@@ -215,7 +215,10 @@ struct LibrarySpeakerEditor: View {
         Button("Play \(LibraryDate.clock(excerpt.startMs))") {
           Task { await model.seek(to: excerpt.startMs, play: true) }
         }
-        .disabled(!model.canPlay)
+        .disabled(!model.canPlay || excerpt.endMs == excerpt.startMs)
+        if excerpt.hasApproximateTiming {
+          Text("Approximate timing").font(.caption).foregroundStyle(.secondary)
+        }
         Text(excerpt.text).font(.callout).foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }

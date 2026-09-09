@@ -174,3 +174,22 @@ func sqliteFixtureSQL(_ url: URL, _ sql: String) throws {
   defer { sqlite3_close(database) }
   try sqliteFixtureExec(database, sql)
 }
+
+@Test func repositoryVersionFourMigrationRetainsCallBytesAndLifecycle() async throws {
+  let root = repositoryRoot("timing-migration")
+  defer { try? FileManager.default.removeItem(at: root) }
+  var repository: LocalRepository? = try await seedRepositoryCall(root: root)
+  let before = try await repository!.snapshotBytes(callID: repositoryCallID, version: 1)
+  let lifecycle = try await repository!.lifecycle(callID: repositoryCallID)
+  repository = nil
+  try sqliteFixtureSQL(
+    root.appendingPathComponent(SQLiteDatabase.filename),
+    "DROP TABLE revision_timing_flags; PRAGMA user_version=4"
+  )
+  let migrated = try LocalRepository(root: root, archiveID: repositoryArchiveID)
+  #expect(try await migrated.snapshotBytes(callID: repositoryCallID, version: 1) == before)
+  #expect(try await migrated.lifecycle(callID: repositoryCallID) == lifecycle)
+  #expect(
+    try migrated.database.access { try migrated.database.scalarInt("PRAGMA user_version") } == 5
+  )
+}

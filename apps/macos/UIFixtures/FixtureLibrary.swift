@@ -169,6 +169,29 @@ enum FixtureLibrary {
       unknown.turnId = UUID().uuidString.lowercased(); unknown.speakerId = nil
       unknown.startMs = 900; unknown.endMs = 950
       unknown.text = "This passage has unknown speaker attribution. No identity is inferred."
+      if twoRevisions && index == 1 {
+        revision.normalizationVersion = 2
+        revision.turns[0].endMs = 1000
+        revision.turns[0].words = [
+          .init(
+            text: revision.turns[0].text,
+            startMs: 100,
+            endMs: 1200,
+            confidence: nil,
+            timingUncertain: true
+          )
+        ]
+        unknown.startMs = 1000; unknown.endMs = 1000
+        unknown.words = [
+          .init(
+            text: unknown.text,
+            startMs: 1050,
+            endMs: 1200,
+            confidence: nil,
+            timingUncertain: true
+          )
+        ]
+      }
       revision.turns.append(unknown)
       if noSpeech { revision.turns = []; revision.speakers = [] }
       let bytes = try Contract.encode(revision)

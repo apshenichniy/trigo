@@ -7,12 +7,14 @@ import {
   currentAttemptFence,
   executeTranscriptionSQL,
   newTranscriptionIdentity,
+  resultAttemptFence,
   transcriptionRows,
   transcriptionTimestamp,
   TranscriptionWriterRow,
   type AttemptRow,
   type SubmissionRow,
   type TranscriptionRow,
+  type TranscriptionResultRecovery,
 } from "./transcription-catalog.ts";
 import { transcriptionError, transcriptionStorage } from "./transcription-errors.ts";
 import { objectMatches } from "./upload-streams.ts";
@@ -175,6 +177,7 @@ export const storeTranscriptionArtifact = Effect.fn("TranscriptionWriter.store")
   attempt: AttemptRow,
   kind: "revision" | "provenance",
   bytes: Uint8Array,
+  recovery: TranscriptionResultRecovery = "active",
 ) {
   const sha256 = yield* Effect.promise(() => storedByteHash(bytes));
   const retained = yield* transcriptionRows(
@@ -202,7 +205,7 @@ export const storeTranscriptionArtifact = Effect.fn("TranscriptionWriter.store")
     `INSERT OR IGNORE INTO trigo_transcription_writers
      (writer_id,operation_id,attempt_id,kind,object_key,sha256,byte_length,state,created_at)
      SELECT ?,?,?,?,?,?,?,'admitted',? FROM trigo_transcription_attempts a
-     WHERE a.attempt_id=? AND ${currentAttemptFence}`,
+     WHERE a.attempt_id=? AND ${resultAttemptFence(recovery)}`,
     [
       writerId,
       operation.operation_id,

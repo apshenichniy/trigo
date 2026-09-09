@@ -47,6 +47,57 @@ const inputBase = {
   ],
 };
 
+it.effect("retains overlapping and beyond-end words with approximate timing", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        {
+          ...object(0, {
+            results: {
+              channels: [
+                {
+                  alternatives: [
+                    {
+                      words: [
+                        { word: "First", start: 10.4, end: 11.2, confidence: 0.98 },
+                        { word: "overlap", start: 10.919, end: 11.239 },
+                        { word: "clear", start: 12, end: 13 },
+                        { word: "tail", start: 18.359, end: 18.599 },
+                        {
+                          word: "outside",
+                          punctuated_word: "outside.",
+                          start: 18.599,
+                          end: 18.999,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                { alternatives: [{ words: [{ word: "Boundary", start: 18.599, end: 18.999 }] }] },
+              ],
+            },
+          }),
+          endMs: 18_514,
+        },
+      ],
+    });
+    expect(result.normalizationVersion).toBe(2);
+    expect(result.turns.map(({ startMs, endMs, text }) => ({ startMs, endMs, text }))).toEqual([
+      { startMs: 10_400, endMs: 18_514, text: "First overlap clear tail outside." },
+      { startMs: 18_514, endMs: 18_514, text: "Boundary" },
+    ]);
+    expect(result.turns[0]?.words).toEqual([
+      { text: "First", startMs: 10_400, endMs: 11_200, confidence: 0.98, timingUncertain: true },
+      { text: "overlap", startMs: 10_919, endMs: 11_239, confidence: null, timingUncertain: true },
+      { text: "clear", startMs: 12_000, endMs: 13_000, confidence: null },
+      { text: "tail", startMs: 18_359, endMs: 18_599, confidence: null, timingUncertain: true },
+      { text: "outside.", startMs: 18_599, endMs: 18_999, confidence: null, timingUncertain: true },
+    ]);
+  }),
+);
+
 it.effect("preserves channel provenance, gaps, and independent speaker scopes", () =>
   Effect.gen(function* () {
     const result = yield* normalizeNova3({
@@ -235,5 +286,206 @@ it.effect("rejects provider text when word timing is absent", () =>
     }).pipe(Effect.flip);
 
     expect(error.message).toContain("text without word timing");
+  }),
+);
+
+it.effect("keeps corrupt alignment from marking later independent words as uncertain", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        object(0, {
+          results: {
+            channels: [
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "outlier", start: 0.1, end: 100 },
+                      { word: "clear", start: 1, end: 2 },
+                      { word: "reversed", start: 4, end: 3 },
+                      { word: "clear-again", start: 5, end: 6 },
+                    ],
+                  },
+                ],
+              },
+              { alternatives: [{ words: [] }] },
+            ],
+          },
+        }),
+      ],
+    });
+    expect(result.turns[0]?.words.map((w) => w.timingUncertain ?? false)).toEqual([
+      true,
+      false,
+      true,
+      false,
+    ]);
+    expect(result.turns[0]?.words[2]).toMatchObject({ startMs: 4000, endMs: 3000 });
+    expect(result.turns[0]).toMatchObject({
+      startMs: 100,
+      endMs: 60_000,
+      text: "outlier clear reversed clear-again",
+    });
+  }),
+);
+
+it.effect("marks conflicting word order without sorting the provider's text", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        object(0, {
+          results: {
+            channels: [
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "First", start: 5, end: 6 },
+                      { word: "second", start: 1, end: 2 },
+                      { word: "third", start: 7, end: 8 },
+                    ],
+                  },
+                ],
+              },
+              { alternatives: [{ words: [] }] },
+            ],
+          },
+        }),
+      ],
+    });
+    expect(result.turns[0]).toMatchObject({
+      startMs: 1000,
+      endMs: 8000,
+      text: "First second third",
+    });
+    expect(result.turns[0]?.words.map((w) => w.timingUncertain ?? false)).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  }),
+);
+
+it.effect("still rejects structurally invalid or unrepresentable word timing", () =>
+  Effect.gen(function* () {
+    for (const start of [-1, Number.NaN, Number.MAX_VALUE]) {
+      const result = yield* normalizeNova3({
+        ...inputBase,
+        makeId: ids(),
+        objects: [
+          object(0, {
+            results: {
+              channels: [
+                { alternatives: [{ words: [{ word: "invalid", start, end: 1 }] }] },
+                { alternatives: [{ words: [] }] },
+              ],
+            },
+          }),
+        ],
+      }).pipe(Effect.result);
+      expect(result._tag).toBe("Failure");
+    }
+  }),
+);
+
+it.effect("preserves provider order across speaker changes with backward timestamps", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        object(0, {
+          results: {
+            channels: [
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "First", start: 5, end: 6, speaker: 0 },
+                      { word: "second", start: 1, end: 2, speaker: 1 },
+                      { word: "third", start: 7, end: 8, speaker: 2 },
+                    ],
+                  },
+                ],
+              },
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "Remote", start: 4, end: 4.5, speaker: 0 },
+                      { word: "later", start: 9, end: 10, speaker: 1 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      ],
+    });
+    expect(result.turns.map((turn) => turn.text)).toEqual([
+      "Remote",
+      "First",
+      "second",
+      "third",
+      "later",
+    ]);
+    expect(
+      result.turns
+        .filter((turn) => turn.trackId === microphoneTrack)
+        .map((turn) => ({
+          startMs: turn.startMs,
+          endMs: turn.endMs,
+          uncertain: turn.words.some((word) => word.timingUncertain),
+        })),
+    ).toEqual([
+      { startMs: 5000, endMs: 6000, uncertain: true },
+      { startMs: 1000, endMs: 2000, uncertain: true },
+      { startMs: 7000, endMs: 8000, uncertain: false },
+    ]);
+  }),
+);
+
+it.effect("keeps valid later speaker playback after a wholly outside speaker run", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        object(0, {
+          results: {
+            channels: [
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "Outside", start: 70, end: 71, speaker: 0 },
+                      { word: "clear", start: 1, end: 2, speaker: 1 },
+                    ],
+                  },
+                ],
+              },
+              { alternatives: [{ words: [{ word: "Remote", start: 4, end: 5 }] }] },
+            ],
+          },
+        }),
+      ],
+    });
+    expect(
+      result.turns.map((turn) => ({
+        text: turn.text,
+        startMs: turn.startMs,
+        endMs: turn.endMs,
+        uncertain: turn.words.some((word) => word.timingUncertain),
+      })),
+    ).toEqual([
+      { text: "Remote", startMs: 4000, endMs: 5000, uncertain: false },
+      { text: "Outside", startMs: 60_000, endMs: 60_000, uncertain: true },
+      { text: "clear", startMs: 1000, endMs: 2000, uncertain: false },
+    ]);
   }),
 );

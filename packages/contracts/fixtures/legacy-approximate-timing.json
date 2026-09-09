@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "callId": "00000000-0000-4000-8000-000000000001",
+  "revisionId": "00000000-0000-4000-8000-000000000006",
+  "createdAt": "2026-09-05T10:01:00Z",
+  "audioManifest": {
+    "manifestId": "00000000-0000-4000-8000-000000000004",
+    "sha256": "88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2"
+  },
+  "normalizationVersion": 1,
+  "asr": {
+    "adapter": "cloudflare-workers-ai",
+    "model": "@cf/deepgram/nova-3",
+    "profileId": "trigo-call-wav-s16le-16khz-stereo-60s-v1",
+    "requestedLanguage": "ru",
+    "detectedLanguages": [
+      "ru"
+    ],
+    "effectiveOptions": {
+      "diarize": true
+    },
+    "returnedModelVersion": null,
+    "providerRequestIds": []
+  },
+  "speakers": [
+    {
+      "speakerId": "00000000-0000-4000-8000-000000000007",
+      "trackId": "00000000-0000-4000-8000-000000000003",
+      "diarizationScopeId": "00000000-0000-4000-8000-000000000008",
+      "providerLabel": "0"
+    }
+  ],
+  "turns": [
+    {
+      "turnId": "00000000-0000-4000-8000-000000000009",
+      "trackId": "00000000-0000-4000-8000-000000000003",
+      "speakerId": "00000000-0000-4000-8000-000000000007",
+      "startMs": 100,
+      "endMs": 600,
+      "text": "Привет, світ! 👋",
+      "words": [
+        {
+          "text": "Привет,",
+          "startMs": 100,
+          "endMs": 300,
+          "confidence": 0.9,
+          "timingUncertain": true
+        },
+        {
+          "text": "світ! 👋",
+          "startMs": 250,
+          "endMs": 1100,
+          "confidence": null,
+          "timingUncertain": true
+        }
+      ]
+    },
+    {
+      "turnId": "00000000-0000-4000-8000-000000000010",
+      "trackId": "00000000-0000-4000-8000-000000000002",
+      "speakerId": null,
+      "startMs": 600,
+      "endMs": 900,
+      "text": "Hello.",
+      "words": []
+    }
+  ]
+}

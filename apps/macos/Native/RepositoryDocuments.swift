@@ -120,6 +120,14 @@ extension LocalRepository {
           ]
         }
     )
+    try await stageRows(
+      "INSERT OR IGNORE INTO revision_timing_flags VALUES (?,?)",
+      document.value.turns.enumerated()
+        .compactMap { ordinal, turn in
+          guard turn.words.contains(where: { $0.timingUncertain == true }) else { return nil }
+          return [.text(hash), .int(ordinal)]
+        }
+    )
     for (turnOrdinal, turn) in document.value.turns.enumerated() where !turn.words.isEmpty {
       try await stageRows(
         "INSERT OR IGNORE INTO revision_words VALUES (?,?,?,?,?,?,?)",

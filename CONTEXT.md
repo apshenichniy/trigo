@@ -42,6 +42,11 @@ The part of a transcription within which a provider's speaker labels can be comp
 A time-bounded passage of a transcript associated with a speaker label when one is available.
 _Avoid_: Message
 
+**Approximate word timing**:
+A provider-reported alignment that conflicts with adjacent words or the recorded audio interval.
+The transcript retains the word and its reported times as uncertain evidence; the turn's
+playback range remains inside the audio. It does not claim precise word-level navigation.
+
 **Speaker**:
 A voice distinguished within a call. A speaker label does not by itself establish the person's identity.
 

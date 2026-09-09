@@ -61,7 +61,8 @@ extension LocalRepository {
       try database.rows(
         """
         SELECT s.speaker_id,s.ordinal,s.track_id,t.role,s.scope_id,s.provider_label,n.name,g.group_id,g.display_name,
-          x.ordinal,x.turn_id,x.track_id,x.speaker_id,x.start_ms,x.end_ms,x.text
+          x.ordinal,x.turn_id,x.track_id,x.speaker_id,x.start_ms,x.end_ms,x.text,
+          EXISTS(SELECT 1 FROM revision_timing_flags f WHERE f.hash=x.hash AND f.turn_ordinal=x.ordinal)
         FROM call_revisions r JOIN speaker_details s ON s.hash=r.revision_hash
         JOIN call_tracks t ON t.hash=r.hash AND t.track_id=s.track_id
         LEFT JOIN speaker_names n ON n.hash=r.hash AND n.revision_id=r.revision_id AND n.speaker_id=s.speaker_id
@@ -87,7 +88,8 @@ extension LocalRepository {
           startMs: row.int(13),
           endMs: row.int(14),
           text: row.string(15),
-          speakerName: groupName ?? individual
+          speakerName: groupName ?? individual,
+          hasApproximateTiming: row.int(16) == 1
         )
       } else {
         excerpt = nil

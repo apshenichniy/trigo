@@ -132,6 +132,29 @@ export const currentAttemptFence = `EXISTS (
   WHERE newer.operation_id=a.operation_id AND newer.attempt_index>a.attempt_index
 )`;
 
+export type TranscriptionResultRecovery = "active" | "retained-normalization";
+
+/** Retained normalization grants artifact publication only. It never reopens the operation
+ * or authorizes provider admission, even while an old Workflow is replaying concurrently. */
+export function resultOperationStateFence(mode: TranscriptionResultRecovery): string {
+  return mode === "active"
+    ? "o.state IN ('queued','running')"
+    : "o.state='failed' AND o.failure_code='asr_result_invalid'";
+}
+
+export function resultAttemptFence(mode: TranscriptionResultRecovery): string {
+  if (mode === "active") {
+    return currentAttemptFence;
+  }
+  return `a.state='failed' AND a.failure_code='asr_result_invalid' AND EXISTS (
+    SELECT 1 FROM trigo_transcription_operations o
+    WHERE o.operation_id=a.operation_id AND ${resultOperationStateFence(mode)} AND ${currentTranscriptionFence}
+  ) AND NOT EXISTS (
+    SELECT 1 FROM trigo_transcription_attempts newer
+    WHERE newer.operation_id=a.operation_id AND newer.attempt_index>a.attempt_index
+  )`;
+}
+
 export const transcriptionTimestamp = Effect.fn("Transcription.timestamp")(function* () {
   return DateTime.formatIso(yield* DateTime.now);
 });
@@ -188,11 +211,12 @@ export const explainTranscriptionFence = Effect.fn("TranscriptionCatalog.fenceFa
 export const requireCurrentAttempt = Effect.fn("TranscriptionCatalog.currentAttempt")(function* (
   db: TranscriptionDatabase,
   attemptId: string,
+  mode: TranscriptionResultRecovery = "active",
 ) {
   const [attempt] = yield* transcriptionRows(
     db,
     AttemptRow,
-    `SELECT a.* FROM trigo_transcription_attempts a WHERE a.attempt_id=? AND ${currentAttemptFence}`,
+    `SELECT a.* FROM trigo_transcription_attempts a WHERE a.attempt_id=? AND ${resultAttemptFence(mode)}`,
     [attemptId],
   );
   if (!attempt) {

@@ -102,20 +102,28 @@ export function generateSwift(
       throw new Error(`Unsupported Swift object: ${name}`);
     }
     const properties = object(node.properties);
-    const required = strings(node.required);
+    const required = strings(node.required ?? []);
     const fields = Object.entries(properties).map(([key, value]) => {
-      if (!/^[a-z][A-Za-z0-9]*$/.test(key) || !required.includes(key)) {
-        throw new Error(`Unsupported optional/invalid Swift property: ${name}.${key}`);
+      if (!/^[a-z][A-Za-z0-9]*$/.test(key)) {
+        throw new Error(`Invalid Swift property: ${name}.${key}`);
       }
-      return { key, type: type(object(value)) };
+      const wireType = type(object(value));
+      const optional = !required.includes(key);
+      if (optional && wireType.endsWith("?")) {
+        throw new Error(`Unsupported optional nullable Swift property: ${name}.${key}`);
+      }
+      return { key, wireType, optional, type: optional ? `${wireType}?` : wireType };
     });
-    if (required.length !== fields.length) {
+    if (
+      new Set(required).size !== required.length ||
+      required.some((key) => !(key in properties))
+    ) {
       throw new Error(`Invalid required keys: ${name}`);
     }
     return `public struct ${name}: ${kinds.includes(name) ? "ContractDocument, " : ""}Codable, Equatable, Sendable {
 ${kinds.includes(name) ? `  public static let documentKind = "${name}"\n` : ""}${fields.map((field) => `  public var ${field.key}: ${field.type}`).join("\n")}
   public init(
-${fields.map((field) => `    ${field.key}: ${field.type}`).join(",\n")}
+${fields.map((field) => `    ${field.key}: ${field.type}${field.optional ? " = nil" : ""}`).join(",\n")}
   ) {
 ${fields.map((field) => `    self.${field.key} = ${field.key}`).join("\n")}
   }
@@ -124,16 +132,23 @@ ${fields.map((field) => `    case ${field.key}`).join("\n")}
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-${fields.map((field) => `    self.${field.key} = try container.decode(\n      ${field.type}.self,\n      forKey: .${field.key}\n    )`).join("\n")}
+${fields
+  .map((field) =>
+    field.optional
+      ? `    self.${field.key} =\n      try container.contains(.${field.key})\n      ? container.decode(${field.wireType}.self, forKey: .${field.key}) : nil`
+      : `    self.${field.key} = try container.decode(\n      ${field.type}.self,\n      forKey: .${field.key}\n    )`,
+  )
+  .join("\n")}
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
 ${fields
   .map((field) => {
-    const line = `    try container.encode(self.${field.key}, forKey: .${field.key})`;
+    const method = field.optional ? "encodeIfPresent" : "encode";
+    const line = `    try container.${method}(self.${field.key}, forKey: .${field.key})`;
     return line.length <= 100
       ? line
-      : `    try container.encode(
+      : `    try container.${method}(
       self.${field.key},
       forKey: .${field.key}
     )`;

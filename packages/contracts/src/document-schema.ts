@@ -155,6 +155,7 @@ export const Word = Schema.Struct({
   startMs: NonNegativeInteger,
   endMs: NonNegativeInteger,
   confidence: Schema.NullOr(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
+  timingUncertain: Schema.optionalKey(Schema.Literal(true)),
 }).annotate({ identifier: "Word" });
 export interface Word extends Schema.Schema.Type<typeof Word> {}
 export const Turn = Schema.Struct({
@@ -173,7 +174,7 @@ export const TranscriptRevision = Schema.Struct({
   revisionId: ExchangeUUID,
   createdAt: UTCDateTime,
   audioManifest: AudioManifestReference,
-  normalizationVersion: Schema.Literal(1),
+  normalizationVersion: Schema.Literals([1, 2]),
   asr: ASRMetadata,
   speakers: Schema.Array(Speaker),
   turns: Schema.Array(Turn),

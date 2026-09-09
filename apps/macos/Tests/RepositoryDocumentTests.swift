@@ -171,3 +171,33 @@ func repositoryDocumentReadersRejectCorruptChunksWithoutRepairingReplay(
   #expect(report.recoverableOperations.isEmpty)
   #expect(report.rejectedOperationIDs == [intent.operationID])
 }
+
+@Test func repositoryApproximateTimingSurvivesImportAndReopen() async throws {
+  let root = repositoryRoot("approximate-timing")
+  defer { try? FileManager.default.removeItem(at: root) }
+  var repository: LocalRepository? = try await seedRepositoryCall(root: root, finalized: true)
+  let audio = try repositoryFixture("audio.json")
+  _ = try await repository!.publishAudioManifest(audio)
+  var call = try await repository!.call(callID: repositoryCallID)
+  call.documentVersion += 1
+  call.audioManifest = .init(
+    manifestId: "00000000-0000-4000-8000-000000000004",
+    sha256: Contract.hash(audio)
+  )
+  _ = try await repository!.publishManifest(Contract.encode(call))
+  let bytes = try repositoryFixture("approximate-timing.json")
+  let revision = try Contract.decode(TranscriptRevision.self, bytes: bytes).value
+  _ = try await repository!.importRevision(bytes, associatedWork: repositoryIntent())
+  repository = nil
+  let reopened = try LocalRepository(root: root, archiveID: repositoryArchiveID)
+  let turns = try await reopened.turns(callID: repositoryCallID, revisionID: revision.revisionId)
+  #expect(turns.map(\.hasApproximateTiming) == [true, false])
+  #expect(turns.map(\.text) == revision.turns.map(\.text))
+  let speakers = try await reopened.speakers(
+    callID: repositoryCallID,
+    revisionID: revision.revisionId
+  )
+  #expect(speakers.first?.excerpt?.hasApproximateTiming == true)
+  let retained = try await reopened.loadCall(callID: repositoryCallID)
+  #expect(retained.transcriptRevisions[revision.revisionId] == bytes)
+}

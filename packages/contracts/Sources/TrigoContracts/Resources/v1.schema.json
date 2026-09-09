@@ -827,6 +827,10 @@
               "type": "null"
             }
           ]
+        },
+        "timingUncertain": {
+          "type": "boolean",
+          "enum": [true]
         }
       },
       "required": ["text", "startMs", "endMs", "confidence"],
@@ -891,7 +895,7 @@
         },
         "normalizationVersion": {
           "type": "number",
-          "enum": [1]
+          "enum": [1, 2]
         },
         "asr": {
           "$ref": "#/$defs/ASRMetadata"
