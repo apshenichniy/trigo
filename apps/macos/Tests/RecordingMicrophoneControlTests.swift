@@ -136,3 +136,42 @@ func unavailableMicrophoneIsNotReportedAsMutedAndDoesNotStopApplicationAudio(
   }
   await fixture.coordinator.stop()
 }
+
+@Test @MainActor func finishingWithBackloggedAudioClockAndMuteRetainsNormalCompletion() async throws
+{
+  let fixture = try RecordingControlFixture()
+  defer { fixture.cleanup() }
+  await fixture.bind()
+  await fixture.coordinator.shortcutPressed()
+  fixture.os.audioQueue.suspend()
+  var resumed = false
+  defer { if !resumed { fixture.os.audioQueue.resume() } }
+  // Allow a production timer event to become pending behind the held audio queue.
+  try await Task.sleep(for: .milliseconds(650))
+  let mute = Task { await fixture.coordinator.toggleMicrophone() }
+  for _ in 0..<10_000 {
+    if fixture.coordinator.isMicrophoneChanging { break }
+    await Task.yield()
+  }
+  #expect(fixture.coordinator.isMicrophoneChanging)
+  let stop = Task { await fixture.coordinator.stop() }
+  for _ in 0..<10_000 {
+    if fixture.os.application.stopCalls > 0 { break }
+    await Task.yield()
+  }
+  #expect(fixture.os.application.stopCalls > 0)
+  #expect(fixture.coordinator.phase == .stopping)
+  // The pending tick now runs more than the 250 ms reorder window after Finish.
+  try await Task.sleep(for: .milliseconds(400))
+  fixture.os.audioQueue.resume()
+  resumed = true
+  await mute.value
+  await stop.value
+  #expect(fixture.coordinator.recordingSnapshot?.state == .stopped)
+  #expect(fixture.coordinator.recordingSnapshot?.interruptionReason == nil)
+  #expect(fixture.coordinator.phase == .idle)
+  #expect(fixture.coordinator.finalization.localSave == .confirmed)
+  #expect(fixture.coordinator.canTerminateImmediately)
+  #expect(!fixture.os.application.running)
+  #expect(!fixture.os.microphone.running)
+}

@@ -76,12 +76,22 @@ public final class CaptureTimeline {
     if !available { try discardMicrophone(fromMs: atMs) }
   }
 
-  public func flush(throughMs: Int) throws {
+  @discardableResult public func flush(throughMs: Int) throws -> RecordedAudioLevels {
     guard throughMs >= committedFrame / MediaMasterProfile.framesPerMs,
       throughMs <= MediaMasterProfile.maximumDurationMs
     else {
       throw CaptureError.durationLimit
     }
+    var measurement = RecordedAudioMeasurement(
+      fromFrame: max(
+        committedFrame,
+        throughMs * MediaMasterProfile.framesPerMs - MediaMasterProfile.sampleRate / 2
+      ),
+      microphoneFromFrame: max(
+        microphonePolicy.last?.frame ?? 0,
+        microphoneAvailability.last?.frame ?? 0
+      )
+    )
     while committedFrame < throughMs * MediaMasterProfile.framesPerMs {
       let count = min(
         MediaMasterProfile.sampleRate,
@@ -125,6 +135,8 @@ public final class CaptureTimeline {
         microphoneIntervals: nextSpans[0],
         applicationIntervals: nextSpans[1]
       )
+      // Only the exact successfully appended samples may drive visible activity.
+      measurement.include(interleaved, startFrame: committedFrame)
       for track in 0...1 {
         samples[track].removeFirst(count)
       }
@@ -137,6 +149,11 @@ public final class CaptureTimeline {
         microphoneAvailability.removeFirst()
       }
     }
+    var levels = measurement.levels
+    if !microphoneEnabled || microphoneAvailability.last?.available == false {
+      levels.microphoneRMS = 0
+    }
+    return levels
   }
 
   private func ensureCapacity(_ count: Int) {

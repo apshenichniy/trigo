@@ -9,10 +9,14 @@ import ScreenCaptureKit
   let application = FixtureCaptureTransport()
   let microphone = FixtureCaptureTransport()
   let queue = DispatchQueue(label: "trigo.ui-fixture.audio")
+  let panel: FixturePanelControl?
   private var coordinator: RecordingCoordinator?
   private(set) var shortcut: GlobalRecordingShortcut?
 
-  init(configuration: FixtureConfiguration) { self.configuration = configuration }
+  init(configuration: FixtureConfiguration, root: URL) {
+    self.configuration = configuration
+    panel = configuration.scenario == .panel ? FixturePanelControl(root: root) : nil
+  }
 
   func makeShortcut(_ shell: DesktopShell) -> GlobalRecordingShortcut {
     var preferences = RecordingGesturePreferences()
@@ -77,10 +81,25 @@ import ScreenCaptureKit
       system: .init(
         permissions: { permissions },
         filter: { _ in SCContentFilter() },
-        microphone: { .init(id: "synthetic-microphone", name: "Synthetic microphone") },
-        stream: { [self] _, value, _ in value.captureMicrophone ? microphone : application },
-        audioQueue: { [self] in queue },
+        microphone: { [self] in
+          panel?.microphoneAvailable == false
+            ? nil : .init(id: "synthetic-microphone", name: "Synthetic microphone")
+        },
+        stream: { [self] _, value, _ in
+          value.captureMicrophone
+            ? panel?.microphone ?? microphone : panel?.application ?? application
+        },
+        audioQueue: { [self] in panel?.queue ?? queue },
         sourceIsAvailable: { _ in true }
+      ),
+      persistence: .init(
+        complete: { [self] session, media, reason in
+          let fail = await panel?.beforeSave() ?? false
+          return try await session.complete(media: media, interruptionReason: reason) { point in
+            if fail && point == .beforeCommit { throw FixtureFailure.invalidAudio }
+          }
+        },
+        recover: CapturePersistence.live.recover
       )
     )
     let coordinator = RecordingCoordinator(
@@ -89,7 +108,22 @@ import ScreenCaptureKit
       capture: capture,
       sources: .init(
         permissions: { permissions },
-        frontmost: { source },
+        frontmost: { [self] in
+          guard panel != nil else { return source }
+          guard let front = NSWorkspace.shared.frontmostApplication,
+            let bundleID = front.bundleIdentifier,
+            bundleID == "io.github.apshenichniy.trigo.fixture.focus",
+            let launchDate = front.launchDate
+          else { throw CaptureStartFailure.unsupportedSource }
+          return CaptureSource(
+            applicationName: "Controlled focus fixture",
+            bundleID: bundleID,
+            processID: front.processIdentifier,
+            windowID: 721,
+            windowTitle: "Synthetic acceptance conversation",
+            processLaunchDate: launchDate
+          )
+        },
         requestPermission: { _ in permissions },
         openSettings: { _ in false }
       )
@@ -133,16 +167,6 @@ struct FixtureStatus: ServerStatusFetching {
       errors: []
     )
   }
-}
-
-@MainActor final class FixtureCaptureTransport: CaptureTransport {
-  func addCaptureOutput(
-    _ output: any SCStreamOutput,
-    type: SCStreamOutputType,
-    queue: DispatchQueue
-  ) throws {}
-  func startCapture() async throws {}
-  func stopForRetirement() async throws {}
 }
 
 @MainActor final class FixtureLoginService: DesktopLoginService {

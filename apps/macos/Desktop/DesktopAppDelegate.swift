@@ -8,6 +8,10 @@ import TrigoNative
   override var canBecomeMain: Bool { false }
 }
 
+@MainActor private final class RecordingHostingView<Content: View>: NSHostingView<Content> {
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// Native presentation adapter. Production and #72's fixture executable share this implementation.
 @MainActor
 public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
@@ -26,6 +30,10 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
   private var libraryWindow: NSWindow?
   private var settingsWindow: NSWindow?
   private var recordingPanel: NSPanel?
+  private var recordingRevealSequence = -1
+  private var notificationPanel: NSPanel?
+  private var notificationID: UUID?
+  private var notificationTask: Task<Void, Never>?
   private lazy var libraryLifecycle = DesktopLibraryLifecycle(
     setDockPresence: { NSApp.setActivationPolicy($0 ? .regular : .accessory) },
     create: { [weak self] in self?.createLibrary() },
@@ -106,6 +114,12 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     statusItem?.menu = statusMenu
     statusItem?.button?.setAccessibilityIdentifier("trigo-status-item")
+    observations.append(
+      NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+        .sink { [weak self] _ in
+          Task { @MainActor in self?.clampRecordingWindows() }
+        }
+    )
     if let shell {
       if !shell.composition.isFixture, shell.composition.services != nil {
         let shortcut = GlobalRecordingShortcut(
@@ -161,7 +175,10 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     }
   }
 
-  public func applicationWillTerminate(_ notification: Notification) { shortcut?.unregister() }
+  public func applicationWillTerminate(_ notification: Notification) {
+    notificationTask?.cancel()
+    shortcut?.unregister()
+  }
 
   private func confirmFinishAndQuit() -> Bool {
     let alert = NSAlert()
@@ -288,31 +305,103 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     } else {
       recordingPanel?.orderOut(nil)
     }
+    updateRecordingNotification()
   }
 
   private func showRecordingPanel() {
     guard let shell, startupFailure == nil else { return }
     if recordingPanel == nil {
-      let panel = RecordingStatusPanel(
-        contentRect: NSRect(x: 0, y: 0, width: 400, height: 280),
-        styleMask: [.titled, .closable, .nonactivatingPanel],
-        backing: .buffered,
-        defer: false
-      )
+      let panel = makeStatusPanel(size: NSSize(width: 192, height: 44))
       panel.title = "\(appName) Recording"
-      panel.level = .floating
-      panel.isFloatingPanel = true
-      panel.hidesOnDeactivate = false
-      panel.isReleasedWhenClosed = false
-      panel.isRestorable = false
-      panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-      panel.contentView = NSHostingView(rootView: RecordingPanel(shell: shell))
+      panel.isMovableByWindowBackground = true
+      panel.contentView = RecordingHostingView(rootView: RecordingPanel(shell: shell))
       panel.setAccessibilityIdentifier("recording-window")
       panel.delegate = self
       restoreFrame(panel, name: "recording")
+      // A frame saved by the earlier, larger panel cannot change the accepted strip.
+      panel.setContentSize(NSSize(width: 192, height: 44))
       recordingPanel = panel
     }
-    recordingPanel?.orderFrontRegardless()
+    clampRecordingWindows()
+    if recordingPanel?.isVisible != true || recordingRevealSequence != shell.recordingRevealSequence
+    {
+      recordingPanel?.orderFrontRegardless()
+      recordingRevealSequence = shell.recordingRevealSequence
+    }
+  }
+
+  private func makeStatusPanel(size: NSSize) -> RecordingStatusPanel {
+    let panel = RecordingStatusPanel(
+      contentRect: NSRect(origin: .zero, size: size),
+      styleMask: [.borderless, .nonactivatingPanel],
+      backing: .buffered,
+      defer: false
+    )
+    panel.level = .floating
+    panel.isFloatingPanel = true
+    panel.becomesKeyOnlyIfNeeded = true
+    panel.hidesOnDeactivate = false
+    panel.isReleasedWhenClosed = false
+    panel.isRestorable = false
+    panel.isOpaque = false
+    panel.backgroundColor = .clear
+    panel.hasShadow = true
+    panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+    // This always-available surface is a floating utility window, not a modal dialog.
+    panel.setAccessibilitySubrole(.floatingWindow)
+    return panel
+  }
+
+  private func clampRecordingWindows() {
+    let screens = NSScreen.screens.map(\.visibleFrame)
+    for panel in [recordingPanel, notificationPanel].compactMap({ $0 }) {
+      let frame = RecordingPanelPlacement.clamp(panel.frame, to: screens)
+      if frame != panel.frame { panel.setFrame(frame, display: true) }
+    }
+  }
+
+  private func updateRecordingNotification() {
+    guard let shell, let notification = shell.recordingNotification else {
+      notificationPanel?.orderOut(nil)
+      notificationTask?.cancel()
+      notificationTask = nil
+      notificationID = nil
+      return
+    }
+    guard notification.id != notificationID else { return }
+    notificationTask?.cancel()
+    notificationID = notification.id
+    let panel = notificationPanel ?? makeStatusPanel(size: NSSize(width: 310, height: 90))
+    let content = RecordingHostingView(
+      rootView: RecordingNotificationView(notification: notification) { [weak shell] in
+        shell?.dismissRecordingNotification(notification.id)
+      }
+    )
+    panel.contentView = content
+    panel.setContentSize(NSSize(width: 310, height: max(68, content.fittingSize.height)))
+    panel.setAccessibilityIdentifier("recording-notification")
+    panel.title = notification.notice.title
+    if let anchor = recordingPanel?.frame {
+      panel.setFrameOrigin(NSPoint(x: anchor.midX - panel.frame.width / 2, y: anchor.maxY + 8))
+    } else {
+      panel.center()
+    }
+    notificationPanel = panel
+    clampRecordingWindows()
+    panel.orderFrontRegardless()
+    NSAccessibility.post(
+      element: NSApp!,
+      notification: .announcementRequested,
+      userInfo: [
+        .announcement: "\(notification.notice.title). \(notification.notice.message)",
+        .priority: NSAccessibilityPriorityLevel.medium.rawValue,
+      ]
+    )
+    notificationTask = Task { [weak shell] in
+      try? await Task.sleep(for: .seconds(notification.isSaved ? 5 : 8))
+      guard !Task.isCancelled else { return }
+      shell?.dismissRecordingNotification(notification.id)
+    }
   }
 
   public func menuWillOpen(_ menu: NSMenu) {
@@ -341,6 +430,24 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     statusMenu.addItem(heading)
     if let shell, startupFailure == nil {
       let state = shell.recording
+      if let source = state.source, state.phase != .idle && state.phase != .setupRequired {
+        let item = NSMenuItem(title: source.applicationName, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        item.toolTip = state.sourceDescription
+        item.setAccessibilityIdentifier("menu-recording-source")
+        statusMenu.addItem(item)
+      }
+      if state.phase == .recording && state.microphoneState == .unavailable {
+        let item = NSMenuItem(
+          title: "Microphone unavailable; application audio continues",
+          action: nil,
+          keyEquivalent: ""
+        )
+        item.isEnabled = false
+        item.toolTip = state.microphoneUnavailableReason
+        item.setAccessibilityIdentifier("menu-microphone-unavailable")
+        statusMenu.addItem(item)
+      }
       if ![.starting, .recording, .stopping].contains(state.phase) {
         let start = item("Start Recording", #selector(startFromMenu), id: "menu-start-recording")
         start.isEnabled = state.canStart && !shell.isQuitting && state.permissions.ready
@@ -371,7 +478,7 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
       }
       if state.canRetryRecovery {
         statusMenu.addItem(
-          item("Retry Local Recovery", #selector(retryRecovery), id: "menu-retry-recovery")
+          item(state.recoveryActionTitle, #selector(retryRecovery), id: "menu-retry-recovery")
         )
       }
     }

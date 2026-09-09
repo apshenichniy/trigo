@@ -8,6 +8,7 @@ public struct CaptureRecordingSnapshot: Sendable, Equatable {
   public var microphoneEnabled: Bool
   public var microphone: CaptureMicrophone?
   public var interruptionReason: String?
+  public var levels = RecordedAudioLevels()
 }
 
 /// The production sink and controlled fixtures use this same synchronous boundary.
@@ -68,7 +69,7 @@ public final class CaptureRecordingEngine {
     } else {
       pendingMs = ms
     }
-    try timeline.flush(
+    snapshot.levels = try timeline.flush(
       throughMs: min(max(writer.durationMs, ms - 250), max(writer.durationMs, pendingMs))
     )
     snapshot.elapsedMs = ms
@@ -80,6 +81,7 @@ public final class CaptureRecordingEngine {
     microphoneDecoder = try CaptureAudioDecoder()
     microphoneEpochFrame = try relativeMs(time) * MediaMasterProfile.framesPerMs
     snapshot.microphoneEnabled = enabled
+    snapshot.levels.microphoneRMS = 0
   }
 
   public func microphoneChanged(_ microphone: CaptureMicrophone?, at time: CMTime) throws {
@@ -88,6 +90,7 @@ public final class CaptureRecordingEngine {
     try timeline.setMicrophoneAvailable(microphone != nil, atMs: relativeMs(time))
     microphoneDecoder = try CaptureAudioDecoder()
     snapshot.microphone = microphone
+    snapshot.levels.microphoneRMS = 0
   }
 
   public func stop(at time: CMTime, reason: String? = nil) throws -> FinalizedMediaMaster {
@@ -107,6 +110,7 @@ public final class CaptureRecordingEngine {
     snapshot.state = failure == nil ? .stopped : .interrupted
     snapshot.elapsedMs = media.durationMs
     snapshot.interruptionReason = failure
+    snapshot.levels = .init()
     return media
   }
 

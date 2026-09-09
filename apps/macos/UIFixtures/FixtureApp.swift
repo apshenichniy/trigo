@@ -7,7 +7,7 @@ import TrigoDesktop
   @MainActor static func main() {
     do {
       let (configuration, root) = try FixtureConfiguration.load()
-      let environment = FixtureEnvironment(configuration: configuration)
+      let environment = FixtureEnvironment(configuration: configuration, root: root)
       let composition = try DesktopComposition(
         fixtureBundleIdentifier: FixtureConfiguration.bundleID,
         runID: configuration.runID,
@@ -32,7 +32,8 @@ import TrigoDesktop
         root: root,
         composition: composition,
         shell: delegate.shell!,
-        shortcut: environment.shortcut
+        shortcut: environment.shortcut,
+        panel: environment.panel
       )
       withExtendedLifetime((delegate, environment, evidence)) { application.run() }
     } catch {
