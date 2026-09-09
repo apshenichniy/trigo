@@ -1,0 +1,10 @@
+#!/bin/sh
+# Trigo managed pre-push hook v1
+set -eu
+
+if [ ! -f scripts/verify-push.ts ]; then
+  echo 'This branch lacks the Trigo local verification gate. Update it from main before pushing.' >&2
+  exit 1
+fi
+
+exec mise exec -- bun run verify:push --hook

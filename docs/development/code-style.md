@@ -83,8 +83,8 @@ bun run lint
 
 Overlapping fixes may need a second Oxlint pass. Review every resulting diff.
 `check:server` retains the portable Oxfmt/Oxlint checks, and `check:macos` retains
-strict Swift formatting checks. No additional formatter, linter, or Git hook is
-required.
+strict Swift formatting checks. No additional formatter or linter is required. The full verification pre-push hook
+is described in [verification](verification.md#local-verification-before-push).
 
 ## What still needs review
 

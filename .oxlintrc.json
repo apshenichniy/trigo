@@ -27,16 +27,24 @@
         "scripts/commands.ts",
         "scripts/commands.test.ts",
         "scripts/local.ts",
-        "scripts/timing.ts"
+        "scripts/timing.ts",
+        "scripts/verify-push.ts",
+        "scripts/verify-push.test.ts"
       ],
       "rules": {
         "effecttsgo/async-function": "off"
       }
     },
     {
-      "files": ["scripts/commands.test.ts", "scripts/local.ts"],
+      "files": ["scripts/commands.test.ts", "scripts/local.ts", "scripts/verify-push.ts"],
       "rules": {
         "effecttsgo/new-promise": "off"
+      }
+    },
+    {
+      "files": ["scripts/verify-push.ts"],
+      "rules": {
+        "effecttsgo/global-date": "off"
       }
     },
     {
