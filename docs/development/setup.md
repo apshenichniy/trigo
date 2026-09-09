@@ -18,7 +18,7 @@ mise install
 mise exec -- bun install --frozen-lockfile
 mise exec -- bun run doctor
 mise exec -- bun run macos:setup
-mise exec -- bun run check
+mise exec -- bun run verify:push
 ```
 
 Git is a prerequisite. Package setup can access registries; subsequent
@@ -31,7 +31,10 @@ for setup before checking. The local Worker smoke retains its OS-enforced extern
 network denial. Native local smoke execution uses that same outer denial profile;
 its SwiftPM invocation disables only nested manifest sandboxing. Other SwiftPM
 and Xcode commands retain their own sandbox behavior.
-Use `mise exec --` in a shell without mise activation.
+Use `mise exec --` in a shell without mise activation. Package setup installs the
+shared repository pre-push hook; existing clones can run `bun run hooks:install`.
+See [local verification and manual Actions](verification.md#local-verification-before-push)
+for the active-development delivery gate.
 
 | Tool/package                                       | Exact version          |
 | -------------------------------------------------- | ---------------------- |
@@ -114,7 +117,7 @@ vendored source and imported agent skills.
 
 All commands use `bun run <command>` from the checkout root and propagate errors.
 Root doctor/format/lint/typecheck/test/build/check commands take no arguments.
-For quick checks, explicit native suites, timing interpretation and CI selection,
+For quick checks, explicit native suites, timing interpretation and push verification,
 see [verification](verification.md).
 Wrappers reject unknown options, duplicate selectors and missing values rather
 than silently ignoring them. Use separate `--option value` arguments; options

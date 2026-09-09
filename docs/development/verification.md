@@ -84,41 +84,78 @@ duration, result and parent span. Nested command durations overlap their parent:
 use the outer command for feedback latency, phase intervals for attribution, and
 GitHub job intervals for runner minutes. Do not sum parent and child spans.
 
-Tracked acceptance documents belong in the candidate before final CI. Record
-the subsequent CI URL and results in the PR body; job summaries and artifacts
-hold measurements. Historical acceptance documents remain evidence for their
+Tracked acceptance documents belong in the candidate before final verification.
+Record the subsequent local receipt and results in the PR body. Explicit manual
+Actions runs additionally retain their URL, job summaries and artifacts. Historical acceptance documents remain evidence for their
 recorded source, not a mutable log of every later run.
 
-## CI selection and required checks
+## Local verification before push
 
-The workflow always starts. Its selection/formatting job reads the entire PR
-diff from the merge base to the PR head, or the incoming `main` push range.
-Renames include both old and new paths. Unknown paths, unavailable history and
-unsupported events select both complete component checks. Consequently, a
-documentation update inside a native PR continues to require native checks;
-batch acceptance documents before the final run to avoid repeating it.
+During active development, [the owner-approved #85 amendment](https://github.com/apshenichniy/trigo/issues/85)
+replaces automatic PR/main Actions with local verification. Commit the stable
+candidate, then run:
 
-| Changed inputs                                               | Selected component checks                   |
-| ------------------------------------------------------------ | ------------------------------------------- |
-| Root README/AGENTS/CONTEXT or Markdown under `docs/` only    | Portable formatting and selector tests      |
-| `apps/macos/`                                                | Full native checks                          |
-| `apps/server/` or `infra/`                                   | Server checks and native/local Worker smoke |
-| Contracts, scripts, dependencies, workflows or unknown paths | Both full component checks                  |
+```sh
+mise exec -- bun run verify:push
+git push
+```
 
-Selections combine across all changed paths. The always-running `All checks`
-job validates selection/formatting and every assigned component result. Failed,
-cancelled, missing and unexpectedly skipped work cannot satisfy it. Selection
-and timing artifacts are kept for 14 days; CI run logs retain test output.
+Normal package setup installs the tracked `.githooks/pre-push` hook in the
+repository's shared Git hooks directory. `bun run hooks:install` explicitly
+installs it in existing clones. Every worktree shares that hook; a branch without
+the verification script must first incorporate the new workflow from main.
+Existing custom hooks or `core.hooksPath` are preserved and require deliberate
+integration. The installer changes neither global Git configuration nor commits.
 
-Bootstrap uses full checks regardless of the proposed selection. Component jobs
-explicitly fail when planning fails, preserving the existing required statuses
-during migration. Selected normal work remains cancellable. After `All
-checks` succeeds on the migration PR, add it to the existing required
-`Server checks` and `macOS checks`, preserving their GitHub App restriction and
-strict up-to-date policy. Then set the repository Actions variable
-`TRIGO_SELECTIVE_CHECKS` to `true`. The existing component status names remain;
-intentional job skips are accepted only when `All checks` validates the plan.
-Clearing that variable restores full component checks for subsequent runs.
+The hook checks the actual pushed HEAD from a clean worktree. A push containing
+another commit must run from that commit's own checkout. Deletion-only/no-op
+pushes have no source to check. Local commits do not trigger expensive checks.
+Git repository environment variables are removed before verification so test
+fixtures operate on their own repositories.
+
+`verify:push` runs the existing full `check`: server formatting/lint/types/tests,
+Worker bundles, Swift contracts, every native headless suite, both macOS app
+variants and the actual native/local Worker path. It requires the supported Mac
+and prepared locked dependencies. GUI, installed capture and paid hosted acceptance
+remain separate explicit gates. Coordinate this command with other heavy local
+work; an exclusive repository lease prevents simultaneous pre-push verifications
+across worktrees.
+
+Ignored `.local/push-verification/` retains each run's log/result and the latest
+successful receipt. The hook reuses it only when the complete source tree,
+working files, checkout, OS/tool versions and hashed execution environment match.
+It validates the retained log hash too. Failure removes previous success, and
+source/environment changes during a run reject the result. Compiler overrides
+that cannot be safely identified disable reuse. Receipts record evidence; they
+do not skip the required tests on changed inputs. Use the same `verify:push`
+entrypoint before push to avoid running a separate full `check` twice.
+
+Main requires a pull request and retains its force-push/deletion restrictions.
+It no longer requires automatic Actions status checks during this phase. Git
+hooks run locally and can be bypassed by Git options or web edits, so reviewers
+must check the PR's actual local evidence; this is not a remote attestation.
+
+## Explicit manual Actions
+
+The `Checks` workflow has only `workflow_dispatch`. PR updates and pushes,
+including merges to main, schedule no jobs. An owner-requested diagnostic or
+release check can be run from Actions → Checks → Run workflow, or:
+
+```sh
+gh workflow run check.yml --ref <branch>
+```
+
+A manual run selects the full server and macOS checks, retaining the same commands,
+cache handling, aggregate validation and failure evidence. It consumes hosted
+runner resources; run it deliberately. GitHub requires the manual workflow to be
+present on the default branch. See [manual workflow dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
+
+Restoring automatic CI is a separate owner decision: restore the PR/main triggers,
+run the selected candidate deliberately, then restore required GitHub App status
+checks and the strict up-to-date policy after success. Keep local hooks until
+that replacement gate is proven. The existing path selector and aggregate tests
+remain available for that transition; manual dispatch intentionally uses full
+checks rather than assuming a PR diff.
 
 ## Native caches and build reuse
 

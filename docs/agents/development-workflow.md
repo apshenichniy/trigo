@@ -2,6 +2,8 @@
 
 The approved [development tooling and repository workflow](https://github.com/apshenichniy/trigo/issues/9#issuecomment-5552500745)
 defines the tool choices, command interface, environments and acceptance evidence.
+The [local verification amendment](https://github.com/apshenichniy/trigo/issues/85)
+supersedes its automatic CI and hook rules during active development.
 Read it before changing build, test, workspace or deployment configuration.
 Its commands are implementation requirements until the foundation and
 infrastructure tasks provide them; a decision's closure does not mean they exist.
@@ -46,10 +48,17 @@ reviewable PR with acceptance evidence. Distinguish local/CI verification from
 deployed-provider and human-assisted checks. Keep human execution requirements
 visible through `ready-for-human` where appropriate.
 
-Merge and deployment require the owner's explicit instruction. Required CI gates
-merging; mandatory Git hooks are not part of the initial workflow. Report concrete
-blockers rather than weakening the approved contract or presenting skipped work
-as verified.
+Merge and deployment require the owner's applicable explicit instruction. Install
+the repository pre-push hook with `bun run hooks:install` (also installed by normal
+package setup). Commit the stable candidate, run `bun run verify:push`, then push
+and include its source/tree and result in the PR. A matching successful receipt
+is reused by the hook. Keep the worktree clean during verification.
+
+Automatic GitHub Actions are paused during active development. Full Actions checks
+remain an explicit manual operation; do not start a paid runner merely to repeat
+matching local evidence. Main requires a pull request, while the local hook supplies
+the development check boundary. It is not a server-enforced attestation. Report
+actual failures and keep installed, GUI and hosted acceptance distinct.
 
 ## Verification loop
 
@@ -66,8 +75,9 @@ local state belong to their checkout. Recheck affected code after integration;
 reuse completed evidence only while its inputs and integration context match.
 
 Commit the implementation and tracked acceptance documentation before the final
-CI run. Put subsequent run URLs, timings and CI outcomes in the PR body, job
-summary and CI artifacts. This evidence update completes the handoff without a
+local verification. Put subsequent receipt paths, source/tree, timings and outcomes
+in the PR body and ignored local evidence. For an explicitly requested Actions run,
+include its URL and results too. Evidence updates complete the handoff without a
 new source commit. A source change requires the affected checks again; an
 unchanged successful candidate needs no ceremonial rerun. Quick results identify
 their scope and never substitute for the full acceptance gate.
