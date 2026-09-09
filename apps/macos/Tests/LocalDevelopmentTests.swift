@@ -340,10 +340,9 @@ struct LocalDevelopmentTests {
       )
     }
     let paired = await connection().connect(serverURL: url.absoluteString, token: localToken)
-    let requests = await fixture.requests.count
     let binding = try #require(
       paired.binding,
-      "Initial local pairing failed: health=\(paired.health), issue=\(String(describing: paired.lastAttemptIssue)), receivedRequests=\(requests), port=\(url.port ?? 0)"
+      "Initial local pairing failed: health=\(paired.health), issue=\(String(describing: paired.lastAttemptIssue))"
     )
     #expect(binding.archiveId == localNamespace)
     fixture.stop()
@@ -688,12 +687,8 @@ private final class LoopbackResponse: @unchecked Sendable {
     listener.newConnectionHandler = { connection in
       connection.start(queue: .global())
       connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { data, _, _, _ in
-        let receivedAt = ProcessInfo.processInfo.systemUptime
         Task {
           await requests.append(data.map { String(decoding: $0, as: UTF8.self) } ?? "")
-          print(
-            "[DEBUG-local-binding-20260909] port=\(listener.port?.rawValue ?? 0) responseTaskDelayMs=\((ProcessInfo.processInfo.systemUptime - receivedAt) * 1000)"
-          )
           connection.send(
             content: response,
             completion: .contentProcessed { _ in connection.cancel() }
