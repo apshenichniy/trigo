@@ -84,7 +84,14 @@ allowance and waits for already-admitted pending input. The separate callback
 queue admits at most one second per source and 256 audio buffers including
 in-flight work. Each drain processes at most eight buffers before yielding to
 controls; stop freezes admission and drains the bounded remainder before sealing.
-Foreign/replaced streams are rejected before reserving capacity. Overload fails
+Foreign/replaced streams and audio wholly before confirmed media progress are
+rejected before reserving capacity. The engine publishes that host-clock boundary
+only after a successful durable flush. Delayed native bursts after a silent start
+cannot fill the live-input queue with audio that can no longer change the master.
+Packets crossing the committed boundary remain admitted, with a conservative
+output-frame margin for conversion rounding. Silence and missing callbacks do
+not interrupt capture; their unavailable intervals continue on the call clock.
+Overload of current input still fails
 explicitly instead of accumulating tasks or buffers. A millisecond with any
 missing source sample is unavailable, and all its source samples become silence. Physical device
 absence takes precedence over muted intervals while mute policy remains unchanged.

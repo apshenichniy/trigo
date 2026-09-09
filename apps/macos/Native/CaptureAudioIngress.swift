@@ -41,6 +41,7 @@ final class CaptureAudioIngress: @unchecked Sendable {
   private var maxBuffers = 0
   private var maxSeconds = 0.0
   private var maxService = 0.0
+  private var committedThrough = CMTime.invalid
 
   init(
     queue: DispatchQueue,
@@ -79,6 +80,7 @@ final class CaptureAudioIngress: @unchecked Sendable {
       guard ids[channel] == streamID else { return .ignored }
       return lock.withLock { () -> Admission in
         guard !rejected, !closed else { return .ignored }
+        if alreadyCommitted(value) { return .ignored }
         guard outstanding < 256, duration.isFinite, duration >= 0,
           sourceSeconds[channel] + duration <= 1.000_001
         else {
@@ -119,6 +121,30 @@ final class CaptureAudioIngress: @unchecked Sendable {
         rejected: rejected
       )
     }
+  }
+
+  /// Publish only after the engine has durably flushed this host-clock boundary.
+  /// Delayed native bursts cannot rewrite it and must not exhaust live input capacity.
+  func confirmMedia(through time: CMTime) {
+    dispatchPrecondition(condition: .onQueue(queue))
+    lock.withLock { committedThrough = time }
+  }
+
+  private func alreadyCommitted(_ audio: CaptureQueuedAudio) -> Bool {
+    guard committedThrough.isNumeric, audio.sample.presentationTimeStamp.isNumeric,
+      audio.duration > 0, audio.duration <= 1
+    else { return false }
+    // Keep boundary-crossing packets, including the decoder's frame rounding and
+    // fractional resampler phase. Only wholly obsolete input is ignored.
+    let end = CMTimeAdd(
+      audio.sample.presentationTimeStamp,
+      CMTime(seconds: audio.duration, preferredTimescale: 1_000_000_000)
+    )
+    let latestOutput = CMTimeAdd(
+      end,
+      CMTime(value: 2, timescale: Int32(MediaMasterProfile.sampleRate))
+    )
+    return CMTimeCompare(latestOutput, committedThrough) <= 0
   }
 
   func select(_ id: ObjectIdentifier?, for role: MediaSourceRole) {

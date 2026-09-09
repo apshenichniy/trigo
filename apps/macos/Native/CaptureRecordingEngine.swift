@@ -22,6 +22,10 @@ public final class CaptureRecordingEngine {
   private var microphoneEpochFrame = 0
   public private(set) var snapshot: CaptureRecordingSnapshot
 
+  var committedTime: CMTime {
+    CMTimeAdd(origin, CMTime(value: Int64(writer.durationMs), timescale: 1000))
+  }
+
   public init(writer: CaptureMediaWriter, origin: CMTime, microphone: CaptureMicrophone?) throws {
     self.origin = origin
     self.writer = writer
