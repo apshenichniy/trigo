@@ -22,6 +22,7 @@
     "check:files": "bun scripts/commands.ts check:files",
     "check:macos:smoke": "bun scripts/commands.ts check:macos:smoke",
     "test:native": "bun scripts/commands.ts test:native",
+    "test:ui": "bun scripts/macos.ts ui",
     "dev": "bun scripts/local.ts",
     "macos:run": "bun scripts/macos.ts run",
     "macos:install": "bun scripts/macos.ts install",

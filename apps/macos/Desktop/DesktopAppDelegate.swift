@@ -60,13 +60,19 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
   public convenience init(
     fixture: DesktopComposition,
     loginService: any DesktopLoginService,
-    reader: DesktopReader
+    reader: DesktopReader,
+    makeShortcut: ((DesktopShell) -> GlobalRecordingShortcut)? = nil
   ) throws {
     guard fixture.isFixture else { throw NamespaceError.fixtureRequiresAdapters }
     guard Bundle.main.bundleIdentifier == fixture.namespace.fixtureIdentifier else {
       throw NamespaceError.unsupportedBundle
     }
     self.init(composition: fixture, login: DesktopLoginModel(service: loginService), reader: reader)
+    if let makeShortcut, let shell {
+      let shortcut = makeShortcut(shell)
+      guard shortcut.isFixture else { throw NamespaceError.fixtureRequiresAdapters }
+      self.shortcut = shortcut
+    }
   }
 
   private init(composition: DesktopComposition, login: DesktopLoginModel?, reader: DesktopReader) {
@@ -102,12 +108,14 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     statusItem?.button?.setAccessibilityIdentifier("trigo-status-item")
     if let shell {
       if !shell.composition.isFixture, shell.composition.services != nil {
-        let shortcut = GlobalRecordingShortcut { [weak shell] in
+        let shortcut = GlobalRecordingShortcut(
+          preferences: UserDefaults(suiteName: shell.composition.namespace.preferences)!
+        ) { [weak shell] in
           shell?.startOrReveal(from: .keyboard)
         }
         self.shortcut = shortcut
-        shortcut.register()
       }
+      shortcut?.register()
       observations.append(
         shell.objectWillChange.sink { [weak self] in
           Task { @MainActor in self?.updatePresentation() }
