@@ -124,24 +124,66 @@ export function runNativeUI(args: string[]): void {
     metadata.fixtureBundleHash = artifactFingerprint(
       resolve(".local/DerivedData/Build/Products/Debug/Trigo UI Fixture.app"),
     );
-    execute(
-      "tests",
-      [
-        "xcodebuild",
-        "test-without-building",
-        ...common,
-        "-parallel-testing-enabled",
-        "NO",
-        "-test-timeouts-enabled",
-        "YES",
-        "-maximum-test-execution-time-allowance",
-        "120",
-        "-resultBundlePath",
-        bundle,
-        ...selected.map((name) => `-only-testing:TrigoUITests/DesktopShellUITests/${name}`),
-      ],
-      Math.max(10 * 60_000, selected.length * 120_000 + 60_000),
-    );
+    const keyboard = (...args: string[]) => {
+      const result = spawnSync("swift", ["scripts/native-ui-keyboard.swift", ...args], {
+        encoding: "utf8",
+        timeout: 15_000,
+      });
+      if (result.error || result.status !== 0) {
+        throw new Error(
+          `Native UI keyboard ${args[0]} failed: ${result.stderr.trim() || result.error || result.status}`,
+        );
+      }
+      return result.stdout.trim();
+    };
+    const inputSource = {
+      original: keyboard("current"),
+      fixture: keyboard("fixture"),
+      restored: false,
+    };
+    metadata.keyboardInputSource = inputSource;
+    save();
+    const testFailures: unknown[] = [];
+    try {
+      if (keyboard("select", inputSource.fixture) !== inputSource.fixture) {
+        throw new Error("Native UI fixture keyboard layout was not selected");
+      }
+      execute(
+        "tests",
+        [
+          "xcodebuild",
+          "test-without-building",
+          ...common,
+          "-parallel-testing-enabled",
+          "NO",
+          "-test-timeouts-enabled",
+          "YES",
+          "-maximum-test-execution-time-allowance",
+          "120",
+          "-resultBundlePath",
+          bundle,
+          ...selected.map((name) => `-only-testing:TrigoUITests/DesktopShellUITests/${name}`),
+        ],
+        Math.max(10 * 60_000, selected.length * 120_000 + 60_000),
+      );
+    } catch (error) {
+      testFailures.push(error);
+    } finally {
+      try {
+        inputSource.restored = keyboard("select", inputSource.original) === inputSource.original;
+      } catch (error) {
+        testFailures.push(error);
+      }
+      if (!inputSource.restored) {
+        testFailures.push(
+          new Error("Native UI test did not restore the original keyboard input source"),
+        );
+      }
+      save();
+    }
+    if (testFailures.length > 0) {
+      throw new AggregateError(testFailures, "Native UI test or keyboard restoration failed");
+    }
     const evidence = collectNativeUIEvidence(bundle, run);
     assertSuccessfulUIRun(evidence.summary, selected.length);
     assertUIAttachments(evidence.attachments, selected);
