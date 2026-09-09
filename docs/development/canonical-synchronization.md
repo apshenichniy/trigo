@@ -141,3 +141,22 @@ Run `bun run check:server`, `bun run check:quick --scope native` and
 runs the complete native/resource/app acceptance gate. Run URLs and timings are
 recorded in the PR after the tracked candidate is committed. Hosted deployment,
 paid calls and the final runnable Dev handoff remain explicit #24 acceptance.
+
+## Playback and current-main integration
+
+The updated #19 candidate includes current main `9a3a4716b` and reviewed playback
+candidate `bb3d4e380`. Shared API and generated-contract conflicts use the exact
+combined source already present in integrated candidate `5083efa7b`; their bytes
+are unchanged in the subsequently verified library candidate `410f7c694`. The
+actual local HTTP smoke is retained from that pre-reader integration, so it
+requires no #20 presentation classes.
+
+Canonical HTTP requests use the shared `ServerOperationAuthorization` and report
+authorization failures through the same connection owner as playback/upload.
+This is the already integrated bridge correction, preserving the transport's
+request/response bounds and existing generation checks. The native playback
+guard for pausing before the first render is also included through its owning
+#73 branch.
+
+The PR records the new exact source and its full required CI. Older successful
+#19 checks alone do not establish acceptance of this merged candidate.
