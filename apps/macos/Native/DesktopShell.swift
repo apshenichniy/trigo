@@ -15,6 +15,7 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
   @Published public private(set) var didBootstrap = false
   @Published public private(set) var isQuitting = false
   @Published public private(set) var recordingVisible = false
+  @Published public private(set) var recordingRevealSequence = 0
   @Published public private(set) var recordingNotification: DesktopRecordingNotification?
   @Published public var settingsSection: DesktopSettingsSection = .general
   private var bootstrapTask: Task<Void, Never>?
@@ -81,10 +82,13 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
     menuMayStart = false
     menuSource = nil
     refresh()
-    recordingVisible = true
+    showRecording()
   }
 
-  public func showRecording() { recordingVisible = true }
+  public func showRecording() {
+    recordingRevealSequence += 1
+    recordingVisible = true
+  }
   public func hideRecording() { recordingVisible = false }
   public func dismissRecordingNotification(_ id: UUID) {
     guard recordingNotification?.id == id else { return }
@@ -99,7 +103,7 @@ public enum DesktopSettingsSection: String, CaseIterable, Sendable {
     guard !isQuitting else { return }
     await composition.services?.retryStart()
     refresh()
-    recordingVisible = true
+    showRecording()
   }
   public func retryRecovery() async {
     guard !isQuitting else { return }

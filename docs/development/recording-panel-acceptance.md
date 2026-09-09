@@ -118,7 +118,8 @@ Retained iteration results under `.local/ui-runs`:
 | `2026-09-08T22-47-24.850Z-8965c742` | Five boundary/focus scenarios passed in 283.903 seconds: native fullscreen/drag/hide/reveal; pending mute and next-call reset; Cancel/late Start; held/failed save; failed Stop with saved audio.                                                                                  |
 | `2026-09-08T23-01-09.777Z-1b5a9ce0` | First complete selection at `6511f4571`: seven passed, three failed, no skips. The stronger saved-call assertion exposed the queued-timer interruption. Two harness failures read a macOS text label instead of its value and tried to anchor a click to a closed Settings window. |
 
-The first two runs used `cca2daa08` plus their recorded dirty inputs. The last two
+The first two runs used `cca2daa08` plus their recorded dirty inputs. The
+`2026-09-08T22-45-35.772Z-f694ef04` and `2026-09-08T22-47-24.850Z-8965c742` pilots
 used the same source fingerprint
 `772f4605f25ab93cced7cb9931eed983d64ebdea1929701919da17bec4ccc52e`,
 subsequently committed as `78a72fbe9`. Those runs preceded the review corrections.
@@ -148,3 +149,19 @@ observations and any exact OS/physical boundary still pending are recorded with
 the installed candidate and the integrated #24 handoff. Final Meet/Telegram use
 remains #23. Cloud deployment and paid provider execution retain their separate
 explicit authorization.
+
+## Menu and fullscreen follow-up
+
+The complete `a69f0b209` run `2026-09-08T23-17-37.371Z-fab50e27` passed eight
+cases; fullscreen reveal and the legacy recording/menu case failed while opening
+the menu. Pending mute/Finish and both corrected access/setup cases passed.
+Fullscreen detection now accepts the macOS accessibility value as well as label.
+The native host raises the panel only when showing it or responding to an explicit
+Reveal, rather than on every measured-level update. This preserves explicit
+reveal without continuously reordering windows during menu tracking.
+
+A direct-event driver experiment (`2026-09-08T23-32-25.365Z-387053f4`) stopped at
+its access preflight. No access request was made; that driver was removed and the
+existing XCTest pointer route remains. The focused follow-up
+`2026-09-08T23-38-47.148Z-023b98a4` passed both affected cases in 168.209 seconds
+including build. The complete selection remains required on the committed result.

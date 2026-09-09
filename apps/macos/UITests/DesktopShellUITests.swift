@@ -499,7 +499,9 @@ import XCTest
       pointerDriver = focus
     }
     if focus.staticTexts["focus-fullscreen-state"].exists,
-      focus.staticTexts["focus-fullscreen-state"].label == "Fullscreen", let statusLocation
+      focus.staticTexts["focus-fullscreen-state"].label == "Fullscreen"
+        || focus.staticTexts["focus-fullscreen-state"].value as? String == "Fullscreen",
+      let statusLocation
     {
       pointerCoordinate(CGPoint(x: statusLocation.x, y: 1)).hover()
     }
