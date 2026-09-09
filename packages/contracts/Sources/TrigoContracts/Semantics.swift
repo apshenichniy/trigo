@@ -63,11 +63,19 @@ extension Contract {
     try unique(speakers.map { $0["speakerId"] })
     try unique(turns.map { $0["turnId"] })
     var previousStart = 0
+    var previousTrackStarts: [String: Int] = [:]
     for turn in turns {
       let start = turn["startMs"].integerValue
       let end = turn["endMs"].integerValue
-      try require(start >= previousStart && end >= start)
-      previousStart = start
+      try require(end >= start)
+      if revision["normalizationVersion"].integerValue == 1 {
+        try require(start >= previousStart)
+        previousStart = start
+      } else if !turn["words"].items.contains(where: { $0["timingUncertain"] == .boolean(true) }) {
+        let track = turn["trackId"].text
+        try require(start >= (previousTrackStarts[track] ?? 0))
+        previousTrackStarts[track] = start
+      }
       if !turn["speakerId"].isNull {
         try require(
           speakers.contains {

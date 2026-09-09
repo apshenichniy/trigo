@@ -61,9 +61,16 @@ export function validateRevision(
   unique(revision.speakers.map((s) => s.speakerId));
   unique(revision.turns.map((t) => t.turnId));
   let previousStart = 0;
+  const previousTrackStarts = new Map<string, number>();
   for (const turn of revision.turns) {
-    requireValid(turn.startMs >= previousStart && turn.endMs >= turn.startMs);
-    previousStart = turn.startMs;
+    requireValid(turn.endMs >= turn.startMs);
+    if (revision.normalizationVersion === 1) {
+      requireValid(turn.startMs >= previousStart);
+      previousStart = turn.startMs;
+    } else if (!turn.words.some((word) => word.timingUncertain === true)) {
+      requireValid(turn.startMs >= (previousTrackStarts.get(turn.trackId) ?? 0));
+      previousTrackStarts.set(turn.trackId, turn.startMs);
+    }
     if (turn.speakerId !== null) {
       requireValid(
         revision.speakers.some((s) => s.speakerId === turn.speakerId && s.trackId === turn.trackId),

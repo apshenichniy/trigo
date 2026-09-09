@@ -542,5 +542,33 @@
     "document": "unmarked-approximate-timing.json",
     "references": {},
     "expected": "semantics"
+  },
+  {
+    "name": "approximate-speaker-order",
+    "kind": "TranscriptRevision",
+    "document": "approximate-speaker-order.json",
+    "references": {},
+    "expected": null
+  },
+  {
+    "name": "legacy-backward-speaker-order",
+    "kind": "TranscriptRevision",
+    "document": "legacy-backward-speaker-order.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "unmarked-backward-speaker-order",
+    "kind": "TranscriptRevision",
+    "document": "unmarked-backward-speaker-order.json",
+    "references": {},
+    "expected": "semantics"
+  },
+  {
+    "name": "approximate-outlier-speaker-order",
+    "kind": "TranscriptRevision",
+    "document": "approximate-outlier-speaker-order.json",
+    "references": {},
+    "expected": null
   }
 ]

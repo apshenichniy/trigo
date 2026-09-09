@@ -16,6 +16,11 @@ Normalization version 2 retains the text, punctuation, reported millisecond
 positions, confidence and source/speaker scope. It marks unreliable words with
 `timingUncertain: true`; absence of the key retains ordinary timing validation.
 Turn playback ranges are independently bounded to the submitted audio interval.
+Speaker runs retain provider order within each source track. Tracks interleave by
+the next available run's playback time; an unreliable clock cannot reorder that
+track's text. Version 2 checks unmarked turn ordering per track and excludes
+uncertain runs from that ordering cursor. Version 1 retains global chronological
+ordering. No valid playback position is shifted to accommodate an earlier outlier.
 A wholly outside passage may have an empty playback interval. The reader and
 speaker excerpts show `Approximate timing`; an empty passage interval has no
 active timestamp-playback control. Full recording playback remains available.

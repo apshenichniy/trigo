@@ -391,3 +391,101 @@ it.effect("still rejects structurally invalid or unrepresentable word timing", (
     }
   }),
 );
+
+it.effect("preserves provider order across speaker changes with backward timestamps", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        object(0, {
+          results: {
+            channels: [
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "First", start: 5, end: 6, speaker: 0 },
+                      { word: "second", start: 1, end: 2, speaker: 1 },
+                      { word: "third", start: 7, end: 8, speaker: 2 },
+                    ],
+                  },
+                ],
+              },
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "Remote", start: 4, end: 4.5, speaker: 0 },
+                      { word: "later", start: 9, end: 10, speaker: 1 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      ],
+    });
+    expect(result.turns.map((turn) => turn.text)).toEqual([
+      "Remote",
+      "First",
+      "second",
+      "third",
+      "later",
+    ]);
+    expect(
+      result.turns
+        .filter((turn) => turn.trackId === microphoneTrack)
+        .map((turn) => ({
+          startMs: turn.startMs,
+          endMs: turn.endMs,
+          uncertain: turn.words.some((word) => word.timingUncertain),
+        })),
+    ).toEqual([
+      { startMs: 5000, endMs: 6000, uncertain: true },
+      { startMs: 1000, endMs: 2000, uncertain: true },
+      { startMs: 7000, endMs: 8000, uncertain: false },
+    ]);
+  }),
+);
+
+it.effect("keeps valid later speaker playback after a wholly outside speaker run", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        object(0, {
+          results: {
+            channels: [
+              {
+                alternatives: [
+                  {
+                    words: [
+                      { word: "Outside", start: 70, end: 71, speaker: 0 },
+                      { word: "clear", start: 1, end: 2, speaker: 1 },
+                    ],
+                  },
+                ],
+              },
+              { alternatives: [{ words: [{ word: "Remote", start: 4, end: 5 }] }] },
+            ],
+          },
+        }),
+      ],
+    });
+    expect(
+      result.turns.map((turn) => ({
+        text: turn.text,
+        startMs: turn.startMs,
+        endMs: turn.endMs,
+        uncertain: turn.words.some((word) => word.timingUncertain),
+      })),
+    ).toEqual([
+      { text: "Remote", startMs: 4000, endMs: 5000, uncertain: false },
+      { text: "Outside", startMs: 60_000, endMs: 60_000, uncertain: true },
+      { text: "clear", startMs: 1000, endMs: 2000, uncertain: false },
+    ]);
+  }),
+);

@@ -162,6 +162,48 @@ function alignedWords(words: readonly DecodedWord[], start: number, end: number)
   }));
 }
 
+/** Interleave available channel heads by playback time without reordering a
+ * channel's provider text when its alignment runs backward. */
+function interleaveTrackTurns(turns: readonly TranscriptRevision["turns"][number][]) {
+  const tracks = new Map<
+    string,
+    { turns: TranscriptRevision["turns"][number][]; cursor: number }
+  >();
+  for (const turn of turns) {
+    let track = tracks.get(turn.trackId);
+    if (track === undefined) {
+      track = { turns: [], cursor: 0 };
+      tracks.set(turn.trackId, track);
+    }
+    track.turns.push(turn);
+  }
+  const compare = (
+    left: TranscriptRevision["turns"][number],
+    right: TranscriptRevision["turns"][number],
+  ) =>
+    left.startMs - right.startMs ||
+    left.endMs - right.endMs ||
+    left.trackId.localeCompare(right.trackId);
+  const ordered: TranscriptRevision["turns"][number][] = [];
+  while (ordered.length < turns.length) {
+    let selected:
+      | { turn: TranscriptRevision["turns"][number]; track: { cursor: number } }
+      | undefined;
+    for (const track of tracks.values()) {
+      const turn = track.turns[track.cursor];
+      if (turn !== undefined && (selected === undefined || compare(turn, selected.turn) < 0)) {
+        selected = { turn, track };
+      }
+    }
+    if (selected === undefined) {
+      break;
+    }
+    ordered.push(selected.turn);
+    selected.track.cursor += 1;
+  }
+  return ordered;
+}
+
 export const normalizeNova3 = Effect.fn("Nova3.normalize")(function* (
   unknownInput: unknown,
 ): Effect.fn.Return<TranscriptRevision, Nova3NormalizationError> {
@@ -325,13 +367,6 @@ function buildRevision(
     }
   }
 
-  turns.sort(
-    (left, right) =>
-      left.startMs - right.startMs ||
-      left.endMs - right.endMs ||
-      left.trackId.localeCompare(right.trackId),
-  );
-
   const revision = {
     schemaVersion: 1,
     callId: input.callId,
@@ -358,7 +393,7 @@ function buildRevision(
       ),
     },
     speakers,
-    turns,
+    turns: interleaveTrackTurns(turns),
   };
   return validateDocument("TranscriptRevision", revision);
 }
