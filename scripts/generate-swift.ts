@@ -128,7 +128,17 @@ ${fields.map((field) => `    self.${field.key} = try container.decode(\n      ${
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-${fields.map((field) => `    try container.encode(self.${field.key}, forKey: .${field.key})`).join("\n")}
+${fields
+  .map((field) => {
+    const line = `    try container.encode(self.${field.key}, forKey: .${field.key})`;
+    return line.length <= 100
+      ? line
+      : `    try container.encode(
+      self.${field.key},
+      forKey: .${field.key}
+    )`;
+  })
+  .join("\n")}
   }
 }`;
   });

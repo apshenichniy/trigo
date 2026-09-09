@@ -4,6 +4,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi";
 
 import { type StatusResponse } from "@trigo/contracts";
 
+import { canonicalSyncLayer } from "./canonical-sync.ts";
 import { errorResponse, httpErrorBoundary, ownerErrorResponses } from "./http-errors.ts";
 import { masterUploadsLayer } from "./master-uploads.ts";
 import { authenticateOwner, type OwnerContext } from "./owner-state.ts";
@@ -15,6 +16,7 @@ import {
   playbackMediaResponse,
 } from "./playback-handler.ts";
 import { ProductApi } from "./product-api.ts";
+import { isSyncRoute, syncHandlers } from "./sync-handler.ts";
 import { isTranscriptionRoute, transcriptionHandlers } from "./transcription-handler.ts";
 import { transcriptionsLayer, type TranscriptionEnvironment } from "./transcriptions.ts";
 import { isImplementedProductRoute, uploadHandlers } from "./upload-handler.ts";
@@ -66,6 +68,7 @@ const productResponse = Effect.fn("ProductApi.respond")(function* (
   if (
     !isImplementedProductRoute(request) &&
     !isTranscriptionRoute(request) &&
+    !isSyncRoute(request) &&
     !isPlaybackGrantRoute(request)
   ) {
     return errorResponse(
@@ -85,6 +88,7 @@ const productResponse = Effect.fn("ProductApi.respond")(function* (
       handlers,
       uploadHandlers(request).pipe(Layer.provide(masterUploadsLayer(env, owner))),
       transcriptionHandlers(request).pipe(Layer.provide(transcriptionsLayer(env, owner))),
+      syncHandlers(request).pipe(Layer.provide(canonicalSyncLayer(env, owner))),
       playbackGrantHandlers(request).pipe(Layer.provide(playbackGrantsLayer(env, owner))),
     ]),
     Layer.provide(httpErrorBoundary),

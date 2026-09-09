@@ -493,6 +493,48 @@ struct LocalServerAcceptanceTests {
         atPath: capture.mediaDirectory.appendingPathComponent("master.caf").path
       )
     )
+    let synchronization = CanonicalSyncCoordinator(
+      repository: repository,
+      transport: HTTPCanonicalSyncTransport(
+        connection: resumedConnection,
+        archiveID: config.namespaceId
+      ),
+      language: { "en" }
+    )
+    var ready = false
+    for _ in 0..<100 {
+      let report = try await synchronization.runPass()
+      #expect(report.catalogFailure == nil)
+      #expect(report.failures[capture.callID] == nil)
+      ready = try await repository.isCallSavedOnMacAndServer(callID: capture.callID)
+      if ready { break }
+      try await Task.sleep(for: .milliseconds(200))
+    }
+    #expect(ready)
+    let confirmed = try await repository.loadCall(callID: capture.callID)
+    let revisionID = try #require(confirmed.manifest.value.activeRevisionId)
+    #expect(try repository.transcriptProvenanceBytes(revisionID: revisionID) != nil)
+    let fresh = try LocalRepository(
+      root: support.appending(path: "fresh-restored-archive"),
+      archiveID: config.namespaceId
+    )
+    let restoration = CanonicalSyncCoordinator(
+      repository: fresh,
+      transport: HTTPCanonicalSyncTransport(
+        connection: resumedConnection,
+        archiveID: config.namespaceId
+      ),
+      language: { "en" }
+    )
+    let restoredReport = try await restoration.runPass()
+    #expect(restoredReport.failures[capture.callID] == nil)
+    #expect(restoredReport.restoredCallIDs.contains(capture.callID))
+    #expect(try await fresh.isCallSavedOnMacAndServer(callID: capture.callID))
+    #expect(
+      try await fresh.transcriptRevisionBytes(callID: capture.callID, revisionID: revisionID)
+        == confirmed.transcriptRevisions[revisionID]
+    )
+    #expect(try await fresh.captureSession(callID: capture.callID) == nil)
     let playbackTransport = HTTPPlaybackTransport(
       connection: resumedConnection,
       archiveID: config.namespaceId
@@ -536,7 +578,7 @@ struct LocalServerAcceptanceTests {
       try await FileConnectionMetadataStore(url: namespace.connection).load()
     }
     print(
-      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + authenticated upload/finalization + lost local receipt commit + replay + verified cleanup + server playback/seek + stereo AVAudioEngine rendering + isolated namespace passed"
+      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + upload/finalization + lost receipt replay + verified cleanup + canonical base + automatic fake ASR + exact result/provenance import + confirmed replica + fresh restoration + server playback/seek + stereo AVAudioEngine rendering passed"
     )
   }
 }
@@ -604,7 +646,9 @@ private final class LoopbackResponse: @unchecked Sendable {
   static func start(
     status: Int,
     body: String,
-    location: String? = nil
+    location: String? = nil,
+    declaredLength: Bool = true,
+    contentSHA256: String? = nil
   ) async throws
     -> LoopbackResponse
   {
@@ -613,7 +657,9 @@ private final class LoopbackResponse: @unchecked Sendable {
     let listener = try NWListener(using: parameters)
     let requests = CapturedLocalRequests()
     let headers =
-      "HTTP/1.1 \(status) Test\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n"
+      "HTTP/1.1 \(status) Test\r\nContent-Type: application/json\r\nConnection: close\r\n"
+      + (declaredLength ? "Content-Length: \(body.utf8.count)\r\n" : "")
+      + (contentSHA256.map { "X-Trigo-Content-SHA256: \($0)\r\n" } ?? "")
       + (location.map { "Location: \($0)\r\n" } ?? "") + "\r\n"
     let response = Data((headers + body).utf8)
     listener.newConnectionHandler = { connection in
@@ -640,5 +686,129 @@ private final class LoopbackResponse: @unchecked Sendable {
       listener.start(queue: .global())
     }
     return LoopbackResponse(listener: listener, requests: requests)
+  }
+}
+
+private struct SyncTransportStatus: ServerStatusFetching {
+  func fetch(serverURL: URL, token: String) -> ServerStatus {
+    .init(
+      schemaVersion: 1,
+      apiVersion: 1,
+      archiveId: localNamespace,
+      stage: .dev,
+      readiness: .init(
+        archive: "ready",
+        ownerAuthentication: "ready",
+        transcription: .ready,
+        callOperations: .ready
+      ),
+      errors: []
+    )
+  }
+}
+
+struct CanonicalSyncHTTPTests {
+  private func connection(url: URL, support: URL) async throws -> ServerConnection {
+    let policy = ServerTransportPolicy.localDevelopment(try localConfiguration(url))
+    let connection = ServerConnection(
+      expectedStage: .dev,
+      metadataStore: FileConnectionMetadataStore(
+        url: support.appending(path: UUID().uuidString),
+        transportPolicy: policy
+      ),
+      credentialStore: DisposableLocalCredentials(),
+      statusClient: SyncTransportStatus(),
+      transportPolicy: policy
+    )
+    #expect(
+      await connection.connect(serverURL: url.absoluteString, token: localToken).binding?.archiveId
+        == localNamespace
+    )
+    return connection
+  }
+
+  @Test func actualTransportBoundsCatalogsChecksArtifactHashesAndKeepsCredentialsOnOrigin()
+    async throws
+  {
+    let support = try temporarySupport()
+    defer { try? FileManager.default.removeItem(at: support) }
+    let destination = try await LoopbackResponse.start(status: 200, body: "{}")
+    defer { destination.stop() }
+    let redirect = try await LoopbackResponse.start(
+      status: 302,
+      body: "",
+      location: #require(destination.url).appending(path: "v1/calls").absoluteString
+    )
+    let redirectedConnection = try await connection(url: #require(redirect.url), support: support)
+    let redirected = HTTPCanonicalSyncTransport(
+      connection: redirectedConnection,
+      archiveID: localNamespace,
+      timeout: 2
+    )
+    await #expect(throws: CanonicalSyncError.incompatibleDocument) {
+      try await redirected.catalog(cursor: nil)
+    }
+    #expect(await destination.requests.count == 0)
+    redirect.stop()
+    for declared in [true, false] {
+      let oversized = try await LoopbackResponse.start(
+        status: 200,
+        body: String(repeating: " ", count: 262_145),
+        declaredLength: declared
+      )
+      let connection = try await connection(url: #require(oversized.url), support: support)
+      let transport = HTTPCanonicalSyncTransport(
+        connection: connection,
+        archiveID: localNamespace,
+        timeout: 2
+      )
+      await #expect(throws: CanonicalSyncError.incompatibleDocument) {
+        try await transport.catalog(cursor: nil)
+      }
+      oversized.stop()
+    }
+    let corrupted = try await LoopbackResponse.start(
+      status: 200,
+      body: "{}",
+      contentSHA256: String(repeating: "0", count: 64)
+    )
+    let corruptedConnection = try await connection(url: #require(corrupted.url), support: support)
+    let transport = HTTPCanonicalSyncTransport(
+      connection: corruptedConnection,
+      archiveID: localNamespace,
+      timeout: 2
+    )
+    await #expect(throws: CanonicalSyncError.invalidResult) {
+      try await transport.document(callID: localNamespace, version: 1)
+    }
+    corrupted.stop()
+  }
+
+  @Test func rotatedCredentialsAndMismatchedBindingsBlockSynchronization() async throws {
+    let support = try temporarySupport()
+    defer { try? FileManager.default.removeItem(at: support) }
+    let fixture = try await LoopbackResponse.start(status: 401, body: "{}")
+    defer { fixture.stop() }
+    let connection = try await connection(url: #require(fixture.url), support: support)
+    let wrong = HTTPCanonicalSyncTransport(
+      connection: connection,
+      archiveID: UUID().uuidString.lowercased(),
+      timeout: 2
+    )
+    await #expect(throws: CanonicalSyncError.unauthorized) { try await wrong.catalog(cursor: nil) }
+    #expect(await fixture.requests.count == 0)
+    let transport = HTTPCanonicalSyncTransport(
+      connection: connection,
+      archiveID: localNamespace,
+      timeout: 2
+    )
+    await #expect(throws: CanonicalSyncError.unauthorized) {
+      try await transport.catalog(cursor: nil)
+    }
+    #expect(await connection.snapshot().health == .blocked(.unauthorized))
+    await #expect(throws: CanonicalSyncError.unauthorized) {
+      try await transport.catalog(cursor: nil)
+    }
+    #expect(await fixture.requests.count == 1)
   }
 }

@@ -89,6 +89,8 @@ final class CaptureSnapshotStream {
     try value(call.schemaVersion)
     try token(",\"source\":")
     try value(call.source)
+    try token(",\"speakerGroups\":")
+    try value(call.speakerGroups)
     try token(",\"speakerNames\":")
     try value(call.speakerNames)
     try token(",\"startedAt\":")

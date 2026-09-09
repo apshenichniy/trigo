@@ -3,7 +3,7 @@ import Foundation
 /// Immutable preparation rows are content-addressed. Only the small calls/evidence/history
 /// publication tables make prepared data visible. A crash may retain unreachable preparation;
 /// it never exposes a half-imported revision or a partially assembled call snapshot.
-let repositorySchemaVersion = 3
+let repositorySchemaVersion = 4
 
 let repositorySchemaV2 = [
   "CREATE TABLE repository_identity(archive_id TEXT NOT NULL, root TEXT NOT NULL) STRICT",
@@ -89,4 +89,5 @@ let repositoryUploadSchema = [
   """,
 ]
 
-let repositorySchema = repositorySchemaV2 + repositoryUploadSchema
+let repositorySchemaV3 = repositorySchemaV2 + repositoryUploadSchema
+let repositorySchema = repositorySchemaV3 + repositorySyncSchema

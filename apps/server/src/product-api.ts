@@ -3,12 +3,19 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
 
 import {
   ErrorEnvelopeSchema,
+  AudioManifest,
+  CallDocument,
+  CallCatalogPage,
+  CallChangesPage,
   ExchangeUUID,
   FinalizeMasterUpload,
   MasterUploadSession,
   PlaybackGrant,
   RegisterMasterUpload,
   RequestTranscription,
+  PublishCallReplica,
+  ReplicaReceipt,
+  TranscriptResultsPage,
   RequestPlayback,
   SHA256,
   StatusResponse,
@@ -98,6 +105,41 @@ export const ProductApi = HttpApi.make("trigo").add(
         error: transcriptionErrors,
       },
     ),
+  ),
+  HttpApiGroup.make("sync").add(
+    HttpApiEndpoint.put("publishReplica", "/v1/calls/:callId/document", {
+      params: { callId: ExchangeUUID },
+      payload: PublishCallReplica,
+      success: ReplicaReceipt,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get("canonicalReplica", "/v1/calls/:callId/document", {
+      params: { callId: ExchangeUUID },
+      query: { documentVersion: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThan(0))) },
+      success: CallDocument,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get("storedAudioManifest", "/v1/calls/:callId/audio-manifest", {
+      params: { callId: ExchangeUUID },
+      success: AudioManifest,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get("callCatalog", "/v1/calls", {
+      query: { cursor: Schema.optionalKey(Schema.String) },
+      success: CallCatalogPage,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get("callChanges", "/v1/changes", {
+      query: { cursor: Schema.String },
+      success: CallChangesPage,
+      error: transcriptionErrors,
+    }),
+    HttpApiEndpoint.get("transcriptResults", "/v1/calls/:callId/results", {
+      params: { callId: ExchangeUUID },
+      query: { cursor: Schema.optionalKey(Schema.String) },
+      success: TranscriptResultsPage,
+      error: transcriptionErrors,
+    }),
   ),
   HttpApiGroup.make("playbackGrants").add(
     HttpApiEndpoint.post("requestPlayback", "/v1/calls/:callId/playback", {

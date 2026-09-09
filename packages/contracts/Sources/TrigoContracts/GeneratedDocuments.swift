@@ -8,6 +8,7 @@ enum GeneratedContract {
     "LocalDevelopmentBridge",
     "CaptureMasterProfile",
     "CallDocument",
+    "LegacyCallDocument",
     "TranscriptRevision",
     "AudioManifest",
     "StatusResponse",
@@ -22,6 +23,16 @@ enum GeneratedContract {
     "RequestTranscription",
     "AvailableTranscript",
     "TranscriptionOperation",
+    "ReplicaReference",
+    "PublishCallReplica",
+    "ReplicaReceipt",
+    "CallDeletionMarker",
+    "CallCatalogEntry",
+    "CallCatalogPage",
+    "CallChange",
+    "CallChangesPage",
+    "CatalogTranscriptResult",
+    "TranscriptResultsPage",
     "RequestPlayback",
     "PlaybackManifest",
     "PlaybackGrant",
@@ -604,8 +615,208 @@ public struct RevisionReference: Codable, Equatable, Sendable {
   }
 }
 
+public struct SpeakerGroup: Codable, Equatable, Sendable {
+  public var groupId: ExchangeUUID
+  public var displayName: String
+  public var speakerIds: [ExchangeUUID]
+  public init(
+    groupId: ExchangeUUID,
+    displayName: String,
+    speakerIds: [ExchangeUUID]
+  ) {
+    self.groupId = groupId
+    self.displayName = displayName
+    self.speakerIds = speakerIds
+  }
+  enum CodingKeys: String, CodingKey {
+    case groupId
+    case displayName
+    case speakerIds
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.groupId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .groupId
+    )
+    self.displayName = try container.decode(
+      String.self,
+      forKey: .displayName
+    )
+    self.speakerIds = try container.decode(
+      [ExchangeUUID].self,
+      forKey: .speakerIds
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.groupId, forKey: .groupId)
+    try container.encode(self.displayName, forKey: .displayName)
+    try container.encode(self.speakerIds, forKey: .speakerIds)
+  }
+}
+
 public struct CallDocument: ContractDocument, Codable, Equatable, Sendable {
   public static let documentKind = "CallDocument"
+  public var schemaVersion: Int
+  public var archiveId: ExchangeUUID
+  public var callId: ExchangeUUID
+  public var documentVersion: PositiveInteger
+  public var startedAt: UTCDateTime
+  public var endedAt: UTCDateTime?
+  public var durationMs: NonNegativeInteger?
+  public var captureState: String
+  public var interruptionReason: String?
+  public var source: CaptureSourceDocument
+  public var tracks: [AudioTrack]
+  public var audioManifest: AudioManifestReference?
+  public var revisions: [RevisionReference]
+  public var activeRevisionId: ExchangeUUID?
+  public var speakerNames: [String: [String: String]]
+  public var speakerGroups: [String: [SpeakerGroup]]
+  public init(
+    schemaVersion: Int,
+    archiveId: ExchangeUUID,
+    callId: ExchangeUUID,
+    documentVersion: PositiveInteger,
+    startedAt: UTCDateTime,
+    endedAt: UTCDateTime?,
+    durationMs: NonNegativeInteger?,
+    captureState: String,
+    interruptionReason: String?,
+    source: CaptureSourceDocument,
+    tracks: [AudioTrack],
+    audioManifest: AudioManifestReference?,
+    revisions: [RevisionReference],
+    activeRevisionId: ExchangeUUID?,
+    speakerNames: [String: [String: String]],
+    speakerGroups: [String: [SpeakerGroup]]
+  ) {
+    self.schemaVersion = schemaVersion
+    self.archiveId = archiveId
+    self.callId = callId
+    self.documentVersion = documentVersion
+    self.startedAt = startedAt
+    self.endedAt = endedAt
+    self.durationMs = durationMs
+    self.captureState = captureState
+    self.interruptionReason = interruptionReason
+    self.source = source
+    self.tracks = tracks
+    self.audioManifest = audioManifest
+    self.revisions = revisions
+    self.activeRevisionId = activeRevisionId
+    self.speakerNames = speakerNames
+    self.speakerGroups = speakerGroups
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case archiveId
+    case callId
+    case documentVersion
+    case startedAt
+    case endedAt
+    case durationMs
+    case captureState
+    case interruptionReason
+    case source
+    case tracks
+    case audioManifest
+    case revisions
+    case activeRevisionId
+    case speakerNames
+    case speakerGroups
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.archiveId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .archiveId
+    )
+    self.callId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .callId
+    )
+    self.documentVersion = try container.decode(
+      PositiveInteger.self,
+      forKey: .documentVersion
+    )
+    self.startedAt = try container.decode(
+      UTCDateTime.self,
+      forKey: .startedAt
+    )
+    self.endedAt = try container.decode(
+      UTCDateTime?.self,
+      forKey: .endedAt
+    )
+    self.durationMs = try container.decode(
+      NonNegativeInteger?.self,
+      forKey: .durationMs
+    )
+    self.captureState = try container.decode(
+      String.self,
+      forKey: .captureState
+    )
+    self.interruptionReason = try container.decode(
+      String?.self,
+      forKey: .interruptionReason
+    )
+    self.source = try container.decode(
+      CaptureSourceDocument.self,
+      forKey: .source
+    )
+    self.tracks = try container.decode(
+      [AudioTrack].self,
+      forKey: .tracks
+    )
+    self.audioManifest = try container.decode(
+      AudioManifestReference?.self,
+      forKey: .audioManifest
+    )
+    self.revisions = try container.decode(
+      [RevisionReference].self,
+      forKey: .revisions
+    )
+    self.activeRevisionId = try container.decode(
+      ExchangeUUID?.self,
+      forKey: .activeRevisionId
+    )
+    self.speakerNames = try container.decode(
+      [String: [String: String]].self,
+      forKey: .speakerNames
+    )
+    self.speakerGroups = try container.decode(
+      [String: [SpeakerGroup]].self,
+      forKey: .speakerGroups
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.documentVersion, forKey: .documentVersion)
+    try container.encode(self.startedAt, forKey: .startedAt)
+    try container.encode(self.endedAt, forKey: .endedAt)
+    try container.encode(self.durationMs, forKey: .durationMs)
+    try container.encode(self.captureState, forKey: .captureState)
+    try container.encode(self.interruptionReason, forKey: .interruptionReason)
+    try container.encode(self.source, forKey: .source)
+    try container.encode(self.tracks, forKey: .tracks)
+    try container.encode(self.audioManifest, forKey: .audioManifest)
+    try container.encode(self.revisions, forKey: .revisions)
+    try container.encode(self.activeRevisionId, forKey: .activeRevisionId)
+    try container.encode(self.speakerNames, forKey: .speakerNames)
+    try container.encode(self.speakerGroups, forKey: .speakerGroups)
+  }
+}
+
+public struct LegacyCallDocument: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "LegacyCallDocument"
   public var schemaVersion: Int
   public var archiveId: ExchangeUUID
   public var callId: ExchangeUUID
@@ -2454,6 +2665,573 @@ public struct TranscriptionOperation: ContractDocument, Codable, Equatable, Send
     try container.encode(self.updatedAt, forKey: .updatedAt)
     try container.encode(self.result, forKey: .result)
     try container.encode(self.failure, forKey: .failure)
+  }
+}
+
+public struct ReplicaReference: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "ReplicaReference"
+  public var documentVersion: PositiveInteger
+  public var schemaVersion: Int
+  public var sha256: SHA256Digest
+  public var byteLength: PositiveInteger
+  public init(
+    documentVersion: PositiveInteger,
+    schemaVersion: Int,
+    sha256: SHA256Digest,
+    byteLength: PositiveInteger
+  ) {
+    self.documentVersion = documentVersion
+    self.schemaVersion = schemaVersion
+    self.sha256 = sha256
+    self.byteLength = byteLength
+  }
+  enum CodingKeys: String, CodingKey {
+    case documentVersion
+    case schemaVersion
+    case sha256
+    case byteLength
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.documentVersion = try container.decode(
+      PositiveInteger.self,
+      forKey: .documentVersion
+    )
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.sha256 = try container.decode(
+      SHA256Digest.self,
+      forKey: .sha256
+    )
+    self.byteLength = try container.decode(
+      PositiveInteger.self,
+      forKey: .byteLength
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.documentVersion, forKey: .documentVersion)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.sha256, forKey: .sha256)
+    try container.encode(self.byteLength, forKey: .byteLength)
+  }
+}
+
+public struct PublishCallReplica: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "PublishCallReplica"
+  public var schemaVersion: Int
+  public var operationId: ExchangeUUID
+  public var expectedDocumentVersion: PositiveInteger?
+  public var document: String
+  public var annotationRevisionIds: [ExchangeUUID]
+  public init(
+    schemaVersion: Int,
+    operationId: ExchangeUUID,
+    expectedDocumentVersion: PositiveInteger?,
+    document: String,
+    annotationRevisionIds: [ExchangeUUID]
+  ) {
+    self.schemaVersion = schemaVersion
+    self.operationId = operationId
+    self.expectedDocumentVersion = expectedDocumentVersion
+    self.document = document
+    self.annotationRevisionIds = annotationRevisionIds
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case operationId
+    case expectedDocumentVersion
+    case document
+    case annotationRevisionIds
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.operationId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .operationId
+    )
+    self.expectedDocumentVersion = try container.decode(
+      PositiveInteger?.self,
+      forKey: .expectedDocumentVersion
+    )
+    self.document = try container.decode(
+      String.self,
+      forKey: .document
+    )
+    self.annotationRevisionIds = try container.decode(
+      [ExchangeUUID].self,
+      forKey: .annotationRevisionIds
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.operationId, forKey: .operationId)
+    try container.encode(self.expectedDocumentVersion, forKey: .expectedDocumentVersion)
+    try container.encode(self.document, forKey: .document)
+    try container.encode(self.annotationRevisionIds, forKey: .annotationRevisionIds)
+  }
+}
+
+public struct ReplicaReceipt: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "ReplicaReceipt"
+  public var schemaVersion: Int
+  public var operationId: ExchangeUUID
+  public var archiveId: ExchangeUUID
+  public var callId: ExchangeUUID
+  public var documentVersion: PositiveInteger
+  public var sha256: SHA256Digest
+  public var byteLength: PositiveInteger
+  public var publishedAt: UTCDateTime
+  public init(
+    schemaVersion: Int,
+    operationId: ExchangeUUID,
+    archiveId: ExchangeUUID,
+    callId: ExchangeUUID,
+    documentVersion: PositiveInteger,
+    sha256: SHA256Digest,
+    byteLength: PositiveInteger,
+    publishedAt: UTCDateTime
+  ) {
+    self.schemaVersion = schemaVersion
+    self.operationId = operationId
+    self.archiveId = archiveId
+    self.callId = callId
+    self.documentVersion = documentVersion
+    self.sha256 = sha256
+    self.byteLength = byteLength
+    self.publishedAt = publishedAt
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case operationId
+    case archiveId
+    case callId
+    case documentVersion
+    case sha256
+    case byteLength
+    case publishedAt
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.operationId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .operationId
+    )
+    self.archiveId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .archiveId
+    )
+    self.callId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .callId
+    )
+    self.documentVersion = try container.decode(
+      PositiveInteger.self,
+      forKey: .documentVersion
+    )
+    self.sha256 = try container.decode(
+      SHA256Digest.self,
+      forKey: .sha256
+    )
+    self.byteLength = try container.decode(
+      PositiveInteger.self,
+      forKey: .byteLength
+    )
+    self.publishedAt = try container.decode(
+      UTCDateTime.self,
+      forKey: .publishedAt
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.operationId, forKey: .operationId)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.documentVersion, forKey: .documentVersion)
+    try container.encode(self.sha256, forKey: .sha256)
+    try container.encode(self.byteLength, forKey: .byteLength)
+    try container.encode(self.publishedAt, forKey: .publishedAt)
+  }
+}
+
+public struct CallDeletionMarker: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "CallDeletionMarker"
+  public var callId: ExchangeUUID
+  public var markedAt: UTCDateTime
+  public var phase: String
+  public init(
+    callId: ExchangeUUID,
+    markedAt: UTCDateTime,
+    phase: String
+  ) {
+    self.callId = callId
+    self.markedAt = markedAt
+    self.phase = phase
+  }
+  enum CodingKeys: String, CodingKey {
+    case callId
+    case markedAt
+    case phase
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.callId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .callId
+    )
+    self.markedAt = try container.decode(
+      UTCDateTime.self,
+      forKey: .markedAt
+    )
+    self.phase = try container.decode(
+      String.self,
+      forKey: .phase
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.markedAt, forKey: .markedAt)
+    try container.encode(self.phase, forKey: .phase)
+  }
+}
+
+public struct CallCatalogEntry: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "CallCatalogEntry"
+  public var callId: ExchangeUUID
+  public var replica: ReplicaReference?
+  public var audio: VerifiedMasterReceipt?
+  public var latestTranscriptionOperationId: ExchangeUUID?
+  public var resultCount: NonNegativeInteger
+  public var deletion: CallDeletionMarker?
+  public init(
+    callId: ExchangeUUID,
+    replica: ReplicaReference?,
+    audio: VerifiedMasterReceipt?,
+    latestTranscriptionOperationId: ExchangeUUID?,
+    resultCount: NonNegativeInteger,
+    deletion: CallDeletionMarker?
+  ) {
+    self.callId = callId
+    self.replica = replica
+    self.audio = audio
+    self.latestTranscriptionOperationId = latestTranscriptionOperationId
+    self.resultCount = resultCount
+    self.deletion = deletion
+  }
+  enum CodingKeys: String, CodingKey {
+    case callId
+    case replica
+    case audio
+    case latestTranscriptionOperationId
+    case resultCount
+    case deletion
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.callId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .callId
+    )
+    self.replica = try container.decode(
+      ReplicaReference?.self,
+      forKey: .replica
+    )
+    self.audio = try container.decode(
+      VerifiedMasterReceipt?.self,
+      forKey: .audio
+    )
+    self.latestTranscriptionOperationId = try container.decode(
+      ExchangeUUID?.self,
+      forKey: .latestTranscriptionOperationId
+    )
+    self.resultCount = try container.decode(
+      NonNegativeInteger.self,
+      forKey: .resultCount
+    )
+    self.deletion = try container.decode(
+      CallDeletionMarker?.self,
+      forKey: .deletion
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.replica, forKey: .replica)
+    try container.encode(self.audio, forKey: .audio)
+    try container.encode(
+      self.latestTranscriptionOperationId,
+      forKey: .latestTranscriptionOperationId
+    )
+    try container.encode(self.resultCount, forKey: .resultCount)
+    try container.encode(self.deletion, forKey: .deletion)
+  }
+}
+
+public struct CallCatalogPage: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "CallCatalogPage"
+  public var schemaVersion: Int
+  public var archiveId: ExchangeUUID
+  public var calls: [CallCatalogEntry]
+  public var nextCursor: String?
+  public var changesCursor: String
+  public init(
+    schemaVersion: Int,
+    archiveId: ExchangeUUID,
+    calls: [CallCatalogEntry],
+    nextCursor: String?,
+    changesCursor: String
+  ) {
+    self.schemaVersion = schemaVersion
+    self.archiveId = archiveId
+    self.calls = calls
+    self.nextCursor = nextCursor
+    self.changesCursor = changesCursor
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case archiveId
+    case calls
+    case nextCursor
+    case changesCursor
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.archiveId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .archiveId
+    )
+    self.calls = try container.decode(
+      [CallCatalogEntry].self,
+      forKey: .calls
+    )
+    self.nextCursor = try container.decode(
+      String?.self,
+      forKey: .nextCursor
+    )
+    self.changesCursor = try container.decode(
+      String.self,
+      forKey: .changesCursor
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.calls, forKey: .calls)
+    try container.encode(self.nextCursor, forKey: .nextCursor)
+    try container.encode(self.changesCursor, forKey: .changesCursor)
+  }
+}
+
+public struct CallChange: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "CallChange"
+  public var sequence: PositiveInteger
+  public var call: CallCatalogEntry
+  public init(
+    sequence: PositiveInteger,
+    call: CallCatalogEntry
+  ) {
+    self.sequence = sequence
+    self.call = call
+  }
+  enum CodingKeys: String, CodingKey {
+    case sequence
+    case call
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.sequence = try container.decode(
+      PositiveInteger.self,
+      forKey: .sequence
+    )
+    self.call = try container.decode(
+      CallCatalogEntry.self,
+      forKey: .call
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.sequence, forKey: .sequence)
+    try container.encode(self.call, forKey: .call)
+  }
+}
+
+public struct CallChangesPage: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "CallChangesPage"
+  public var schemaVersion: Int
+  public var archiveId: ExchangeUUID
+  public var changes: [CallChange]
+  public var nextCursor: String
+  public var hasMore: Bool
+  public init(
+    schemaVersion: Int,
+    archiveId: ExchangeUUID,
+    changes: [CallChange],
+    nextCursor: String,
+    hasMore: Bool
+  ) {
+    self.schemaVersion = schemaVersion
+    self.archiveId = archiveId
+    self.changes = changes
+    self.nextCursor = nextCursor
+    self.hasMore = hasMore
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case archiveId
+    case changes
+    case nextCursor
+    case hasMore
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.archiveId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .archiveId
+    )
+    self.changes = try container.decode(
+      [CallChange].self,
+      forKey: .changes
+    )
+    self.nextCursor = try container.decode(
+      String.self,
+      forKey: .nextCursor
+    )
+    self.hasMore = try container.decode(
+      Bool.self,
+      forKey: .hasMore
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.changes, forKey: .changes)
+    try container.encode(self.nextCursor, forKey: .nextCursor)
+    try container.encode(self.hasMore, forKey: .hasMore)
+  }
+}
+
+public struct CatalogTranscriptResult: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "CatalogTranscriptResult"
+  public var operationId: ExchangeUUID
+  public var generation: PositiveInteger
+  public var result: AvailableTranscript
+  public init(
+    operationId: ExchangeUUID,
+    generation: PositiveInteger,
+    result: AvailableTranscript
+  ) {
+    self.operationId = operationId
+    self.generation = generation
+    self.result = result
+  }
+  enum CodingKeys: String, CodingKey {
+    case operationId
+    case generation
+    case result
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.operationId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .operationId
+    )
+    self.generation = try container.decode(
+      PositiveInteger.self,
+      forKey: .generation
+    )
+    self.result = try container.decode(
+      AvailableTranscript.self,
+      forKey: .result
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.operationId, forKey: .operationId)
+    try container.encode(self.generation, forKey: .generation)
+    try container.encode(self.result, forKey: .result)
+  }
+}
+
+public struct TranscriptResultsPage: ContractDocument, Codable, Equatable, Sendable {
+  public static let documentKind = "TranscriptResultsPage"
+  public var schemaVersion: Int
+  public var archiveId: ExchangeUUID
+  public var callId: ExchangeUUID
+  public var results: [CatalogTranscriptResult]
+  public var nextCursor: String?
+  public init(
+    schemaVersion: Int,
+    archiveId: ExchangeUUID,
+    callId: ExchangeUUID,
+    results: [CatalogTranscriptResult],
+    nextCursor: String?
+  ) {
+    self.schemaVersion = schemaVersion
+    self.archiveId = archiveId
+    self.callId = callId
+    self.results = results
+    self.nextCursor = nextCursor
+  }
+  enum CodingKeys: String, CodingKey {
+    case schemaVersion
+    case archiveId
+    case callId
+    case results
+    case nextCursor
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.schemaVersion = try container.decode(
+      Int.self,
+      forKey: .schemaVersion
+    )
+    self.archiveId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .archiveId
+    )
+    self.callId = try container.decode(
+      ExchangeUUID.self,
+      forKey: .callId
+    )
+    self.results = try container.decode(
+      [CatalogTranscriptResult].self,
+      forKey: .results
+    )
+    self.nextCursor = try container.decode(
+      String?.self,
+      forKey: .nextCursor
+    )
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(self.schemaVersion, forKey: .schemaVersion)
+    try container.encode(self.archiveId, forKey: .archiveId)
+    try container.encode(self.callId, forKey: .callId)
+    try container.encode(self.results, forKey: .results)
+    try container.encode(self.nextCursor, forKey: .nextCursor)
   }
 }
 

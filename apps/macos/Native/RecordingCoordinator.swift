@@ -73,6 +73,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
   private let capture: ScreenCaptureRecording
   private let sources: RecordingSourceAccess
   private let uploads: MasterUploadApplicationOwner?
+  private let synchronization: CanonicalSyncApplicationOwner?
 
   public convenience init(connection: ServerConnection, namespace: AppNamespace) {
     self.init(
@@ -80,7 +81,8 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       namespace: namespace,
       capture: ScreenCaptureRecording(),
       sources: .live,
-      uploads: MasterUploadApplicationOwner(namespace: namespace, connection: connection)
+      uploads: MasterUploadApplicationOwner(namespace: namespace, connection: connection),
+      synchronization: CanonicalSyncApplicationOwner(namespace: namespace, connection: connection)
     )
   }
 
@@ -89,13 +91,15 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     namespace: AppNamespace,
     capture: ScreenCaptureRecording,
     sources: RecordingSourceAccess,
-    uploads: MasterUploadApplicationOwner? = nil
+    uploads: MasterUploadApplicationOwner? = nil,
+    synchronization: CanonicalSyncApplicationOwner? = nil
   ) {
     self.connection = connection
     self.namespace = namespace
     self.capture = capture
     self.sources = sources
     self.uploads = uploads
+    self.synchronization = synchronization
     self.capturePermissions = sources.permissions()
     capture.onPhaseChange = { [weak self] phase in self?.capturePhase = phase }
     capture.onChange = { [weak self] snapshot in
@@ -262,8 +266,15 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
     if let binding = connectionSnapshot.binding, recoveredArchiveID == binding.archiveId,
       recoveryReport.failures.isEmpty, !isTerminating
     {
-      do { try await uploads?.start(binding: binding) } catch { report(error) }
+      do {
+        try await uploads?.start(binding: binding)
+        try await synchronization?.start(binding: binding)
+      } catch { report(error) }
     }
+  }
+
+  public func retrySynchronization(callID: String) async {
+    await synchronization?.retry(callID: callID)
   }
 
   public var microphoneState: MicrophoneRecordingState {
@@ -353,6 +364,7 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
       capturePhase = capture.phase
       callID = capture.session?.callID
       await uploads?.wake()
+      await synchronization?.wake()
     }
     stopTask = task
     await task.value
@@ -373,7 +385,10 @@ public enum MicrophoneRecordingState: Equatable, Sendable {
           "The recording has not finished safely. Retry local recovery; do not discard the retained media."
       )
     }
-    if safe { await uploads?.stop() }
+    if safe {
+      await uploads?.stop()
+      await synchronization?.stop()
+    }
     return safe
   }
 

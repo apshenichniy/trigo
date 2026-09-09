@@ -42,6 +42,18 @@ export function validateCall(call: CallDocument): void {
     call.activeRevisionId === null ||
       call.revisions.some((r) => r.revisionId === call.activeRevisionId),
   );
+  const groupIds: string[] = [];
+  for (const [revisionId, groups] of Object.entries(call.speakerGroups)) {
+    requireValid(call.revisions.some((revision) => revision.revisionId === revisionId));
+    const members: string[] = [];
+    for (const group of groups) {
+      groupIds.push(group.groupId);
+      members.push(...group.speakerIds);
+      unique(group.speakerIds);
+    }
+    unique(members);
+  }
+  unique(groupIds);
 }
 export function validateRevision(
   revision: import("./document-schema.ts").TranscriptRevision,

@@ -2,37 +2,37 @@
   {
     "name": "CallDocument baseline",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "CallDocument unknown root property",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"extra\":1}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"extra\":1,\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "CallDocument missing schema version",
     "kind": "CallDocument",
-    "json": "{\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "CallDocument null schema version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":null,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":null,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "CallDocument unsupported version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":3,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "CallDocument boolean version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":true,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":true,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
@@ -218,73 +218,73 @@
   {
     "name": "required nullable endedAt",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "required nullable durationMs",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "required nullable interruptionReason",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "required nullable audioManifest",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "required nullable activeRevisionId",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "required nullable source.windowId",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "required nullable source.windowTitle",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "required nullable tracks.0.inputDevice",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "null nonnullable source",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":null,\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":null,\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "null nonnullable tracks",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":null,\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":null,\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "unknown nested source.extra",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null,\"extra\":1},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null,\"extra\":1},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "unknown nested tracks.0.extra",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[],\"extra\":1},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[],\"extra\":1},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
@@ -320,175 +320,175 @@
   {
     "name": "max safe version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":9007199254740991,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":9007199254740991,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "unsafe version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":9007199254740992,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":9007199254740992,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "zero version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":0,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":0,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "negative version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":-1,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":-1,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "fractional version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":1.5,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":1.5,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "boolean version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":true,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":true,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "string version",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":\"1\",\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":\"1\",\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "zero source integer",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":0,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":0,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "max safe source integer",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":9007199254740991,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":9007199254740991,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "unsafe source integer",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":9007199254740992,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":9007199254740992,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "negative source integer",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":-1,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":-1,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "fractional source integer",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":1.1,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":1.1,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "boolean source integer",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":true,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":true,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2024-02-29T23:59:59Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2024-02-29T23:59:59Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2024-02-29T23:59:59Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "2000-02-29T00:00:00.123456789Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2000-02-29T00:00:00.123456789Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2000-02-29T00:00:00.123456789Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "0000-02-29T00:00:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"0000-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"0000-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "2024-12-31T23:59:60Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2024-12-31T23:59:60Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2024-12-31T23:59:60Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "2026-09-05T10:00:00.000000Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00.000000Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00.000000Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": true
   },
   {
     "name": "1900-02-29T00:00:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"1900-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"1900-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2023-02-29T00:00:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2023-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2023-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-04-31T00:00:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-04-31T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-04-31T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-09-05T24:00:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T24:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T24:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-09-05T12:59:60Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T12:59:60Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T12:59:60Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-09-05T10:00:00+00:00",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00+00:00\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00+00:00\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-09-05t10:00:00z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05t10:00:00z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05t10:00:00z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-13-01T00:00:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-13-01T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-13-01T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-01-00T00:00:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-00T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-00T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-01-01T00:60:00Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-01T00:60:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-01T00:60:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "2026-01-01T00:00:00.Z",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-01T00:00:00.Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-01T00:00:00.Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
@@ -554,19 +554,19 @@
   {
     "name": "invalid revision key",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"invalid\":{}}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"invalid\":{}},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "invalid speaker key",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"00000000-0000-0000-0000-000000000000\":{\"invalid\":\"Name\"}}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"00000000-0000-0000-0000-000000000000\":{\"invalid\":\"Name\"}},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "valid UUID keyed annotations",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"00000000-0000-0000-0000-000000000000\":{\"abcdef12-abcd-1abc-0abc-abcdef123456\":\"Леся 👋\"}}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"00000000-0000-0000-0000-000000000000\":{\"abcdef12-abcd-1abc-0abc-abcdef123456\":\"Леся 👋\"}},\"speakerGroups\":{}}",
     "valid": true
   },
   {
@@ -650,13 +650,13 @@
   {
     "name": "one track rejected",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
     "name": "three tracks rejected",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
@@ -668,7 +668,7 @@
   {
     "name": "overflow JSON number CallDocument",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":1e999,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":1e999,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
@@ -680,7 +680,7 @@
   {
     "name": "Unicode timestamp fraction rejected",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-06T00:00:00.١Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-06T00:00:00.١Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
@@ -692,7 +692,7 @@
   {
     "name": "timestamp trailing LF rejected",
     "kind": "CallDocument",
-    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-06T00:00:00Z\\n\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-06T00:00:00Z\\n\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"speakerGroups\":{}}",
     "valid": false
   },
   {
@@ -1017,6 +1017,558 @@
     "name": "TranscriptionOperation unknown root field",
     "kind": "TranscriptionOperation",
     "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000180\",\"archiveId\":\"00000000-0000-4000-8000-000000000018\",\"callId\":\"00000000-0000-4000-8000-000000000182\",\"revisionId\":\"00000000-0000-4000-8000-000000000181\",\"state\":\"queued\",\"attemptCount\":0,\"createdAt\":\"2026-09-08T00:00:00Z\",\"updatedAt\":\"2026-09-08T00:00:00Z\",\"result\":null,\"failure\":null,\"canonicalImported\":true}",
+    "valid": false
+  },
+  {
+    "name": "LegacyCallDocument baseline",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "LegacyCallDocument unknown root property",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{},\"extra\":1}",
+    "valid": false
+  },
+  {
+    "name": "LegacyCallDocument missing schema version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "LegacyCallDocument null schema version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":null,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "LegacyCallDocument unsupported version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "LegacyCallDocument boolean version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":true,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable endedAt",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable durationMs",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable interruptionReason",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable audioManifest",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable activeRevisionId",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable source.windowId",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable source.windowTitle",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "required nullable tracks.0.inputDevice",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "null nonnullable source",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":null,\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "null nonnullable tracks",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":null,\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "unknown nested source.extra",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null,\"extra\":1},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "unknown nested tracks.0.extra",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[],\"extra\":1},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "max safe version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":9007199254740991,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "unsafe version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":9007199254740992,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "zero version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":0,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "negative version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":-1,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "fractional version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":1.5,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "boolean version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":true,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "string version",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":\"1\",\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "zero source integer",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":0,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "max safe source integer",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":9007199254740991,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "unsafe source integer",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":9007199254740992,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "negative source integer",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":-1,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "fractional source integer",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":1.1,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "boolean source integer",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":true,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2024-02-29T23:59:59Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2024-02-29T23:59:59Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "2000-02-29T00:00:00.123456789Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2000-02-29T00:00:00.123456789Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "0000-02-29T00:00:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"0000-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "2024-12-31T23:59:60Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2024-12-31T23:59:60Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "2026-09-05T10:00:00.000000Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00.000000Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": true
+  },
+  {
+    "name": "1900-02-29T00:00:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"1900-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2023-02-29T00:00:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2023-02-29T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-04-31T00:00:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-04-31T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-09-05T24:00:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T24:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-09-05T12:59:60Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T12:59:60Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-09-05T10:00:00+00:00",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00+00:00\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-09-05t10:00:00z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05t10:00:00z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-13-01T00:00:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-13-01T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-01-00T00:00:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-00T00:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-01-01T00:60:00Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-01T00:60:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "2026-01-01T00:00:00.Z",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-01-01T00:00:00.Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "invalid revision key",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"invalid\":{}}}",
+    "valid": false
+  },
+  {
+    "name": "invalid speaker key",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"00000000-0000-0000-0000-000000000000\":{\"invalid\":\"Name\"}}}",
+    "valid": false
+  },
+  {
+    "name": "valid UUID keyed annotations",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{\"00000000-0000-0000-0000-000000000000\":{\"abcdef12-abcd-1abc-0abc-abcdef123456\":\"Леся 👋\"}}}",
+    "valid": true
+  },
+  {
+    "name": "one track rejected",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "three tracks rejected",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "overflow JSON number LegacyCallDocument",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":1e999,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "Unicode timestamp fraction rejected",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-06T00:00:00.١Z\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "timestamp trailing LF rejected",
+    "kind": "LegacyCallDocument",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-06T00:00:00Z\\n\",\"endedAt\":null,\"durationMs\":null,\"captureState\":\"recording\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[]}],\"audioManifest\":null,\"revisions\":[],\"activeRevisionId\":null,\"speakerNames\":{}}",
+    "valid": false
+  },
+  {
+    "name": "CallDocument v2 named group",
+    "kind": "CallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":\"2026-09-05T10:00:01Z\",\"durationMs\":1000,\"captureState\":\"stopped\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]}],\"audioManifest\":{\"manifestId\":\"00000000-0000-4000-8000-000000000004\",\"sha256\":\"88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2\"},\"revisions\":[{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"bc93431e4e564873cb835f6ce4bb8a19a4bc21b1096dc84c6a1a0f63c037c4c9\"},{\"revisionId\":\"00000000-0000-4000-8000-000000000011\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d\"}],\"activeRevisionId\":\"00000000-0000-4000-8000-000000000011\",\"speakerNames\":{\"00000000-0000-4000-8000-000000000006\":{\"00000000-0000-4000-8000-000000000007\":\"Original first name\",\"00000000-0000-4000-8000-000000000087\":\"Original second name\"}},\"speakerGroups\":{\"00000000-0000-4000-8000-000000000006\":[{\"groupId\":\"00000000-0000-4000-8000-000000000089\",\"displayName\":\"Александр 👋\",\"speakerIds\":[\"00000000-0000-4000-8000-000000000007\",\"00000000-0000-4000-8000-000000000087\"]}]}}",
+    "valid": true
+  },
+  {
+    "name": "CallDocument v2 missing groups",
+    "kind": "CallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":\"2026-09-05T10:00:01Z\",\"durationMs\":1000,\"captureState\":\"stopped\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]}],\"audioManifest\":{\"manifestId\":\"00000000-0000-4000-8000-000000000004\",\"sha256\":\"88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2\"},\"revisions\":[{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"bc93431e4e564873cb835f6ce4bb8a19a4bc21b1096dc84c6a1a0f63c037c4c9\"},{\"revisionId\":\"00000000-0000-4000-8000-000000000011\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d\"}],\"activeRevisionId\":\"00000000-0000-4000-8000-000000000011\",\"speakerNames\":{\"00000000-0000-4000-8000-000000000006\":{\"00000000-0000-4000-8000-000000000007\":\"Original first name\",\"00000000-0000-4000-8000-000000000087\":\"Original second name\"}}}",
+    "valid": false
+  },
+  {
+    "name": "CallDocument v2 null groups",
+    "kind": "CallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":\"2026-09-05T10:00:01Z\",\"durationMs\":1000,\"captureState\":\"stopped\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]}],\"audioManifest\":{\"manifestId\":\"00000000-0000-4000-8000-000000000004\",\"sha256\":\"88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2\"},\"revisions\":[{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"bc93431e4e564873cb835f6ce4bb8a19a4bc21b1096dc84c6a1a0f63c037c4c9\"},{\"revisionId\":\"00000000-0000-4000-8000-000000000011\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d\"}],\"activeRevisionId\":\"00000000-0000-4000-8000-000000000011\",\"speakerNames\":{\"00000000-0000-4000-8000-000000000006\":{\"00000000-0000-4000-8000-000000000007\":\"Original first name\",\"00000000-0000-4000-8000-000000000087\":\"Original second name\"}},\"speakerGroups\":null}",
+    "valid": false
+  },
+  {
+    "name": "CallDocument blank group name",
+    "kind": "CallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":\"2026-09-05T10:00:01Z\",\"durationMs\":1000,\"captureState\":\"stopped\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]}],\"audioManifest\":{\"manifestId\":\"00000000-0000-4000-8000-000000000004\",\"sha256\":\"88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2\"},\"revisions\":[{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"bc93431e4e564873cb835f6ce4bb8a19a4bc21b1096dc84c6a1a0f63c037c4c9\"},{\"revisionId\":\"00000000-0000-4000-8000-000000000011\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d\"}],\"activeRevisionId\":\"00000000-0000-4000-8000-000000000011\",\"speakerNames\":{\"00000000-0000-4000-8000-000000000006\":{\"00000000-0000-4000-8000-000000000007\":\"Original first name\",\"00000000-0000-4000-8000-000000000087\":\"Original second name\"}},\"speakerGroups\":{\"00000000-0000-4000-8000-000000000006\":[{\"groupId\":\"00000000-0000-4000-8000-000000000089\",\"displayName\":\" \\n\\t\",\"speakerIds\":[\"00000000-0000-4000-8000-000000000007\",\"00000000-0000-4000-8000-000000000087\"]}]}}",
+    "valid": false
+  },
+  {
+    "name": "CallDocument group too small",
+    "kind": "CallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":\"2026-09-05T10:00:01Z\",\"durationMs\":1000,\"captureState\":\"stopped\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]}],\"audioManifest\":{\"manifestId\":\"00000000-0000-4000-8000-000000000004\",\"sha256\":\"88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2\"},\"revisions\":[{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"bc93431e4e564873cb835f6ce4bb8a19a4bc21b1096dc84c6a1a0f63c037c4c9\"},{\"revisionId\":\"00000000-0000-4000-8000-000000000011\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d\"}],\"activeRevisionId\":\"00000000-0000-4000-8000-000000000011\",\"speakerNames\":{\"00000000-0000-4000-8000-000000000006\":{\"00000000-0000-4000-8000-000000000007\":\"Original first name\",\"00000000-0000-4000-8000-000000000087\":\"Original second name\"}},\"speakerGroups\":{\"00000000-0000-4000-8000-000000000006\":[{\"groupId\":\"00000000-0000-4000-8000-000000000089\",\"displayName\":\"Александр 👋\",\"speakerIds\":[\"00000000-0000-4000-8000-000000000007\"]}]}}",
+    "valid": false
+  },
+  {
+    "name": "CallDocument malformed group identity",
+    "kind": "CallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":\"2026-09-05T10:00:01Z\",\"durationMs\":1000,\"captureState\":\"stopped\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]}],\"audioManifest\":{\"manifestId\":\"00000000-0000-4000-8000-000000000004\",\"sha256\":\"88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2\"},\"revisions\":[{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"bc93431e4e564873cb835f6ce4bb8a19a4bc21b1096dc84c6a1a0f63c037c4c9\"},{\"revisionId\":\"00000000-0000-4000-8000-000000000011\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d\"}],\"activeRevisionId\":\"00000000-0000-4000-8000-000000000011\",\"speakerNames\":{\"00000000-0000-4000-8000-000000000006\":{\"00000000-0000-4000-8000-000000000007\":\"Original first name\",\"00000000-0000-4000-8000-000000000087\":\"Original second name\"}},\"speakerGroups\":{\"00000000-0000-4000-8000-000000000006\":[{\"groupId\":\"reused\",\"displayName\":\"Александр 👋\",\"speakerIds\":[\"00000000-0000-4000-8000-000000000007\",\"00000000-0000-4000-8000-000000000087\"]}]}}",
+    "valid": false
+  },
+  {
+    "name": "CallDocument unknown group field",
+    "kind": "CallDocument",
+    "json": "{\"schemaVersion\":2,\"archiveId\":\"00000000-0000-4000-8000-000000000012\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"startedAt\":\"2026-09-05T10:00:00Z\",\"endedAt\":\"2026-09-05T10:00:01Z\",\"durationMs\":1000,\"captureState\":\"stopped\",\"interruptionReason\":null,\"source\":{\"applicationName\":\"Google Chrome\",\"bundleId\":\"com.google.Chrome\",\"processId\":123,\"windowId\":null,\"windowTitle\":null},\"tracks\":[{\"trackId\":\"00000000-0000-4000-8000-000000000002\",\"role\":\"microphone\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]},{\"trackId\":\"00000000-0000-4000-8000-000000000003\",\"role\":\"application\",\"inputDevice\":null,\"mediaProfileId\":\"trigo-call-wav-s16le-16khz-stereo-60s-v1\",\"intervals\":[{\"startMs\":0,\"endMs\":1000,\"state\":\"recorded\",\"reason\":null}]}],\"audioManifest\":{\"manifestId\":\"00000000-0000-4000-8000-000000000004\",\"sha256\":\"88ce9afe73bdc78254a0fbbc0c84778f4d95474b1960687e9c0461bbdcee87e2\"},\"revisions\":[{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"bc93431e4e564873cb835f6ce4bb8a19a4bc21b1096dc84c6a1a0f63c037c4c9\"},{\"revisionId\":\"00000000-0000-4000-8000-000000000011\",\"createdAt\":\"2026-09-05T10:01:00Z\",\"sha256\":\"6939b8ed8bf4dc745a209e4e7991c0d68d58756a1ec64b6c61a00b00bd4a6f8d\"}],\"activeRevisionId\":\"00000000-0000-4000-8000-000000000011\",\"speakerNames\":{\"00000000-0000-4000-8000-000000000006\":{\"00000000-0000-4000-8000-000000000007\":\"Original first name\",\"00000000-0000-4000-8000-000000000087\":\"Original second name\"}},\"speakerGroups\":{\"00000000-0000-4000-8000-000000000006\":[{\"groupId\":\"00000000-0000-4000-8000-000000000089\",\"displayName\":\"Александр 👋\",\"speakerIds\":[\"00000000-0000-4000-8000-000000000007\",\"00000000-0000-4000-8000-000000000087\"],\"extra\":true}]}}",
+    "valid": false
+  },
+  {
+    "name": "ReplicaReference sync valid",
+    "kind": "ReplicaReference",
+    "json": "{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000}",
+    "valid": true
+  },
+  {
+    "name": "ReplicaReference sync extra",
+    "kind": "ReplicaReference",
+    "json": "{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000,\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "ReplicaReference sync missing",
+    "kind": "ReplicaReference",
+    "json": "{\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000}",
+    "valid": false
+  },
+  {
+    "name": "PublishCallReplica sync valid",
+    "kind": "PublishCallReplica",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"expectedDocumentVersion\":null,\"document\":\"{}\",\"annotationRevisionIds\":[\"00000000-0000-4000-8000-000000000006\"]}",
+    "valid": true
+  },
+  {
+    "name": "PublishCallReplica sync extra",
+    "kind": "PublishCallReplica",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"expectedDocumentVersion\":null,\"document\":\"{}\",\"annotationRevisionIds\":[\"00000000-0000-4000-8000-000000000006\"],\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "PublishCallReplica sync missing",
+    "kind": "PublishCallReplica",
+    "json": "{\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"expectedDocumentVersion\":null,\"document\":\"{}\",\"annotationRevisionIds\":[\"00000000-0000-4000-8000-000000000006\"]}",
+    "valid": false
+  },
+  {
+    "name": "ReplicaReceipt sync valid",
+    "kind": "ReplicaReceipt",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000,\"publishedAt\":\"2026-09-08T12:00:00.000Z\"}",
+    "valid": true
+  },
+  {
+    "name": "ReplicaReceipt sync extra",
+    "kind": "ReplicaReceipt",
+    "json": "{\"schemaVersion\":1,\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000,\"publishedAt\":\"2026-09-08T12:00:00.000Z\",\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "ReplicaReceipt sync missing",
+    "kind": "ReplicaReceipt",
+    "json": "{\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"documentVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000,\"publishedAt\":\"2026-09-08T12:00:00.000Z\"}",
+    "valid": false
+  },
+  {
+    "name": "CallDeletionMarker sync valid",
+    "kind": "CallDeletionMarker",
+    "json": "{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"markedAt\":\"2026-09-08T12:00:00.000Z\",\"phase\":\"draining\"}",
+    "valid": true
+  },
+  {
+    "name": "CallDeletionMarker sync extra",
+    "kind": "CallDeletionMarker",
+    "json": "{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"markedAt\":\"2026-09-08T12:00:00.000Z\",\"phase\":\"draining\",\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "CallDeletionMarker sync missing",
+    "kind": "CallDeletionMarker",
+    "json": "{\"markedAt\":\"2026-09-08T12:00:00.000Z\",\"phase\":\"draining\"}",
+    "valid": false
+  },
+  {
+    "name": "CallCatalogEntry sync valid",
+    "kind": "CallCatalogEntry",
+    "json": "{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}",
+    "valid": true
+  },
+  {
+    "name": "CallCatalogEntry sync extra",
+    "kind": "CallCatalogEntry",
+    "json": "{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null,\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "CallCatalogEntry sync missing",
+    "kind": "CallCatalogEntry",
+    "json": "{\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}",
+    "valid": false
+  },
+  {
+    "name": "CallCatalogPage sync valid",
+    "kind": "CallCatalogPage",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"calls\":[{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}],\"nextCursor\":null,\"changesCursor\":\"opaque-changes\"}",
+    "valid": true
+  },
+  {
+    "name": "CallCatalogPage sync extra",
+    "kind": "CallCatalogPage",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"calls\":[{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}],\"nextCursor\":null,\"changesCursor\":\"opaque-changes\",\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "CallCatalogPage sync missing",
+    "kind": "CallCatalogPage",
+    "json": "{\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"calls\":[{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}],\"nextCursor\":null,\"changesCursor\":\"opaque-changes\"}",
+    "valid": false
+  },
+  {
+    "name": "CallChange sync valid",
+    "kind": "CallChange",
+    "json": "{\"sequence\":1,\"call\":{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}}",
+    "valid": true
+  },
+  {
+    "name": "CallChange sync extra",
+    "kind": "CallChange",
+    "json": "{\"sequence\":1,\"call\":{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null},\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "CallChange sync missing",
+    "kind": "CallChange",
+    "json": "{\"call\":{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}}",
+    "valid": false
+  },
+  {
+    "name": "CallChangesPage sync valid",
+    "kind": "CallChangesPage",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"changes\":[{\"sequence\":1,\"call\":{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}}],\"nextCursor\":\"opaque-next\",\"hasMore\":false}",
+    "valid": true
+  },
+  {
+    "name": "CallChangesPage sync extra",
+    "kind": "CallChangesPage",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"changes\":[{\"sequence\":1,\"call\":{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}}],\"nextCursor\":\"opaque-next\",\"hasMore\":false,\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "CallChangesPage sync missing",
+    "kind": "CallChangesPage",
+    "json": "{\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"changes\":[{\"sequence\":1,\"call\":{\"callId\":\"00000000-0000-4000-8000-000000000001\",\"replica\":{\"documentVersion\":2,\"schemaVersion\":2,\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"byteLength\":1000},\"audio\":null,\"latestTranscriptionOperationId\":\"00000000-0000-4000-8000-000000000020\",\"resultCount\":1,\"deletion\":null}}],\"nextCursor\":\"opaque-next\",\"hasMore\":false}",
+    "valid": false
+  },
+  {
+    "name": "CatalogTranscriptResult sync valid",
+    "kind": "CatalogTranscriptResult",
+    "json": "{\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"generation\":1,\"result\":{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-08T12:00:00.000Z\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"byteLength\":1000,\"provenanceSHA256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"provenanceByteLength\":100}}",
+    "valid": true
+  },
+  {
+    "name": "CatalogTranscriptResult sync extra",
+    "kind": "CatalogTranscriptResult",
+    "json": "{\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"generation\":1,\"result\":{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-08T12:00:00.000Z\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"byteLength\":1000,\"provenanceSHA256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"provenanceByteLength\":100},\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "CatalogTranscriptResult sync missing",
+    "kind": "CatalogTranscriptResult",
+    "json": "{\"generation\":1,\"result\":{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-08T12:00:00.000Z\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"byteLength\":1000,\"provenanceSHA256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"provenanceByteLength\":100}}",
+    "valid": false
+  },
+  {
+    "name": "TranscriptResultsPage sync valid",
+    "kind": "TranscriptResultsPage",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"results\":[{\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"generation\":1,\"result\":{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-08T12:00:00.000Z\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"byteLength\":1000,\"provenanceSHA256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"provenanceByteLength\":100}}],\"nextCursor\":null}",
+    "valid": true
+  },
+  {
+    "name": "TranscriptResultsPage sync extra",
+    "kind": "TranscriptResultsPage",
+    "json": "{\"schemaVersion\":1,\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"results\":[{\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"generation\":1,\"result\":{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-08T12:00:00.000Z\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"byteLength\":1000,\"provenanceSHA256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"provenanceByteLength\":100}}],\"nextCursor\":null,\"unexpected\":true}",
+    "valid": false
+  },
+  {
+    "name": "TranscriptResultsPage sync missing",
+    "kind": "TranscriptResultsPage",
+    "json": "{\"archiveId\":\"00000000-0000-4000-8000-000000000100\",\"callId\":\"00000000-0000-4000-8000-000000000001\",\"results\":[{\"operationId\":\"00000000-0000-4000-8000-000000000020\",\"generation\":1,\"result\":{\"revisionId\":\"00000000-0000-4000-8000-000000000006\",\"createdAt\":\"2026-09-08T12:00:00.000Z\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"byteLength\":1000,\"provenanceSHA256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"provenanceByteLength\":100}}],\"nextCursor\":null}",
     "valid": false
   },
   {

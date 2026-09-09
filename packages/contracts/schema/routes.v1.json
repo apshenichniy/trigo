@@ -46,12 +46,14 @@
     {
       "method": "GET",
       "path": "/v1/calls",
-      "ownerIssue": 19
+      "ownerIssue": 19,
+      "documentSchema": "v1.schema.json#/$defs/CallCatalogPage"
     },
     {
       "method": "GET",
       "path": "/v1/changes",
-      "ownerIssue": 19
+      "ownerIssue": 19,
+      "documentSchema": "v1.schema.json#/$defs/CallChangesPage"
     },
     {
       "method": "GET",
@@ -62,14 +64,15 @@
     {
       "method": "PUT",
       "path": "/v1/calls/{callId}/document",
-      "documentSchema": "v1.schema.json#/$defs/CallDocument",
-      "ownerIssue": 19
+      "documentSchema": "v1.schema.json#/$defs/PublishCallReplica",
+      "ownerIssue": 19,
+      "receiptSchema": "v1.schema.json#/$defs/ReplicaReceipt"
     },
     {
       "method": "GET",
       "path": "/v1/calls/{callId}/revisions/{revisionId}",
       "documentSchema": "v1.schema.json#/$defs/TranscriptRevision",
-      "ownerIssue": 19
+      "ownerIssue": 18
     },
     {
       "method": "POST",
@@ -87,6 +90,18 @@
       "method": "GET",
       "path": "/v1/calls/{callId}/revisions/{revisionId}/provenance",
       "ownerIssue": 18
+    },
+    {
+      "method": "GET",
+      "path": "/v1/calls/{callId}/audio-manifest",
+      "ownerIssue": 19,
+      "documentSchema": "v1.schema.json#/$defs/AudioManifest"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/calls/{callId}/results",
+      "ownerIssue": 19,
+      "documentSchema": "v1.schema.json#/$defs/TranscriptResultsPage"
     },
     {
       "method": "GET",
