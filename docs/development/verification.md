@@ -51,6 +51,13 @@ the normal one-heavy-check rule prevent competing automated interactions. Keep
 other windows away from the fixture during screenshots; a window screenshot
 can include an occluding window. No UI test resets TCC or grants itself access.
 An actual OS authentication prompt is an explicit environmental prerequisite.
+The host coordinator selects an already enabled ABC or U.S. layout during the
+test phase because XCTest character-key synthesis depends on the active input
+source. `run.json` records the original/fixture identifiers and verified
+restoration. A `finally` restores the original layout after success, failure or
+test-process timeout. No layout is installed or enabled. If the host coordinator
+itself is forcibly killed, its retained record identifies the original layout
+for recovery. The isolated XCTest runner cannot access the host input-source API.
 
 Each invocation writes `.local/ui-runs/<timestamp-id>/run.json`, build/test logs,
 the `.xcresult`, actual summary and `evidence/index.json`. The index contains

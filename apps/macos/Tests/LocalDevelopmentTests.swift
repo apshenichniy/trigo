@@ -340,7 +340,11 @@ struct LocalDevelopmentTests {
       )
     }
     let paired = await connection().connect(serverURL: url.absoluteString, token: localToken)
-    #expect(paired.binding?.archiveId == localNamespace)
+    let binding = try #require(
+      paired.binding,
+      "Initial local pairing failed: health=\(paired.health), issue=\(String(describing: paired.lastAttemptIssue))"
+    )
+    #expect(binding.archiveId == localNamespace)
     fixture.stop()
     let restored = await connection().restore()
     #expect(restored.binding == paired.binding)

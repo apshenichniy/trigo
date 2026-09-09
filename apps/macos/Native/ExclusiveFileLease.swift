@@ -3,7 +3,7 @@ import Foundation
 
 enum ExclusiveFileLeaseError: Error { case alreadyOwned, unavailable }
 
-/// Lock a stable inode; the kernel releases it on close/crash, without PID-file takeover.
+/// Lock a stable inode without PID-file takeover or unlinking the lock file.
 final class ExclusiveFileLease {
   private let descriptor: Int32
 
@@ -30,6 +30,10 @@ final class ExclusiveFileLease {
     self.descriptor = descriptor
     acquired = true
   }
+
+  /// Process creation may temporarily duplicate this descriptor before close-on-exec.
+  /// Release ownership immediately instead of waiting for that reference to close.
+  func relinquish() { _ = flock(descriptor, LOCK_UN) }
 
   deinit { Darwin.close(descriptor) }
 }

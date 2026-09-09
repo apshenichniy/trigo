@@ -86,6 +86,33 @@ menu traversal. The focused background-menu case passed in
 test-interaction correction; no application dispatch or event handler is invoked
 directly by the UI test. The failed full run remains retained as failed evidence.
 
+## Synchronous ownership handoff
+
+The first integrated CI run on `df8cd6795` retained a real ownership-transfer
+failure: after the first controller stopped, the second still reported another
+Trigo owner. The subsequent fixture tap had no registered listener and trapped;
+the required availability assertion now stops at the original failure boundary.
+
+Five hundred isolated executions passed. Repeating the same handoff beside one
+process-creation test reproduced the original failure in three of ten runs;
+five isolated runs of one thousand handoffs passed. A separate deterministic
+probe confirmed that cancellation closed the original descriptor, while an open
+duplicate still prevented the next controller from acquiring the lock.
+[The macOS flock contract](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/flock.2.html)
+explains that duplicated descriptors reference the same lock. Close-on-exec
+does not eliminate the temporary reference during process creation.
+
+Gesture cancellation now explicitly relinquishes the kernel lock before dropping
+its lease. The regression exercises ordinary handoff and handoff while a
+close-on-exec descriptor copy remains open. It also checks that closing the old
+copy does not release the new owner's lock, and that retired callbacks cannot
+dispatch. Namespace ownership retains its existing lifetime behavior.
+
+The deterministic probe passed after the correction, followed by twenty passing
+minimal concurrent-process runs and ten passing expanded runs. Each stress run
+executed one thousand real handoffs. Temporary stress tests and instrumentation
+were removed; final source checks and CI outcomes belong in the PR evidence.
+
 ## Installed integration
 
 Use the [signed installed protocol](installed-capture-acceptance.md) in #24 with
