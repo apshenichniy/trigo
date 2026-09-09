@@ -1,7 +1,7 @@
 import Foundation
 
 enum FixtureScenario: String, Codable {
-  case empty, setup, denied, gesture, panel
+  case empty, setup, denied, gesture, panel, reader
 }
 
 struct FixtureConfiguration: Codable {

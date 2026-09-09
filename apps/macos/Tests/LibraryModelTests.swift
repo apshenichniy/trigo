@@ -180,6 +180,136 @@ import TrigoContracts
     #expect(output.buffers.isEmpty)
   }
 
+  @Test func closingDuringTimestampSeekDoesNotRestartPlaybackAfterMediaArrives() async throws {
+    let fixture = try await uploadedSyncFixture(seconds: 3)
+    defer { try? FileManager.default.removeItem(at: fixture.root) }
+    let preferences = UserDefaults(suiteName: fixture.root.lastPathComponent)!
+    defer { preferences.removePersistentDomain(forName: fixture.root.lastPathComponent) }
+    let transport = PlaybackTransportFixture(durationMs: 3_000)
+    let output = PlaybackOutputFixture()
+    let player = CallAudioPlayer(transport: transport, output: output)
+    let model = LibraryModel(preferences: preferences) {
+      .init(repository: fixture.repository, player: player, retry: { _ in })
+    }
+    await model.refresh()
+    var requests = transport.requests.makeAsyncIterator()
+    await model.seek(to: 100, play: false)
+    #expect(await requests.next() == 0)
+    await transport.hold(index: 0)
+    let seeking = Task { await model.seek(to: 500, play: true) }
+    #expect(await requests.next() == 0)
+    #expect(model.playback.phase == .loading)
+    model.close()
+    await transport.release()
+    await seeking.value
+    #expect(model.playback.phase == .paused)
+    #expect(model.playback.positionMs == 500)
+    #expect(model.selectedCallID == fixture.session.callID)
+    #expect(!output.playing)
+  }
+
+  @Test func knownUnavailablePlaybackDisablesPlaybackWithoutHidingLocalText() async throws {
+    let fixture = try await uploadedSyncFixture(seconds: 3)
+    defer { try? FileManager.default.removeItem(at: fixture.root) }
+    let revision = try await importRevision(fixture.repository, callID: fixture.session.callID)
+    let preferences = UserDefaults(suiteName: fixture.root.lastPathComponent)!
+    defer { preferences.removePersistentDomain(forName: fixture.root.lastPathComponent) }
+    let transport = PlaybackTransportFixture(durationMs: 3_000)
+    let player = CallAudioPlayer(transport: transport, output: PlaybackOutputFixture())
+    let model = LibraryModel(preferences: preferences) {
+      .init(repository: fixture.repository, player: player, retry: { _ in })
+    }
+    await model.refresh()
+    #expect(model.canPlay)
+    await transport.fail(index: 0)
+    await model.seek(to: 500, play: true)
+    #expect(model.playback.failure != nil)
+    #expect(!model.canPlay)
+    #expect(model.playbackReason != nil)
+    let requests = await transport.segmentRequests.count
+    await model.togglePlayback()
+    await model.seek(to: 750, play: true)
+    #expect(await transport.segmentRequests.count == requests)
+    #expect(model.turns.map(\.text) == revision.value.turns.map(\.text))
+    #expect(model.canRetryPlayback)
+    await model.retryPlayback()
+    #expect(model.canPlay)
+    #expect(!model.canRetryPlayback)
+    #expect(model.playback.phase == .paused)
+    #expect(model.playback.positionMs == 500)
+    #expect(await transport.segmentRequests.count == requests + 1)
+  }
+
+  @Test func openingSpecificCallOverridesRememberedSelectionBeforeAndAfterLoading() async throws {
+    let root = repositoryRoot("library-specific-call")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let repository = try await seedRepositoryCall(root: root, finalized: true)
+    var second = try await repository.call(callID: repositoryCallID)
+    second.callId = "00000000-0000-4000-8000-000000000098"
+    second.startedAt = "2026-09-09T00:00:00.000Z"
+    second.endedAt = "2026-09-09T00:00:01.000Z"
+    _ = try await repository.publishManifest(Contract.encode(second))
+    let preferences = UserDefaults(suiteName: root.lastPathComponent)!
+    defer { preferences.removePersistentDomain(forName: root.lastPathComponent) }
+    let first = makeModel(repository, preferences: preferences)
+    await first.refresh()
+    #expect(first.selectedCallID == second.callId)
+    first.close()
+    let model = makeModel(repository, preferences: preferences)
+    model.start(selecting: repositoryCallID)
+    model.close()
+    await model.refresh()
+    #expect(model.selectedCallID == repositoryCallID)
+    model.start(selecting: second.callId)
+    model.close()
+    await model.refresh()
+    #expect(model.selectedCallID == second.callId)
+    model.start()
+    model.close()
+    #expect(model.selectedCallID == second.callId)
+  }
+
+  @Test func closingBeforeRevisionReadCompletesResumesThatReadOnReopen() async throws {
+    let fixture = try await uploadedSyncFixture()
+    defer { try? FileManager.default.removeItem(at: fixture.root) }
+    let first = try await importRevision(fixture.repository, callID: fixture.session.callID)
+    _ = try await importRevision(fixture.repository, callID: fixture.session.callID, generation: 2)
+    let preferences = UserDefaults(suiteName: fixture.root.lastPathComponent)!
+    defer { preferences.removePersistentDomain(forName: fixture.root.lastPathComponent) }
+    let model = makeModel(fixture.repository, preferences: preferences)
+    await model.refresh()
+    #expect(!model.turns.isEmpty)
+    model.selectRevision(first.value.revisionId)
+    // Neither call yields the main actor: the scheduled read cannot commit before close.
+    model.close()
+    #expect(model.turns.isEmpty)
+    await model.refresh()
+    #expect(model.selectedRevisionID == first.value.revisionId)
+    #expect(model.turns.map(\.turnID) == first.value.turns.map(\.turnId))
+    #expect(!model.isReading)
+  }
+
+  @Test func timestampFormattingCannotChangeChronologicalOrderOrTheCallIDTieBreak() async throws {
+    let root = repositoryRoot("library-timestamp-order")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let repository = try await seedRepositoryCall(root: root, finalized: true)
+    let ids = [96, 99, 97].map { String(format: "00000000-0000-4000-8000-%012d", $0) }
+    for (id, suffix) in zip(ids, [".100Z", ".000Z", "Z"]) {
+      var call = try await repository.call(callID: repositoryCallID)
+      call.callId = id
+      call.startedAt = "2026-09-09T00:00:00" + suffix
+      call.endedAt = "2026-09-09T00:00:01" + suffix
+      _ = try await repository.publishManifest(Contract.encode(call))
+    }
+    let preferences = UserDefaults(suiteName: root.lastPathComponent)!
+    defer { preferences.removePersistentDomain(forName: root.lastPathComponent) }
+    let model = makeModel(repository, preferences: preferences)
+    await model.refresh()
+    #expect(Array(model.calls.prefix(3).map(\.callID)) == ids)
+    #expect(model.days.first?.calls.map(\.callID) == ids)
+    #expect(model.selectedCallID == ids[0])
+  }
+
   private func makeModel(_ repository: LocalRepository, preferences: UserDefaults) -> LibraryModel {
     let player = CallAudioPlayer(
       transport: PlaybackTransportFixture(),

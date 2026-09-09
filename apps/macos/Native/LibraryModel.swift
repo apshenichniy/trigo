@@ -37,6 +37,8 @@ import Foundation
   @Published public var showsDetails = false
   private let makeSession: () async throws -> LibrarySession?
   private let preferences: UserDefaults
+  private let clock: () -> Date
+  private let calendar: () -> Calendar
   private var session: LibrarySession?
   private var ticker: Task<Void, Never>?
   private var selectionTask: Task<Void, Never>?
@@ -48,9 +50,15 @@ import Foundation
   private var readStateVersion: Int?
   private static let selectionKey = "library.selectedCallID"
 
-  public init(preferences: UserDefaults, makeSession: @escaping () async throws -> LibrarySession?)
-  {
+  public init(
+    preferences: UserDefaults,
+    clock: @escaping () -> Date = { Date() },
+    calendar: @escaping () -> Calendar = { .autoupdatingCurrent },
+    makeSession: @escaping () async throws -> LibrarySession?
+  ) {
     self.preferences = preferences
+    self.clock = clock
+    self.calendar = calendar
     self.makeSession = makeSession
     selectedCallID = preferences.string(forKey: Self.selectionKey)
   }
@@ -63,7 +71,20 @@ import Foundation
   }
   public var hasMoreTurns: Bool { turns.count < (selectedRevision?.turnCount ?? 0) }
   public var canPlay: Bool {
+    hasStoredAudio && (playback.callID != selectedCallID || playback.failure == nil)
+  }
+  private var hasStoredAudio: Bool {
     selectedCall?.lifecycle.upload.state == .stored && (selectedCall?.durationMs ?? 0) > 0
+  }
+  public var canRetryPlayback: Bool {
+    guard hasStoredAudio, playback.callID == selectedCallID, let failure = playback.failure else {
+      return false
+    }
+    switch failure {
+    case .transport(_, let retry): return retry != .never
+    case .accessBlocked, .grantExpired, .invalidGrant, .audioOutput: return true
+    default: return false
+    }
   }
   public var playbackReason: String? {
     if let failure = playback.failure { return failure.message }
@@ -73,7 +94,8 @@ import Foundation
     return nil
   }
 
-  public func start() {
+  public func start(selecting callID: String? = nil) {
+    if let callID { selectCall(callID) }
     guard ticker == nil else { return }
     ticker = Task { @MainActor [weak self] in
       while !Task.isCancelled {
@@ -84,14 +106,17 @@ import Foundation
   }
 
   public func close() {
+    generation += 1
+    selectionTask?.cancel(); selectionTask = nil
+    isReading = false
     ticker?.cancel(); ticker = nil
     session?.player.pause()
   }
 
   public func refresh(
     force: Bool = false,
-    now: Date = Date(),
-    calendar: Calendar = .autoupdatingCurrent
+    now: Date? = nil,
+    calendar: Calendar? = nil
   ) async {
     guard !refreshing else { return }
     refreshing = true
@@ -115,7 +140,7 @@ import Foundation
           try Task.checkCancellation()
         }
         updated.sort {
-          $0.startedAt == $1.startedAt ? $0.callID > $1.callID : $0.startedAt > $1.startedAt
+          $0.startedDate == $1.startedDate ? $0.callID > $1.callID : $0.startedDate > $1.startedDate
         }
         let oldIndex = calls.firstIndex { $0.callID == selectedCallID } ?? 0
         calls = updated
@@ -132,7 +157,11 @@ import Foundation
       {
         await readSelection(preservingCount: true)
       }
-      let grouped = LibraryDay.group(calls, now: now, calendar: calendar)
+      let grouped = LibraryDay.group(
+        calls,
+        now: now ?? clock(),
+        calendar: calendar ?? self.calendar()
+      )
       if grouped != days { days = grouped }
     } catch is CancellationError {} catch {
       failure = LibraryFailure.message(error)
@@ -165,6 +194,8 @@ import Foundation
     session?.player.pause()
     selectedRevisionID = revisionID
     turns = []; speakers = []
+    // Cleared passages are not a completed read, even if the call's document is unchanged.
+    readVersion = nil; readStateVersion = nil
     selectionTask = Task { @MainActor [weak self] in await self?.readSelection() }
   }
 
@@ -270,7 +301,15 @@ import Foundation
       await session.player.load(callID: callID, positionMs: positionMs, autoplay: play)
     } else {
       await session.player.seek(positionMs: positionMs)
-      if play, epoch == generation, selectedCallID == callID { await session.player.play() }
+      if play, epoch == generation, selectedCallID == callID, canPlay {
+        await session.player.play()
+      }
     }
+  }
+
+  public func retryPlayback() async {
+    guard canRetryPlayback, let session, let callID = selectedCallID else { return }
+    // An explicit retry reacquires server access at the retained position without autoplay.
+    await session.player.load(callID: callID, positionMs: playback.positionMs, autoplay: false)
   }
 }

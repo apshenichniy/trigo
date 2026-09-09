@@ -96,7 +96,7 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     self.login = login
     self.reader = reader
     super.init()
-    shell?.openLibrary = { [weak self] in self?.showLibrary() }
+    shell?.openLibrary = { [weak self] in self?.openLibrary(callID: $0) }
     shell?.openSettings = { [weak self] in self?.showSettings() }
   }
 
@@ -198,7 +198,12 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     return alert.runModal() == .alertFirstButtonReturn
   }
 
-  @objc private func showLibrary() { reader.willOpen(); libraryLifecycle.open() }
+  @objc private func showLibrary() { openLibrary(callID: nil) }
+
+  private func openLibrary(callID: String?) {
+    reader.willOpen(callID)
+    libraryLifecycle.open()
+  }
 
   private func createLibrary() {
     let window = NSWindow(
@@ -220,6 +225,7 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
       window.contentView = NSHostingView(
         rootView: reader.makeContent(shell)
           .defaultAppStorage(UserDefaults(suiteName: shell.composition.namespace.preferences)!)
+          .accessibilityElement(children: .contain)
           .accessibilityIdentifier("library-host")
       )
     } else {

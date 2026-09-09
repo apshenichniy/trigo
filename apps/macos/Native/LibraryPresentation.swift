@@ -12,7 +12,7 @@ public struct LibraryDay: Identifiable, Equatable, Sendable {
     calendar: Calendar = .autoupdatingCurrent
   ) -> [LibraryDay] {
     let ordered = calls.sorted {
-      $0.startedAt == $1.startedAt ? $0.callID > $1.callID : $0.startedAt > $1.startedAt
+      $0.startedDate == $1.startedDate ? $0.callID > $1.callID : $0.startedDate > $1.startedDate
     }
     let today = calendar.startOfDay(for: now)
     let yesterday = calendar.date(byAdding: .day, value: -1, to: today)

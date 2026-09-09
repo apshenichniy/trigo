@@ -64,7 +64,9 @@ struct LibraryRecordingDetails: View {
         Button("Done", role: .cancel) { dismiss() }.keyboardShortcut(.defaultAction)
       }
     }
-    .padding(28).frame(width: 580).accessibilityIdentifier("library-recording-details")
+    .padding(28).frame(width: 580)
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("library-recording-details")
   }
 }
 
@@ -109,7 +111,9 @@ struct LibraryConflictSheet: View {
           .accessibilityIdentifier("library-conflict-use-server")
       }
     }
-    .padding(28).frame(width: 700).accessibilityIdentifier("library-conflict-comparison")
+    .padding(28).frame(width: 700)
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("library-conflict-comparison")
   }
 
   private func annotations(_ title: String, value: SpeakerAnnotations) -> some View {

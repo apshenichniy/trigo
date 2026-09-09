@@ -28,7 +28,7 @@ func successfulLivePanelRecoveryHidesControlsAfterStopOrSaveFailure(stopFails: B
   )
   let shell = DesktopShell(composition: composition)
   var libraryOpened = 0
-  shell.openLibrary = { libraryOpened += 1 }
+  shell.openLibrary = { _ in libraryOpened += 1 }
   await fixture.coordinator.shortcutPressed()
   shell.refreshReadiness()
   shell.showRecording()

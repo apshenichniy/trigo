@@ -5,6 +5,7 @@ public struct LibraryCall: Identifiable, Sendable, Equatable {
   public let callID: String
   public let documentVersion: Int
   public let startedAt: String
+  public let startedDate: Date
   public let durationMs: Int?
   public let applicationName: String
   public let bundleID: String
@@ -16,7 +17,6 @@ public struct LibraryCall: Identifiable, Sendable, Equatable {
     if let windowTitle, !windowTitle.isEmpty { return "\(applicationName) · \(windowTitle)" }
     return applicationName
   }
-  public var startedDate: Date { LibraryDate.date(startedAt) }
   public var interruptionExplanation: String {
     recordingInterruptionExplanation(lifecycle.capture.failure?.code)
   }
@@ -25,6 +25,7 @@ public struct LibraryCall: Identifiable, Sendable, Equatable {
 public struct LibraryRevision: Identifiable, Sendable, Equatable {
   public let revisionID: String
   public let createdAt: String
+  public let createdDate: Date
   public let sha256: String
   public let turnCount: Int
   public var id: String { revisionID }
@@ -61,12 +62,13 @@ extension LocalRepository {
         return try LibraryRevision(
           revisionID: row.string(2),
           createdAt: row.string(3),
+          createdDate: LibraryDate.date(row.string(3)),
           sha256: row.string(4),
           turnCount: count
         )
       }
       .sorted { a, b in
-        a.createdAt == b.createdAt ? a.revisionID > b.revisionID : a.createdAt > b.createdAt
+        a.createdDate == b.createdDate ? a.revisionID > b.revisionID : a.createdDate > b.createdDate
       }
   }
 
@@ -93,6 +95,7 @@ extension LocalRepository {
         callID: row.string(0),
         documentVersion: row.int(1),
         startedAt: row.string(2),
+        startedDate: LibraryDate.date(row.string(2)),
         durationMs: row.optionalInt(3),
         applicationName: row.string(4),
         bundleID: row.string(5),

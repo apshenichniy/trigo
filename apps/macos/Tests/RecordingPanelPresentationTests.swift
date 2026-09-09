@@ -7,7 +7,7 @@ import Testing
   let fixture = try DesktopTestFixture()
   defer { fixture.cleanup() }
   var opened = 0
-  fixture.shell.openLibrary = { opened += 1 }
+  fixture.shell.openLibrary = { _ in opened += 1 }
   fixture.services.state.phase = .recording
   fixture.services.state.canStart = false
   fixture.shell.hideRecording()
@@ -38,7 +38,7 @@ import Testing
   let fixture = try DesktopTestFixture()
   defer { fixture.cleanup() }
   var opened = 0
-  fixture.shell.openLibrary = { opened += 1 }
+  fixture.shell.openLibrary = { _ in opened += 1 }
   fixture.services.state.phase = .stopping
   fixture.services.state.quitRequirement = .waitForSafety
   fixture.services.state.finalization.callID = "00000000-0000-4000-8000-000000000045"

@@ -11,7 +11,7 @@ import Testing
   let gate = DesktopGate()
   fixture.services.restoreGate = gate
   var opened = 0
-  fixture.shell.openLibrary = { opened += 1 }
+  fixture.shell.openLibrary = { _ in opened += 1 }
   fixture.shell.openSettings = { opened += 10 }
   fixture.shell.launch(.background)
   fixture.shell.launch(.background)
@@ -34,10 +34,22 @@ import Testing
   let fixture = try DesktopTestFixture()
   defer { fixture.cleanup() }
   var opened = 0
-  fixture.shell.openLibrary = { opened += 1 }
+  fixture.shell.openLibrary = { _ in opened += 1 }
   fixture.shell.launch(.explicit)
   await fixture.shell.bootstrap().value
   #expect(opened == 1)
+  #expect(fixture.services.startCount == 0)
+}
+
+@Test @MainActor func desktopCallStatusOpeningCarriesItsCallAndOrdinaryReopenHasNoSelection() throws
+{
+  let fixture = try DesktopTestFixture()
+  defer { fixture.cleanup() }
+  var selected: [String?] = []
+  fixture.shell.openLibrary = { selected.append($0) }
+  fixture.shell.reopen(callID: repositoryCallID)
+  fixture.shell.reopen()
+  #expect(selected == [repositoryCallID, nil])
   #expect(fixture.services.startCount == 0)
 }
 
@@ -125,7 +137,7 @@ func desktopBusyMenuIntentNeverQueuesAStartAfterTheOperationSettles(
   defer { fixture.cleanup() }
   var openedLibrary = false
   var settings = 0
-  fixture.shell.openLibrary = { openedLibrary = true }
+  fixture.shell.openLibrary = { _ in openedLibrary = true }
   fixture.shell.openSettings = { settings += 1 }
   fixture.shell.showSettings(.diagnostics)
   fixture.shell.showRecording()

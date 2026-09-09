@@ -145,7 +145,8 @@ public actor HTTPCanonicalSyncTransport: CanonicalSyncTransport {
     try Task.checkCancellation()
     guard (body?.count ?? 0) <= 48_000_000 else { throw CanonicalSyncError.incompatibleDocument }
     let authority: ServerOperationAuthorization
-    do { authority = try await connection.serverOperationAuthorization(archiveID: archiveID) } catch {
+    do { authority = try await connection.serverOperationAuthorization(archiveID: archiveID) } catch
+    {
       throw CanonicalSyncError.unauthorized
     }
     var components = URLComponents(

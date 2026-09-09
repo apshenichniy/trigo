@@ -1,0 +1,146 @@
+# Library and transcript reader
+
+Issue #20 connects the accepted desktop reader to the canonical repository from
+#19 and retained-audio playback from #73. The installed composition shares the
+application's upload/synchronization owner and uses the real HTTP playback
+transport and AVAudioEngine output. Closing the library pauses its player and
+cancels reader work; it does not stop upload, transcription or synchronization.
+
+## Reading and navigation
+
+`RepositoryLibrary` exposes paged metadata, retained revision identities and
+counts without loading audio intervals or transcript JSON into the sidebar.
+`LibraryModel` owns selection, local calendar groups and paged passages. Dates
+are parsed before sorting so optional ISO-8601 fractional seconds cannot change
+chronological order or the descending call-ID tie break. Day groups update when
+the local day or time zone changes even if the repository has not changed.
+
+The native List supports keyboard navigation. Selection persists in the current
+app namespace across close/reopen and relaunch. An explicit Open Call route
+selects that call before or after the repository opens. A new imported revision
+becomes selectable without replacing a retained revision currently being read;
+viewing a different revision never changes the canonical active pointer.
+
+The floating sidebar and bottom player use native glass on macOS 26 and material
+on macOS 15. The native toolbar toggles the sidebar and provides Recording
+Details. The sidebar width and window size can be adjusted while paragraphs
+wrap. Source metadata supplies the call label. Independent capture, upload,
+transcription, import and replica states remain available in Recording Details.
+Empty, locally saved, pending, interrupted, failed, offline and no-speech records
+keep their available text and metadata accessible.
+
+## Explicit speaker annotations
+
+Rename, Group with, Manage group, member removal and Ungroup call #19's atomic
+annotation services. The editor shows original scoped labels, sources and
+excerpts. Equal provider numbers from separate scopes remain distinct; unknown
+attribution is never assigned an identity. Group merges include complete chosen
+groups and preserve individual names underneath them. Removing a member or
+ungrouping restores its individual or neutral name.
+
+Each save retains one operation identity for retry. Offline changes remain
+durable and show pending synchronization. Conflicts open a comparison of this
+Mac's names/groups and the server's names/groups, followed by an explicit choice.
+Editing a retained revision preserves evidence bytes, passage IDs, timing and
+the active revision. New revisions receive no implicit annotation transfer.
+
+## Playback and recovery
+
+Timestamp actions, play/pause and seeking use `CallAudioPlayer`. Successful
+verified master cleanup does not prevent playback: audio comes from the private
+server through a temporary capability. No-speech transcripts can still play
+their retained audio. Known playback failures disable the affected controls and
+show a reason; recoverable failures expose Retry Playback, and access failures
+also expose Connection Settings. Retry reacquires access at the selected
+position and returns paused. Closing during an outstanding seek cannot restart
+playback after the media arrives.
+
+The reader exposes no Export, manual Retry/Re-transcribe or Delete Call command;
+those remain the explicitly deferred #21/#22 scope. Technical recovery of the
+initial upload/synchronization pipeline continues through its existing owner.
+
+## Verification coverage
+
+`LibraryModelTests` exercise real isolated repositories and cover local midnight
+and time-zone grouping, chronological ties, selection across insertion/relaunch,
+explicit call routing, retained/new revisions, Unicode/group annotations,
+processing failures, conflicts without a document-version change, grant renewal,
+unavailable playback, close-during-seek and close-during-revision-read races.
+
+The native/local Worker acceptance creates a 31-second two-source master, loses
+the first local receipt commit, replays upload/finalization, verifies normal local
+master removal, runs automatic fake ASR, imports exact result/provenance bytes,
+confirms the canonical replica and restores it into a fresh repository. The
+reader then selects the restored transcript and plays its timestamp, seeks across
+the 30-second segment boundary and back, and checks distinct stereo samples with
+real AVAudioEngine offline rendering. This is local shared-service integration;
+it is not a hosted-ASR or audible-device claim.
+
+The `reader` UI scenario uses the production views and real canonical repository
+with a validated synthetic archive. Its playback transport and held output are
+explicit fixture adapters; it opens no microphone, network or audio device.
+It adds three XCUITest scenarios to the existing ten shell/panel scenarios:
+
+- Date groups, keyboard navigation, retained revision selection, timestamp
+  playback, close/reopen/relaunch selection, and narrow light/dark layouts.
+- Unicode naming on an old revision, two named groups, group merge, member
+  removal, Ungroup, unchanged evidence identity, a neutral new revision and
+  explicit conflict resolution.
+- No-speech audio, unavailable playback with disabled controls, explicit retry at
+  the retained position, and pausing when the library closes.
+
+The fixture explicitly sets its own AppKit appearance and records the effective
+appearance. Launch defaults alone were observed to leave a nominal Dark launch
+light on macOS 26.6.2. Tests assert the effective appearance before treating a
+screenshot as dark. Container accessibility elements preserve the individual
+timestamp, speaker, revision and player identifiers; SwiftUI's inherited parent
+identifier previously replaced them.
+
+Run affected checks and the full acceptance commands from this checkout:
+
+```sh
+TRIGO_TIMINGS_FILE=.local/library-timings.jsonl bun run test:native --suite fast --filter LibraryModelTests
+TRIGO_TIMINGS_FILE=.local/library-timings.jsonl bun run check:macos:smoke
+TRIGO_TIMINGS_FILE=.local/library-timings.jsonl bun run test:ui --suite shell
+TRIGO_TIMINGS_FILE=.local/library-timings.jsonl bun run check:macos
+bun run check:server
+```
+
+## Retained implementation evidence
+
+The following pre-commit probes used base
+`e4f7f7d9d94ef1126af3f6e8e6859a0937dcc67c`. Fingerprints identify the dirty input
+state recorded by the timing harness; elapsed time includes the current-source
+Release build. These are focused evidence, not the final full acceptance gate.
+
+| Probe                                         | Result and elapsed time                   | Input fingerprint                                                  |
+| --------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------ |
+| Close during seek and known unavailable audio | Red: two tests, four assertions, 79.078 s | `21bf0713154216fbadca59019d74b244cac058d0ef3fcd0627bd1fd80b739098` |
+| Reader and affected shell routes after fixes  | Green: 11 tests, 79.023 s                 | `9f0192fc1ee701f75c4f1665ef3752fa43c49b3bde33e5b7e42d7426a86a7793` |
+| Close before selected revision read completes | Red: one test, 60.938 s                   | `024ab191a09a189bde9ac16d210b7af1f1df25dd4e8d49e4c8392627d53c816c` |
+| Reader after invalidating the unfinished read | Green: eight tests, 35.891 s              | `eebf322dba618ff4e6f8997d0c870782351cc788c69bfa115d3732289ddaea59` |
+| Equivalent/mixed-precision ISO timestamps     | Red: one test, three assertions, 57.711 s | `2d64bd19c33aec520c48a3fb798856600d9c37aefc60d0d5bac81900d3a290c6` |
+| Reader after chronological date comparison    | Green: nine tests, 79.407 s               | `0ca6501a750c29ad65e83bb4de4f377e387417007fd3933d27fd83bb87b849bb` |
+
+The first reader UI build failed on a missing `try` in fixture source-state
+construction (38.326 s); it was corrected. Two subsequent invocations built
+successfully but failed before executing any test with “Timed out while enabling
+automation mode.” Preserve the corresponding ignored runs:
+
+- `2026-09-09T00-34-08.095Z-92ddf24a`: 90.267 s,
+  input `f847f2519cde2bb76dbe7b594a83f7743ec09b4c7298cd009b2a3feb45fff6ba`.
+- `2026-09-09T00-48-51.436Z-f90fd48e`: 91.546 s,
+  input `5595ab79113d64000cc51de3f6dcfbbfcf08007da938839c39c6e8514e09237d`.
+
+Supplementary native UI interaction on September 9 exercised timestamp playback,
+retained revisions, Unicode rename, two-group merge, member removal, Ungroup,
+server conflict choice, unavailable/no-speech playback recovery, close/pause,
+and the 820-by-670 light/dark reader. The isolated repository confirmed unchanged
+retained evidence hash and passage IDs, restored individual names and neutral
+names on the current revision. This found and corrected the accessibility and
+fixture-appearance issues above. It does not replace the required XCUITest gate.
+
+The PR records final source identity, complete local/CI results and any remaining
+GUI limitation after this document is committed. Signed installed controls,
+hosted playback and the complete one-/three-hour provider path remain integrated
+#24 acceptance; fixture text alone is not first-use delivery.

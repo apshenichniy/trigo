@@ -545,13 +545,29 @@ struct LocalServerAcceptanceTests {
     try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: 4096)
     let player = CallAudioPlayer(transport: playbackTransport, output: audio)
     defer { player.clear() }
-    await player.load(callID: capture.callID)
-    #expect(player.state.phase == .paused && player.state.durationMs == 31_000)
+    let readerPreferences = UserDefaults(suiteName: support.lastPathComponent)!
+    defer { readerPreferences.removePersistentDomain(forName: support.lastPathComponent) }
+    let reader = LibraryModel(preferences: readerPreferences) {
+      .init(repository: fresh, player: player, retry: { _ in })
+    }
+    defer { reader.close() }
+    reader.selectCall(capture.callID)
+    await reader.refresh()
+    #expect(reader.failure == nil)
+    #expect(reader.selectedRevisionID == revisionID)
+    let selectedCall = try #require(reader.selectedCall)
+    #expect(LibraryCallStatus(selectedCall).title == "Ready — saved on this Mac and server")
+    let firstTurn = try #require(reader.turns.first)
+    await reader.seek(to: firstTurn.startMs, play: true)
+    #expect(reader.playback.phase == .playing && reader.playback.positionMs == firstTurn.startMs)
+    #expect(reader.playback.durationMs == 31_000)
+    await reader.togglePlayback()
+    #expect(reader.playback.phase == .paused)
     for (position, left, right) in [(30_500, 4000, -5000), (250, 1000, -2000)] {
-      await player.seek(positionMs: position)
-      #expect(player.state.phase == .paused && player.state.positionMs == position)
-      await player.play()
-      #expect(player.state.phase == .playing)
+      await reader.seek(to: position, play: false)
+      #expect(reader.playback.phase == .paused && reader.playback.positionMs == position)
+      await reader.togglePlayback()
+      #expect(reader.playback.phase == .playing)
       let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 128))
       #expect(try engine.renderOffline(128, to: buffer) == .success)
       let channels = try #require(buffer.floatChannelData)
@@ -559,7 +575,7 @@ struct LocalServerAcceptanceTests {
         #expect(abs(channels[0][frame] - Float(left) / 32768) < 0.0001)
         #expect(abs(channels[1][frame] - Float(right) / 32768) < 0.0001)
       }
-      player.pause()
+      await reader.togglePlayback()
     }
     player.clear(callID: capture.callID)
     #expect(player.state.phase == .idle && !engine.isRunning)
@@ -578,7 +594,7 @@ struct LocalServerAcceptanceTests {
       try await FileConnectionMetadataStore(url: namespace.connection).load()
     }
     print(
-      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + upload/finalization + lost receipt replay + verified cleanup + canonical base + automatic fake ASR + exact result/provenance import + confirmed replica + fresh restoration + server playback/seek + stereo AVAudioEngine rendering passed"
+      "LOCAL_CLIENT_ACCEPTANCE actual URLSession + pairing + upload/finalization + lost receipt replay + verified cleanup + canonical base + automatic fake ASR + exact result/provenance import + confirmed replica + fresh restoration + library projection/timestamp playback/seek + stereo AVAudioEngine rendering passed"
     )
   }
 }

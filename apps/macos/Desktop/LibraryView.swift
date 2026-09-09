@@ -43,6 +43,7 @@ struct LibraryView: View {
       .padding(.top, 6)
       .background(Color(nsColor: .textBackgroundColor))
     }
+    .accessibilityElement(children: .contain)
     .accessibilityIdentifier("library-content")
     .sheet(item: $editor) { LibrarySpeakerEditor(model: model, context: $0) }
     .sheet(item: $comparison) { LibraryConflictSheet(model: model, context: $0) }
@@ -82,6 +83,7 @@ struct LibraryView: View {
           .padding(16)
       }
     }
+    .accessibilityElement(children: .contain)
     .accessibilityIdentifier("library-sidebar")
   }
 
@@ -127,10 +129,11 @@ struct LibraryView: View {
           .accessibilityIdentifier("library-compare-names")
         }
         transcript(call)
-        LibraryPlayerView(model: model)
+        LibraryPlayerView(model: model, shell: shell)
           .librarySurface().padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 16)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      .accessibilityElement(children: .contain)
       .accessibilityIdentifier("library-detail")
     } else {
       VStack(alignment: .leading, spacing: 16) {
@@ -160,6 +163,7 @@ struct LibraryView: View {
       }
       .frame(maxWidth: 440, alignment: .leading).padding(32)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .accessibilityElement(children: .contain)
       .accessibilityIdentifier("library-detail")
     }
   }
@@ -317,12 +321,14 @@ struct LibraryView: View {
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+    .accessibilityElement(children: .contain)
     .accessibilityIdentifier("library-turn-\(turn.turnID)")
   }
 }
 
 struct LibraryPlayerView: View {
   @ObservedObject var model: LibraryModel
+  @ObservedObject var shell: DesktopShell
   @State private var seeking: Double?
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
@@ -362,8 +368,18 @@ struct LibraryPlayerView: View {
       if let reason = model.playbackReason {
         Text(reason).font(.caption).foregroundStyle(.secondary)
       }
+      if model.playback.failure == .accessBlocked {
+        Button("Connection Settings…") { shell.showSettings(.connection) }
+          .accessibilityIdentifier("library-playback-settings")
+      }
+      if model.canRetryPlayback {
+        Button("Retry Playback") { Task { await model.retryPlayback() } }
+          .accessibilityIdentifier("library-retry-playback")
+      }
     }
-    .padding(.horizontal, 20).padding(.vertical, 12).accessibilityIdentifier("library-player")
+    .padding(.horizontal, 20).padding(.vertical, 12)
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("library-player")
   }
 }
 

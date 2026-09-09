@@ -53,7 +53,14 @@ targets:
   Trigo UI Fixture:
     type: application
     platform: macOS
-    sources: [UIFixtures]
+    sources:
+      - path: UIFixtures
+      - path: ../../packages/contracts/fixtures/call.json
+        buildPhase: resources
+      - path: ../../packages/contracts/fixtures/valid-audio.json
+        buildPhase: resources
+      - path: ../../packages/contracts/fixtures/grouping-revision.json
+        buildPhase: resources
     dependencies:
       - package: TrigoNative
         product: TrigoDesktop
