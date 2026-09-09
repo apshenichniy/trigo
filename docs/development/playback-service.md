@@ -77,6 +77,22 @@ server failure, stale call responses, cancellation, strict PCM/WAV decoding and
 real AVAudioEngine offline rendering. URLSession probes cover redirects, body
 bounds, credential separation and changed archive bindings.
 
+Reader integration exposed an AVAudioPlayerNode precondition failure when pause
+queried progress before the engine had rendered its first frame. The adapter now
+checks that the node time has a valid sample or host time before converting it,
+and accepts only a valid player sample time. An untimed node reports zero rendered
+frames, preserving the player's selected start position. The focused real-engine
+regression starts at 500 ms and pauses before the first offline render.
+
+At base `d917d2583a9be111f17ad16bb3e4db4ef21fefaa`, that regression terminated with
+the AVAudioPlayerNode precondition failure in 49.241 seconds (source fingerprint
+`5c2326d4a297115f8f973bbe9070199b714efa8113d60e71f856482c053345f2`).
+After the adapter guard, all seven `PlaybackTests` passed in 27.092 seconds,
+including 0.342 seconds of test execution (source fingerprint
+`b846fe3bad206902450141c1edbdeaf67ad0b2217f8c70dd3c7144187b2d16ae`).
+This is a demonstrated offline-engine boundary; audible-device verification
+remains part of installed acceptance.
+
 The native/local Worker smoke creates a 31-second two-source master, loses the
 first local finalization receipt commit, replays the upload, and verifies normal
 local media removal. It then uses the real HTTP playback client and AVAudioEngine

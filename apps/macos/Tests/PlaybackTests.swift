@@ -122,6 +122,22 @@ struct PlaybackTests {
     }
   }
 
+  @Test @MainActor func immediatePauseBeforeTheFirstAudioRenderRetainsTheSelectedPosition()
+    async throws
+  {
+    let engine = AVAudioEngine()
+    let output = AVPlaybackAudioOutput(engine: engine)
+    let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 2))
+    try engine.enableManualRenderingMode(.offline, format: format, maximumFrameCount: 4096)
+    let player = CallAudioPlayer(transport: PlaybackTransportFixture(), output: output)
+    defer { player.clear() }
+    await player.load(callID: playbackCallID, positionMs: 500, autoplay: true)
+    #expect(player.state.phase == .playing)
+    player.pause()
+    #expect(player.state.phase == .paused && player.state.positionMs == 500)
+    #expect(output.renderedFrames == 0)
+  }
+
   @Test @MainActor func theRealAudioEngineRendersBothChannelsInTheSameFrames() throws {
     let engine = AVAudioEngine()
     let output = AVPlaybackAudioOutput(engine: engine)
