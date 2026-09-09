@@ -155,3 +155,13 @@ revision and exercises retained-audio playback and seeking through the reader.
 The failed full invocation is retained at 552.200 s; focused rerun and final CI
 outcomes belong in the PR. No provider or product behavior was changed for this
 test correction.
+
+The corrected smoke on `8be04935e111c146028c5405688ba231ecff2d1e` then exposed a
+product crash when the reader paused real AVAudioEngine playback before its first
+offline render: AVAudioPlayerNode rejected a render time with neither valid sample
+time nor valid host time. That failed invocation is retained at 61.511 s, including
+6.696 s of local transport acceptance. The playback service now validates the time
+before conversion and preserves the selected position while no frames have
+rendered. Its minimized failing regression and seven-test passing result are
+recorded in [retained call playback](playback-service.md). The PR records the
+original reader/Worker smoke rerun after integrating that service fix.
