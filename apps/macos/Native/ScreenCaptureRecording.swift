@@ -600,6 +600,7 @@ final class CaptureStreamSink: NSObject, SCStreamOutput, @unchecked Sendable {
     dispatchPrecondition(condition: .onQueue(queue))
     guard !failed else { return }
     try engine.advance(at: time, pendingAudioAt: ingress.earliestPendingTime)
+    ingress.confirmMedia(through: engine.committedTime)
     onSnapshot(engine.snapshot)
   }
 
