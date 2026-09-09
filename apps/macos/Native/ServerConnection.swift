@@ -1,5 +1,15 @@
 import Foundation
 
+struct ServerOperationAuthorization: Sendable {
+  let binding: ArchiveBinding
+  let credentialAccount: String
+  let token: String
+}
+
+enum ServerOperationAuthorizationError: Error, Equatable {
+  case blocked
+}
+
 public enum ServerStage: String, Codable, Sendable {
   case dev
   case personal
@@ -310,11 +320,12 @@ public actor ServerConnection {
   public func snapshot() -> ConnectionSnapshot { current }
 
   /// Internal transport authority. UI clients never receive the token or credential account.
-  func masterUploadAuthorization(archiveID: String) async throws -> MasterUploadAuthorization {
+  func serverOperationAuthorization(archiveID: String) async throws -> ServerOperationAuthorization
+  {
     guard current.serverOperationsAvailable, let committed = metadata.committed,
       committed.archiveId == archiveID, current.binding == committed.binding,
       transportPolicy.canonicalURL(committed.serverURL.absoluteString) == committed.serverURL
-    else { throw MasterUploadError.remoteBlocked }
+    else { throw ServerOperationAuthorizationError.blocked }
     let token: String
     do {
       guard let stored = try await credentialStore.load(account: committed.credentialAccount) else {
@@ -333,13 +344,13 @@ public actor ServerConnection {
       {
         current = .init(binding: committed.binding, health: .blocked(issue), lastAttemptIssue: nil)
       }
-      throw MasterUploadError.remoteBlocked
+      throw ServerOperationAuthorizationError.blocked
     }
     // Credentials may suspend. A settings change in that interval invalidates this authority.
     guard current.serverOperationsAvailable,
       metadata.committed?.credentialAccount == committed.credentialAccount,
       current.binding == committed.binding
-    else { throw MasterUploadError.remoteBlocked }
+    else { throw ServerOperationAuthorizationError.blocked }
     return .init(
       binding: committed.binding,
       credentialAccount: committed.credentialAccount,
@@ -347,7 +358,8 @@ public actor ServerConnection {
     )
   }
 
-  func reportMasterUploadIssue(_ issue: ConnectionIssue, authority: MasterUploadAuthorization) {
+  func reportServerOperationIssue(_ issue: ConnectionIssue, authority: ServerOperationAuthorization)
+  {
     guard metadata.committed?.credentialAccount == authority.credentialAccount,
       current.binding == authority.binding
     else { return }

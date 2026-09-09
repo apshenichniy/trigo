@@ -670,26 +670,26 @@ extension ServerConnectionTests {
       statusClient: status
     )
     _ = await connection.connect(serverURL: "https://dev.example.test", token: "first")
-    let original = try await connection.masterUploadAuthorization(archiveID: archiveA)
-    await #expect(throws: MasterUploadError.remoteBlocked) {
-      try await connection.masterUploadAuthorization(archiveID: archiveB)
+    let original = try await connection.serverOperationAuthorization(archiveID: archiveA)
+    await #expect(throws: ServerOperationAuthorizationError.blocked) {
+      try await connection.serverOperationAuthorization(archiveID: archiveB)
     }
-    await connection.reportMasterUploadIssue(.unauthorized, authority: original)
+    await connection.reportServerOperationIssue(.unauthorized, authority: original)
     #expect(await connection.snapshot().recordingEligibility == .eligible(archiveId: archiveA))
-    await #expect(throws: MasterUploadError.remoteBlocked) {
-      try await connection.masterUploadAuthorization(archiveID: archiveA)
+    await #expect(throws: ServerOperationAuthorizationError.blocked) {
+      try await connection.serverOperationAuthorization(archiveID: archiveA)
     }
     _ = await connection.connect(serverURL: "https://new.example.test", token: "repaired")
-    let repaired = try await connection.masterUploadAuthorization(archiveID: archiveA)
+    let repaired = try await connection.serverOperationAuthorization(archiveID: archiveA)
     #expect(
       repaired.token == "repaired"
         && repaired.binding.serverURL.absoluteString == "https://new.example.test"
     )
-    await connection.reportMasterUploadIssue(.unauthorized, authority: original)
+    await connection.reportServerOperationIssue(.unauthorized, authority: original)
     #expect(await connection.snapshot().serverOperationsAvailable)
     await credentials.failNextLoad(ConnectionPersistenceError.keychain(errSecInteractionNotAllowed))
-    await #expect(throws: MasterUploadError.remoteBlocked) {
-      try await connection.masterUploadAuthorization(archiveID: archiveA)
+    await #expect(throws: ServerOperationAuthorizationError.blocked) {
+      try await connection.serverOperationAuthorization(archiveID: archiveA)
     }
     #expect(await connection.snapshot().recordingEligibility == .eligible(archiveId: archiveA))
     #expect(await credentials.values == ["repaired"])
