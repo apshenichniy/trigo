@@ -10,6 +10,10 @@ import Foundation
   private let application: RecordingApplication?
   private let fixtureLease: AppInstanceLease?
 
+  public func makeLibrarySession() async throws -> LibrarySession? {
+    try await application?.coordinator?.makeLibrarySession()
+  }
+
   public static func installed(bundle: Bundle = .main) throws -> DesktopComposition {
     let variant = try AppVariant.installed(bundleIdentifier: bundle.bundleIdentifier)
     let namespace = try AppNamespace.installed(bundle: bundle)

@@ -77,7 +77,7 @@ extension LocalRepository {
       + axis(value.deletion.state.rawValue, value.deletion.failure)
   }
 
-  private func lifecycleRow(_ callID: String) throws -> SQLRow? {
+  func lifecycleRow(_ callID: String) throws -> SQLRow? {
     try database.rows(
       """
       SELECT l.state_version,v.capture_state,v.reason,
@@ -94,7 +94,7 @@ extension LocalRepository {
     .first
   }
 
-  private func decodeLifecycle(_ row: SQLRow, callID: String) throws -> CallLifecycleSnapshot {
+  func decodeLifecycle(_ row: SQLRow, callID: String) throws -> CallLifecycleSnapshot {
     guard let upload = try UploadLifecycleState(rawValue: row.string(3)),
       let transcription = try TranscriptionLifecycleState(rawValue: row.string(6)),
       let importState = try ImportLifecycleState(rawValue: row.string(9)),

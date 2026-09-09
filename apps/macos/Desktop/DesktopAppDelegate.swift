@@ -28,6 +28,7 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
   private let statusMenu = NSMenu()
   private var menuIsTracking = false
   private var libraryWindow: NSWindow?
+  private var libraryToolbar: AnyObject?
   private var settingsWindow: NSWindow?
   private var recordingPanel: NSPanel?
   private var notificationPanel: NSPanel?
@@ -49,7 +50,12 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
       return DesktopAppDelegate(
         composition: composition,
         login: composition.services == nil ? nil : DesktopLoginModel(service: SystemLoginService()),
-        reader: .unavailable
+        reader: .live(
+          model: LibraryModel(
+            preferences: UserDefaults(suiteName: composition.namespace.preferences)!,
+            makeSession: { try await composition.makeLibrarySession() }
+          )
+        )
       )
     } catch {
       return DesktopAppDelegate(
@@ -191,7 +197,7 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     return alert.runModal() == .alertFirstButtonReturn
   }
 
-  @objc private func showLibrary() { libraryLifecycle.open() }
+  @objc private func showLibrary() { reader.willOpen(); libraryLifecycle.open() }
 
   private func createLibrary() {
     let window = NSWindow(
@@ -209,6 +215,7 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
     window.collectionBehavior.insert(.fullScreenPrimary)
     window.setAccessibilityIdentifier("library-window")
     if let shell, startupFailure == nil {
+      libraryToolbar = reader.configureWindow(window, shell)
       window.contentView = NSHostingView(
         rootView: reader.makeContent(shell)
           .defaultAppStorage(UserDefaults(suiteName: shell.composition.namespace.preferences)!)
@@ -269,6 +276,8 @@ public final class DesktopAppDelegate: NSObject, NSApplicationDelegate, NSWindow
   public func windowWillClose(_ notification: Notification) {
     guard let window = notification.object as? NSWindow else { return }
     if window === libraryWindow {
+      reader.didClose()
+      libraryToolbar = nil
       libraryWindow = nil
       libraryLifecycle.closed()
     } else if window === recordingPanel {
