@@ -12,6 +12,7 @@ function cloudBindings() {
     AI: { run: vi.fn() },
     DEPLOYMENT_STAGE: "dev" as const,
     DEPLOYMENT_IDENTITY: "trigo-dev-api:9236f745b86ef20f",
+    ASSEMBLYAI_API_KEY: "fixture-secret",
   };
 }
 
@@ -32,12 +33,22 @@ describe("cloud Worker boundary", () => {
         catalog: "configured",
         workflow: "configured",
         workersAi: "configured-not-verified",
+        assemblyAi: "configured-not-verified",
       },
     });
     expect(env.ARCHIVE.get).not.toHaveBeenCalled();
     expect(env.CATALOG.prepare).not.toHaveBeenCalled();
     expect(env.ARCHIVE_WORKFLOW.create).not.toHaveBeenCalled();
     expect(env.AI.run).not.toHaveBeenCalled();
+  });
+
+  it("reports a missing direct-provider credential without disclosing it", async () => {
+    const response = await cloudWorker.fetch(
+      new Request("https://trigo.invalid/__trigo/infrastructure"),
+      { ...cloudBindings(), ASSEMBLYAI_API_KEY: "" },
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ bindings: { assemblyAi: "missing" } });
   });
 
   it("protects product routes before any unavailable operation is revealed", async () => {

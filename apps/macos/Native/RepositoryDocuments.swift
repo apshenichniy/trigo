@@ -141,6 +141,7 @@ extension LocalRepository {
           }
       )
     }
+    try await stagePassages(document.value, hash: hash)
   }
 
   func stageEvidence(hash: String, kind: String, callID: String, identity: String) async throws {

@@ -6,7 +6,11 @@ import {
   type TranscriptionOperation,
 } from "@trigo/contracts";
 
-import { nova3StreamProfile } from "../../../packages/contracts/src/asr-profile.ts";
+import {
+  assemblyAIStereoProfile,
+  nova3StreamProfile,
+} from "../../../packages/contracts/src/asr-profile.ts";
+import { type AssemblyAIClient } from "./assemblyai-client.ts";
 import { storedMaster } from "./master-finalization.ts";
 import { type MasterUploadEnvironment } from "./master-uploads.ts";
 import { readBoundedBody } from "./nova-3-transport.ts";
@@ -48,6 +52,7 @@ export interface TranscriptionWorkflowBinding {
 export interface TranscriptionEnvironment extends MasterUploadEnvironment {
   readonly TRANSCRIPTION_WORKFLOW?: TranscriptionWorkflowBinding;
   readonly TRANSCRIPTION_MODE?: "hosted" | "fake";
+  readonly ASSEMBLYAI?: AssemblyAIClient;
 }
 
 const workflowStatus = (instance: { status: () => Promise<unknown> }) =>
@@ -63,7 +68,11 @@ const dispatchTranscription = Effect.fn("Transcription.dispatch")(function* (
   workflow: TranscriptionWorkflowBinding,
   operation: TranscriptionRow,
 ) {
-  if (operation.state !== "queued" && operation.state !== "running") {
+  if (
+    operation.state !== "queued" &&
+    operation.state !== "running" &&
+    !(operation.state === "result_available" && operation.profile_id === assemblyAIStereoProfile.id)
+  ) {
     return;
   }
   yield* transcriptionStorage(() =>
@@ -98,7 +107,7 @@ const requestTranscription = Effect.fn("Transcription.request")(function* (
     return yield* transcriptionError("asr_unavailable", "after_correction", 501);
   }
   const input = yield* decodeTranscription(RequestTranscription, value);
-  if (input.requestedLanguage === "uk") {
+  if (input.profileId === nova3StreamProfile.id && input.requestedLanguage === "uk") {
     return yield* transcriptionError("asr_language_unsupported", "after_correction", 422);
   }
   if (
@@ -167,7 +176,7 @@ const requestTranscription = Effect.fn("Transcription.request")(function* (
       commandHash,
       input.revisionId,
       input.requestedLanguage,
-      nova3StreamProfile.id,
+      input.profileId,
       now,
       now,
       ...uploadOwnerParameters(owner),
@@ -255,7 +264,10 @@ const getOperation = Effect.fn("Transcription.getOperation")(function* (
   let failure = document.failure;
   if (observed._tag === "Failure") {
     failure = transcriptionFailure("asr_storage_unavailable", "retryable");
-  } else if (observed.success === "errored" || observed.success === "complete") {
+  } else if (
+    (observed.success === "errored" || observed.success === "complete") &&
+    failure === null
+  ) {
     failure = transcriptionFailure("asr_workflow_interrupted", "retryable");
   } else if (observed.success === "paused" || observed.success === "terminated") {
     failure = transcriptionFailure("asr_workflow_stopped", "after_correction");

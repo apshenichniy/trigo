@@ -9,6 +9,13 @@ Meet/Telegram and real-speech evaluation remains #23 after this handoff.
 
 ## Candidate and evidence boundaries
 
+Decision [#92](https://github.com/apshenichniy/trigo/issues/92) changes new desktop
+requests to AssemblyAI Universal-2. The hosted harness now requires that profile
+and its exact HTTP upload acknowledgment. Earlier Nova-3 long-call receipts remain
+historical evidence; they do not establish the new provider's deployed acceptance.
+The one-/three-hour AssemblyAI runs below require separate deployment and paid-run
+authorization. See [the migration evidence](assemblyai-transcription.md).
+
 The integration branch contains #73 playback, #19 canonical synchronization,
 #72 native UI infrastructure, #58 Double Left Control, #45 measured recording
 panel and #20 reader. Each component PR identifies its final source, required CI

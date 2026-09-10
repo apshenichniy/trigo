@@ -37,6 +37,31 @@ import Testing
     }
   }
 
+  @Test func uploadAcknowledgmentMatchesExactBytesAndAllowsRoundedProviderDuration() throws {
+    let hash = String(repeating: "a", count: 64)
+    let transport: [String: Any] = [
+      "deliveryWitness": "http-upload-ack-v1", "uploadedByteLength": 64_044,
+      "inputSHA256": hash, "uploadHttpStatus": 200,
+      "uploadURL": "https://cdn.eu.assemblyai.com/upload/fixture",
+    ]
+    let receipt = try decodeReceipt(duration: 1, transportChanges: transport)
+    try receipt.validate(byteLength: 64_044, frameCount: 16_000, inputSHA256: hash)
+    try receipt.validate(byteLength: 64_044, frameCount: 20_000, inputSHA256: hash)
+    #expect(throws: DailyUseAcceptanceFailure.self) {
+      try receipt.validate(byteLength: 44, frameCount: 16_000, inputSHA256: hash)
+    }
+    #expect(throws: DailyUseAcceptanceFailure.self) {
+      try receipt.validate(
+        byteLength: 64_044,
+        frameCount: 16_000,
+        inputSHA256: String(repeating: "b", count: 64)
+      )
+    }
+    #expect(throws: DailyUseAcceptanceFailure.self) {
+      try receipt.validate(byteLength: 64_044, frameCount: 160_000, inputSHA256: hash)
+    }
+  }
+
   private func decodeReceipt(
     duration: Double?,
     transportChanges: [String: Any] = [:],

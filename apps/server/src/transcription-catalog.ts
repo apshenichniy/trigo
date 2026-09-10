@@ -8,7 +8,7 @@ import {
   type TranscriptionOperation,
 } from "@trigo/contracts";
 
-import { Nova3StreamProfileId } from "../../../packages/contracts/src/asr-profile.ts";
+import { TranscriptionProfileId } from "../../../packages/contracts/src/asr-profile.ts";
 import { ArchiveId, type OwnerContext } from "./owner-state.ts";
 import {
   TranscriptionErrorCode,
@@ -31,7 +31,7 @@ export const TranscriptionRow = Schema.Struct({
   command_hash: SHA256,
   revision_id: ExchangeUUID,
   requested_language: AsrProbeLanguage,
-  profile_id: Nova3StreamProfileId,
+  profile_id: TranscriptionProfileId,
   state: Schema.Literals(["queued", "running", "result_available", "failed"]),
   created_at: UTCDateTime,
   updated_at: UTCDateTime,

@@ -5,7 +5,10 @@ import { Effect, Schema, Stream } from "effect";
 
 import { ExchangeUUID, SHA256, storedByteHash } from "@trigo/contracts";
 
-import { nova3StreamProfile } from "../../../packages/contracts/src/asr-profile.ts";
+import {
+  assemblyAIStereoProfile,
+  nova3StreamProfile,
+} from "../../../packages/contracts/src/asr-profile.ts";
 import {
   AsrExtractionEvidence,
   AsrMaster,
@@ -14,6 +17,11 @@ import {
   r2MasterSource,
 } from "./asr-master.ts";
 import { type Nova3Runner } from "./asr-probe.ts";
+import { type AssemblyAIMasterSubmission } from "./assemblyai-normalization.ts";
+import {
+  recoverAssemblyAISubmission,
+  submitAssemblyAISubmission,
+} from "./assemblyai-submissions.ts";
 import {
   inspectNova3IntervalMetadata,
   Nova3SubmissionTransport,
@@ -214,7 +222,7 @@ const RawMetadata = Schema.Struct({
   providerRequestId: Schema.NullOr(Schema.String.check(Schema.isMaxLength(512))),
 });
 
-const decodeExtraction = (submission: SubmissionRow) =>
+export const decodeExtraction = (submission: SubmissionRow) =>
   Schema.decodeEffect(Schema.fromJsonString(AsrExtractionEvidence))(submission.extraction).pipe(
     Effect.mapError(() => transcriptionError("asr_catalog_invalid", "after_correction", 503)),
   );
@@ -225,6 +233,9 @@ export const submitAdmittedInterval = Effect.fn("Transcription.submitInterval")(
   attempt: AttemptRow,
   submission: SubmissionRow,
 ) {
+  if (env.TRANSCRIPTION_MODE === "hosted" && operation.profile_id === assemblyAIStereoProfile.id) {
+    return yield* submitAssemblyAISubmission(env, operation, attempt, submission);
+  }
   yield* requireCurrentAttempt(env.CATALOG, attempt.attempt_id);
   if (submission.state !== "planned" || submission.attempt_id !== attempt.attempt_id) {
     return;
@@ -346,7 +357,14 @@ export const recoverSubmission = Effect.fn("Transcription.recoverSubmission")(fu
   env: TranscriptionEnvironment,
   operation: TranscriptionRow,
   submission: SubmissionRow,
-): Effect.fn.Return<Nova3MasterSubmission, import("./transcription-errors.ts").TranscriptionError> {
+  allowProvider = true,
+): Effect.fn.Return<
+  Nova3MasterSubmission | AssemblyAIMasterSubmission,
+  import("./transcription-errors.ts").TranscriptionError
+> {
+  if (env.TRANSCRIPTION_MODE === "hosted" && operation.profile_id === assemblyAIStereoProfile.id) {
+    return yield* recoverAssemblyAISubmission(env, operation, submission, allowProvider);
+  }
   const extraction = yield* decodeExtraction(submission);
   const [writer] = yield* transcriptionRows(
     env.CATALOG,

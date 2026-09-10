@@ -2,7 +2,14 @@ import { Effect } from "effect";
 
 import { TranscriptRevision, validateDocument, type VerifiedMasterReceipt } from "@trigo/contracts";
 
-import { nova3StreamProfile } from "../../../packages/contracts/src/asr-profile.ts";
+import {
+  assemblyAIStereoProfile,
+  nova3StreamProfile,
+} from "../../../packages/contracts/src/asr-profile.ts";
+import {
+  normalizeAssemblyAIMaster,
+  type AssemblyAIMasterSubmission,
+} from "./assemblyai-normalization.ts";
 import { normalizeNova3Master, type Nova3MasterSubmission } from "./nova-3-master.ts";
 import {
   AttemptRow,
@@ -43,7 +50,7 @@ function emptyMasterResult(operation: TranscriptionRow, receipt: VerifiedMasterR
       asr: {
         adapter: "none",
         model: "no-audio",
-        profileId: nova3StreamProfile.id,
+        profileId: operation.profile_id,
         requestedLanguage: operation.requested_language,
         detectedLanguages: [],
         effectiveOptions: { reason: "zero-duration-master" },
@@ -57,7 +64,7 @@ function emptyMasterResult(operation: TranscriptionRow, receipt: VerifiedMasterR
       schemaVersion: 1,
       callId: operation.call_id,
       revisionId: operation.revision_id,
-      profileId: nova3StreamProfile.id,
+      profileId: operation.profile_id,
       evidenceKind: "zero-duration-master",
       providerInvoked: false,
       verifiedMaster: receipt,
@@ -70,6 +77,7 @@ const normalizeAttempt = Effect.fn("Transcription.normalizeAttempt")(function* (
   env: TranscriptionEnvironment,
   operation: TranscriptionRow,
   attempt: AttemptRow,
+  recovery: TranscriptionResultRecovery,
 ) {
   const context = yield* loadTranscriptionMaster(env, operation);
   if (context.master === null) {
@@ -82,13 +90,18 @@ const normalizeAttempt = Effect.fn("Transcription.normalizeAttempt")(function* (
   if (planned.length !== expected) {
     return yield* transcriptionError("asr_submission_uncertain", "retryable", 503);
   }
-  const retained: Nova3MasterSubmission[] = [];
+  const retained: (Nova3MasterSubmission | AssemblyAIMasterSubmission)[] = [];
   let rawBytes = 0;
   // Recovery visits every interval before considering a replacement; successful intervals
   // retain their independent scope even when a sibling has an uncertain outcome.
   const failures = [];
   for (const submission of planned) {
-    const recovered = yield* recoverSubmission(env, operation, submission).pipe(Effect.result);
+    const recovered = yield* recoverSubmission(
+      env,
+      operation,
+      submission,
+      recovery === "active",
+    ).pipe(Effect.result);
     if (recovered._tag === "Failure") {
       failures.push(recovered.failure);
       continue;
@@ -103,14 +116,20 @@ const normalizeAttempt = Effect.fn("Transcription.normalizeAttempt")(function* (
   if (failure !== undefined) {
     return yield* failure;
   }
-  const normalized = yield* normalizeNova3Master({
+  const normalizationInput = {
     master: context.master,
     revisionId: operation.revision_id,
     createdAt: operation.created_at,
     requestedLanguage: operation.requested_language,
     submissions: retained,
     makeId: deterministicTranscriptionIDs(operation.revision_id),
-  }).pipe(Effect.mapError(() => transcriptionError("asr_result_invalid")));
+  };
+  const normalized = yield* env.TRANSCRIPTION_MODE === "hosted" &&
+  operation.profile_id === assemblyAIStereoProfile.id
+    ? normalizeAssemblyAIMaster(normalizationInput)
+    : normalizeNova3Master(normalizationInput).pipe(
+        Effect.mapError(() => transcriptionError("asr_result_invalid")),
+      );
   const revision =
     env.TRANSCRIPTION_MODE === "fake"
       ? {
@@ -119,6 +138,7 @@ const normalizeAttempt = Effect.fn("Transcription.normalizeAttempt")(function* (
             ...normalized.revision.asr,
             adapter: "fake",
             model: "no-speech",
+            profileId: operation.profile_id,
             effectiveOptions: { fixture: "offline-product-workflow" },
           },
         }
@@ -127,6 +147,7 @@ const normalizeAttempt = Effect.fn("Transcription.normalizeAttempt")(function* (
     revision,
     provenance: {
       ...normalized.provenance,
+      profileId: operation.profile_id,
       providerInvoked: env.TRANSCRIPTION_MODE === "hosted",
       sourceStatesSHA256: context.receipt.sourceStatesSHA256,
       masterReceiptId: context.receipt.receiptId,
@@ -149,7 +170,7 @@ export const recoverAndPublishTranscription = Effect.fn("Transcription.recoverAn
       return operation;
     }
     yield* requireCurrentAttempt(env.CATALOG, attempt.attempt_id, recovery);
-    const normalized = yield* normalizeAttempt(env, operation, attempt);
+    const normalized = yield* normalizeAttempt(env, operation, attempt, recovery);
     const revision = yield* Effect.try({
       try: () => validateDocument("TranscriptRevision", normalized.revision),
       catch: () => transcriptionError("asr_result_invalid"),

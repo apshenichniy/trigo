@@ -26,6 +26,16 @@ const messages = {
   asr_attempt_limit:
     "The original and one replacement attempt are exhausted. Retained audio and successful evidence remain available.",
   asr_configuration: "The hosted transcription binding or model configuration requires correction.",
+  asr_provider_processing: "The provider is still processing the admitted transcription.",
+  asr_provider_unavailable:
+    "The provider is temporarily unavailable. The existing job will be checked again.",
+  asr_provider_failed: "The provider could not complete this admitted transcription.",
+  asr_admission_uncertain:
+    "The provider admission could not be recovered. No additional paid request is started automatically.",
+  asr_processing_timeout:
+    "The provider job is taking longer than the automatic waiting period. Resume the same operation to check its existing result.",
+  asr_cleanup_pending:
+    "The result is retained in Trigo, but deletion of the provider copy still needs to complete.",
   asr_funds: "Hosted transcription requires an available provider balance or quota.",
   asr_input_rejected:
     "The provider rejected this audio or language profile. Retained audio has not been changed.",

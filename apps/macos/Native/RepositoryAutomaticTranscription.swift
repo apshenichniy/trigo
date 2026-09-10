@@ -4,6 +4,7 @@ import TrigoContracts
 public enum AutomaticTranscriptionLanguage: String, Sendable, CaseIterable {
   case russian = "ru"
   case english = "en"
+  case ukrainian = "uk"
   public static let preferenceKey = "initialTranscriptionLanguage"
 }
 
@@ -27,14 +28,14 @@ extension LocalRepository {
       try verifiedMasterReceipt(callID: callID) != nil,
       let observation = try observedReplica(callID: callID),
       try currentHash(callID) == observation.hash,
-      language == "en" || language == "ru"
+      AutomaticTranscriptionLanguage(rawValue: language) != nil
     else { return nil }
     let request = RequestTranscription(
       schemaVersion: 1,
       operationId: synchronizationIdentity("trigo-initial-transcription:\(archiveID):\(callID)"),
       revisionId: synchronizationIdentity("trigo-initial-revision:\(archiveID):\(callID)"),
       requestedLanguage: language,
-      profileId: "nova3-wav-s16le-16000-stereo-stream-v1"
+      profileId: "assemblyai-u2-wav-s16le-16000-stereo-v1"
     )
     let bytes = try Contract.encode(request)
     let prepared = try await prepareOperation(

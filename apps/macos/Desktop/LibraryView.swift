@@ -230,7 +230,7 @@ struct LibraryView: View {
       } else {
         ScrollView {
           LazyVStack(alignment: .leading, spacing: 20) {
-            ForEach(model.turns, id: \.turnID) { turn in
+            ForEach(model.turns, id: \.passageID) { turn in
               passage(turn, call: call, revision: revision)
             }
             if model.hasMoreTurns {
@@ -272,12 +272,12 @@ struct LibraryView: View {
         .monospacedDigit()
         .help(model.playbackReason ?? "Play this passage")
         .accessibilityLabel("Play from \(LibraryDate.clock(turn.startMs))")
-        .accessibilityIdentifier("library-timestamp-\(turn.turnID)")
+        .accessibilityIdentifier("library-timestamp-\(turn.passageID)")
         if turn.hasApproximateTiming {
           Text("Approximate timing")
             .font(.caption).foregroundStyle(.secondary)
             .help("The provider's word timing is uncertain. Playback stays within the recording.")
-            .accessibilityIdentifier("library-approximate-timing-\(turn.turnID)")
+            .accessibilityIdentifier("library-approximate-timing-\(turn.passageID)")
         }
         if let speaker = model.speakers.first(where: { $0.speakerID == turn.speakerID }) {
           Menu {
@@ -318,7 +318,7 @@ struct LibraryView: View {
             "\(speaker.trackRole.capitalized) · \(speaker.neutralLabel) · Scope \(speaker.diarizationScopeID)"
           )
           .accessibilityLabel("Speaker actions for \(speaker.displayName)")
-          .accessibilityIdentifier("library-speaker-\(turn.turnID)")
+          .accessibilityIdentifier("library-speaker-\(turn.passageID)")
         } else {
           Text("Unknown speaker")
         }
@@ -329,7 +329,7 @@ struct LibraryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     .accessibilityElement(children: .contain)
-    .accessibilityIdentifier("library-turn-\(turn.turnID)")
+    .accessibilityIdentifier("library-turn-\(turn.passageID)")
   }
 }
 

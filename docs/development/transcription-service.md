@@ -1,7 +1,10 @@
 # Durable transcription service
 
 Issue [#18](https://github.com/apshenichniy/trigo/issues/18) consumes the verified
-master receipt from #17 and the hosted Nova-3 profile from #13. The shared product
+master receipt from #17. Decision [#92](https://github.com/apshenichniy/trigo/issues/92)
+selects direct AssemblyAI for new desktop requests; [the migration and recovery
+contract](assemblyai-transcription.md) supersedes the original Nova-3 provider path.
+Retained requests keep their explicit profile. The shared product
 API and Effect services execute in the cloud Workflow and the local fake Workflow.
 The local composition never binds Workers AI and marks its evidence as fake.
 
@@ -9,10 +12,12 @@ The local composition never binds Workers AI and marks its evidence as fake.
 
 `POST /v1/calls/{callId}/transcriptions` accepts `RequestTranscription`: schema
 version 1, independent operation and candidate revision UUIDs, the requested
-language, and `nova3-wav-s16le-16000-stereo-stream-v1`. English and Russian use the
-proven profile. Ukrainian is structurally understood but rejected with
-`asr_language_unsupported` before attempt or provider admission. Unknown execution
-options and arbitrary models fail request validation.
+language, and a fixed transcription profile. New desktop requests select
+`assemblyai-u2-wav-s16le-16000-stereo-v1` with English, Russian or Ukrainian.
+The retained `nova3-wav-s16le-16000-stereo-stream-v1` profile still supports English
+and Russian and rejects Ukrainian with `asr_language_unsupported`. Profiles are
+explicit, so a missing AssemblyAI credential never falls back to Nova-3. Unknown
+execution options and arbitrary models fail request validation.
 
 The response is a `TranscriptionOperation`. One active logical request is admitted
 per call. Repeating identical content with the same identities returns that
@@ -55,7 +60,8 @@ two hours per submission, so a three-hour master produces two hours plus one hou
 Each interval/channel has an independent diarization scope. An admitted provider
 submission is never sent again. Recovery first checks every retained raw response;
 a replacement reuses successful intervals and submits only intervals whose outcome
-remains uncertain. Configuration, funds, unsupported input and invalid evidence
+remains uncertain on the legacy Nova-3 path. AssemblyAI replaces only a definite
+failure and resumes lookup/polling for unknown admission. Configuration, funds, unsupported input and invalid evidence
 require correction instead of an automatic paid replacement.
 
 Workflows disable retries on provider steps. Storage steps have three bounded
@@ -73,8 +79,9 @@ failure and releases its active slot.
 The extractor reads the immutable CAF master in bounded ranges, preserves both
 source channels, verifies the exact retained audio-manifest bytes against the
 master receipt, and records source/master hashes, frame ranges, WAV hashes and
-call-time offsets. Provider transport must witness consumer EOF for the complete
-input and a complete successful response. Reported provider duration and channels
+call-time offsets. Nova-3 transport witnesses consumer EOF; AssemblyAI retains an
+HTTP upload acknowledgment tied to the exact extracted bytes and hash. Both require
+a complete successful response. Reported provider duration and channels
 must match the submitted interval before another paid interval is started.
 
 Raw response retention is capped at 8,000,000 bytes per submission and at two

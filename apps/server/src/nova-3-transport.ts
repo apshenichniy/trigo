@@ -11,7 +11,7 @@ export class Nova3TransportError extends Schema.TaggedError<Nova3TransportError>
 ) {}
 
 /** Keep a bounded prefix and a truthful completion marker even if a response body fails. */
-const captureBoundedBody = Effect.fn("Nova3.captureBoundedBody")(function* (
+export const captureBoundedBody = Effect.fn("Nova3.captureBoundedBody")(function* (
   body: ReadableStream<Uint8Array> | null,
   maximumBytes: number,
 ) {

@@ -412,7 +412,11 @@ public actor CanonicalSyncCoordinator {
       guard observed.operationId == automatic.request.operationId,
         observed.revisionId == automatic.request.revisionId
       else { throw CanonicalSyncError.invalidResult }
-      if observed.state == "failed", observed.failure?.code == "asr_workflow_interrupted",
+      let canResumeWait =
+        ["asr_workflow_interrupted", "asr_processing_timeout"]
+        .contains(observed.failure?.code ?? "")
+        || (retryAfterCorrection && observed.failure?.code == "asr_admission_uncertain")
+      if observed.state != "result_available", canResumeWait,
         !automatic.recoveryAttempted || retryAfterCorrection,
         try repository.reserveTranscriptionRecovery(
           callID: callID,

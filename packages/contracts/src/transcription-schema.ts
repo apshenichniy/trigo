@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 
 import { AsrProbeLanguage } from "./asr-probe.ts";
-import { Nova3StreamProfileId } from "./asr-profile.ts";
+import { TranscriptionProfileId } from "./asr-profile.ts";
 import { ExchangeUUID, PositiveInteger, SHA256, UTCDateTime } from "./document-schema.ts";
 
 /** Command identity survives transport retries; a candidate is separate from a published result. */
@@ -10,7 +10,7 @@ export const RequestTranscription = Schema.Struct({
   operationId: ExchangeUUID,
   revisionId: ExchangeUUID,
   requestedLanguage: AsrProbeLanguage,
-  profileId: Nova3StreamProfileId,
+  profileId: TranscriptionProfileId,
 }).annotate({ identifier: "RequestTranscription" });
 export interface RequestTranscription extends Schema.Schema.Type<typeof RequestTranscription> {}
 

@@ -32,13 +32,21 @@ release, the account-global Cloudflare Workflow name is deterministically derive
 from the stable Worker name and exported `PendingArchiveWorkflow` class, with a
 hash suffix; do not hard-code or rename that derived physical value.
 
-The Worker receives `ARCHIVE`, `CATALOG`, `ARCHIVE_WORKFLOW`, `AI` and
-`DEPLOYMENT_STAGE`. The Workflow entrypoint is deliberately unavailable until its
-owning feature is implemented. Product routes under `/v1/*` deny access by default;
-the authenticated `GET /v1/status` route reports the stable archive identity and
-truthful readiness, while later call operations remain unavailable. The
-infrastructure diagnostic checks binding shape without reading storage, starting a
-Workflow or making a Workers AI inference.
+The Worker receives `ARCHIVE`, `CATALOG`, `ARCHIVE_WORKFLOW`, `AI`,
+`ASSEMBLYAI_API_KEY`, `DEPLOYMENT_STAGE` and `DEPLOYMENT_IDENTITY`. Product routes
+under `/v1/*` require the archive owner's credentials. The Workflow selects the
+request's retained provider profile. New desktop requests use direct AssemblyAI;
+the Workers AI binding remains available for legacy requests and explicit probes.
+The infrastructure diagnostic checks binding shape and AssemblyAI secret presence
+without reading storage, starting a Workflow or invoking either provider.
+
+Supply `ASSEMBLYAI_API_KEY` to the deployment process through the existing secret
+manager or a hidden prompt. Alchemy's `Config.redacted` installs it as a Worker
+secret. Do not put it in stage JSON, desktop settings, command arguments or logs.
+Deployment requires this secret; a missing runtime secret reports infrastructure
+status 503 and `asr_configuration` on AssemblyAI work, with no provider fallback.
+An installed client and hosted Worker must both understand the new profile before
+using the migration. See [AssemblyAI acceptance](assemblyai-transcription.md).
 
 ## Local stage configuration
 
