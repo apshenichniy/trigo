@@ -166,7 +166,10 @@ final class SQLiteDatabase: @unchecked Sendable {
               "INSERT INTO server_storage_receipts SELECT call_id,storage_receipt_hash FROM master_uploads WHERE storage_receipt_hash IS NOT NULL"
             )
           }
-          for statement in repositoryTimingSchema { try execute(statement) }
+          if try scalarInt("PRAGMA user_version") < 5 {
+            for statement in repositoryTimingSchema { try execute(statement) }
+          }
+          for statement in repositoryPassageSchema { try execute(statement) }
           try execute("PRAGMA user_version=\(repositorySchemaVersion)")
         }
         try validateExistingStore()
@@ -183,7 +186,8 @@ final class SQLiteDatabase: @unchecked Sendable {
   private func validateExistingStore() throws {
     let version = try scalarInt("PRAGMA user_version")
     guard try scalarInt("PRAGMA application_id") == Self.applicationID,
-      version == 2 || version == 3 || version == 4 || version == repositorySchemaVersion,
+      version == 2 || version == 3 || version == 4 || version == 5
+        || version == repositorySchemaVersion,
       try scalarString("PRAGMA journal_mode") == "delete"
     else {
       throw LocalPersistenceError.unsupportedStore("Unsupported SQLite identity, schema or journal")
@@ -209,7 +213,7 @@ final class SQLiteDatabase: @unchecked Sendable {
       ? repositorySchemaV2
       : version == 3
         ? repositorySchemaV3
-        : version == 4 ? repositorySchemaV4 : repositorySchema
+        : version == 4 ? repositorySchemaV4 : version == 5 ? repositorySchemaV5 : repositorySchema
     guard Set(actual) == Set(expectedSchema.map(normalized)) else {
       throw LocalPersistenceError.unsupportedStore(
         "SQLite schema does not match its declared version"

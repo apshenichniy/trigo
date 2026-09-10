@@ -47,6 +47,51 @@ const inputBase = {
   ],
 };
 
+it.effect("places returning microphone speech after a long silence on the call timeline", () =>
+  Effect.gen(function* () {
+    const result = yield* normalizeNova3({
+      ...inputBase,
+      makeId: ids(),
+      objects: [
+        {
+          ...object(0, {
+            results: {
+              channels: [
+                {
+                  alternatives: [
+                    {
+                      words: [
+                        { word: "Hello.", start: 145.26, end: 145.82, speaker: 0 },
+                        { word: "Returning", start: 1088.13, end: 1088.77, speaker: 0 },
+                        { word: "now.", start: 1088.8, end: 1089.2, speaker: 0 },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  alternatives: [
+                    { words: [{ word: "Meanwhile.", start: 600, end: 601, speaker: 0 }] },
+                  ],
+                },
+              ],
+            },
+          }),
+          endMs: 1_703_750,
+        },
+      ],
+    });
+    expect(result.turns.map(({ startMs, text }) => ({ startMs, text }))).toEqual([
+      { startMs: 145_260, text: "Hello." },
+      { startMs: 600_000, text: "Meanwhile." },
+      { startMs: 1_088_130, text: "Returning now." },
+    ]);
+    expect(result.turns[0]?.speakerId).toBe(result.turns[2]?.speakerId);
+    expect(result.turns.flatMap((turn) => turn.words).map((word) => word.startMs)).toEqual([
+      145_260, 600_000, 1_088_130, 1_088_800,
+    ]);
+  }),
+);
+
 it.effect("retains overlapping and beyond-end words with approximate timing", () =>
   Effect.gen(function* () {
     const result = yield* normalizeNova3({

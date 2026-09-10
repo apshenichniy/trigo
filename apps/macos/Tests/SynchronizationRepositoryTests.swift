@@ -111,7 +111,7 @@ func syncReplicaContents(
 }
 
 var removeSyncSchemaFixtureSQL: String {
-  (repositorySyncSchema + repositoryTimingSchema).reversed()
+  (repositorySyncSchema + repositoryTimingSchema + repositoryPassageSchema).reversed()
     .map { statement in
       let name =
         statement.components(separatedBy: "CREATE TABLE ")[1].components(separatedBy: "(")[0]

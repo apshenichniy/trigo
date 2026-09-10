@@ -357,7 +357,15 @@ function buildRevision(
       };
 
       for (const { label, normalized } of alignedWords(words, object.startMs, object.endMs)) {
-        if (label !== currentLabel) {
+        const previous = currentWords.at(-1);
+        // A label identifies a voice within this channel, not uninterrupted speech.
+        // Leave unreliable alignments together instead of inventing a pause boundary.
+        const followsPause =
+          previous !== undefined &&
+          previous.timingUncertain !== true &&
+          normalized.timingUncertain !== true &&
+          normalized.startMs - previous.endMs > 1_200;
+        if (label !== currentLabel || followsPause) {
           finishTurn();
           currentLabel = label;
         }

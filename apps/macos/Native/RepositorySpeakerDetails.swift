@@ -44,6 +44,7 @@ extension LocalRepository {
       throw CanonicalSyncError.invalidAnnotation
     }
     let revisionHash = try requiredEvidence(identity: revisionID, kind: "revision", callID: callID)
+    try await ensurePassages(hash: revisionHash)
     let missing = try database.access {
       try
         !database.rows(
@@ -61,14 +62,15 @@ extension LocalRepository {
       try database.rows(
         """
         SELECT s.speaker_id,s.ordinal,s.track_id,t.role,s.scope_id,s.provider_label,n.name,g.group_id,g.display_name,
-          x.ordinal,x.turn_id,x.track_id,x.speaker_id,x.start_ms,x.end_ms,x.text,
-          EXISTS(SELECT 1 FROM revision_timing_flags f WHERE f.hash=x.hash AND f.turn_ordinal=x.ordinal)
+          p.ordinal,x.turn_id,x.track_id,x.speaker_id,p.start_ms,p.end_ms,p.text,
+          p.approximate,p.first_word_ordinal
         FROM call_revisions r JOIN speaker_details s ON s.hash=r.revision_hash
         JOIN call_tracks t ON t.hash=r.hash AND t.track_id=s.track_id
         LEFT JOIN speaker_names n ON n.hash=r.hash AND n.revision_id=r.revision_id AND n.speaker_id=s.speaker_id
         LEFT JOIN call_group_members m ON m.hash=r.hash AND m.revision_id=r.revision_id AND m.speaker_id=s.speaker_id
         LEFT JOIN call_speaker_groups g ON g.hash=m.hash AND g.group_id=m.group_id
         LEFT JOIN revision_turns x ON x.hash=s.hash AND x.ordinal=(SELECT MIN(e.ordinal) FROM revision_turns e WHERE e.hash=s.hash AND e.speaker_id=s.speaker_id)
+        LEFT JOIN revision_passages p ON p.hash=x.hash AND p.turn_ordinal=x.ordinal AND p.first_word_ordinal=0
         WHERE r.hash=? AND r.revision_id=? AND s.ordinal>? ORDER BY s.ordinal LIMIT ?
         """,
         [.text(hash), .text(revisionID), .int(ordinal), .int(limit)]
@@ -89,7 +91,8 @@ extension LocalRepository {
           endMs: row.int(14),
           text: row.string(15),
           speakerName: groupName ?? individual,
-          hasApproximateTiming: row.int(16) == 1
+          hasApproximateTiming: row.int(16) == 1,
+          firstWordOrdinal: row.int(17)
         )
       } else {
         excerpt = nil

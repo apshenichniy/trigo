@@ -50,26 +50,29 @@ extension LocalRepository {
       throw LocalPersistenceError.callNotFound(callID)
     }
     let rows = try projectionRows("call_revisions", hash: hash)
-    return
-      try rows.map { stored in
-        let row = try resolveTextValues(stored)
-        let count = try database.access {
-          try database
-            .rows("SELECT COUNT(*) FROM revision_turns WHERE hash=?", [.text(row.string(4))])
-            .first?
-            .int(0) ?? 0
-        }
-        return try LibraryRevision(
+    var revisions: [LibraryRevision] = []
+    for stored in rows {
+      let row = try resolveTextValues(stored)
+      try await ensurePassages(hash: row.string(4))
+      let count = try database.access {
+        try database
+          .rows("SELECT COUNT(*) FROM revision_passages WHERE hash=?", [.text(row.string(4))])
+          .first?
+          .int(0) ?? 0
+      }
+      revisions.append(
+        try LibraryRevision(
           revisionID: row.string(2),
           createdAt: row.string(3),
           createdDate: LibraryDate.date(row.string(3)),
           sha256: row.string(4),
           turnCount: count
         )
-      }
-      .sorted { a, b in
-        a.createdDate == b.createdDate ? a.revisionID > b.revisionID : a.createdDate > b.createdDate
-      }
+      )
+    }
+    return revisions.sorted { a, b in
+      a.createdDate == b.createdDate ? a.revisionID > b.revisionID : a.createdDate > b.createdDate
+    }
   }
 
   private func libraryRows(predicate: String, value: String, limit: Int) throws -> [LibraryCall] {

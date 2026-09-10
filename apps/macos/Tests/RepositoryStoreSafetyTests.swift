@@ -184,12 +184,12 @@ func sqliteFixtureSQL(_ url: URL, _ sql: String) throws {
   repository = nil
   try sqliteFixtureSQL(
     root.appendingPathComponent(SQLiteDatabase.filename),
-    "DROP TABLE revision_timing_flags; PRAGMA user_version=4"
+    "DROP TABLE revision_passages; DROP TABLE revision_passage_projections; DROP TABLE revision_timing_flags; PRAGMA user_version=4"
   )
   let migrated = try LocalRepository(root: root, archiveID: repositoryArchiveID)
   #expect(try await migrated.snapshotBytes(callID: repositoryCallID, version: 1) == before)
   #expect(try await migrated.lifecycle(callID: repositoryCallID) == lifecycle)
   #expect(
-    try migrated.database.access { try migrated.database.scalarInt("PRAGMA user_version") } == 5
+    try migrated.database.access { try migrated.database.scalarInt("PRAGMA user_version") } == 6
   )
 }

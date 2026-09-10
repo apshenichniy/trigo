@@ -240,16 +240,25 @@ public final class LocalRepository: Sendable {
     guard let hash = try currentHash(callID) else {
       throw LocalPersistenceError.callNotFound(callID)
     }
+    let revisionRows = try database.access {
+      try database.rows(
+        "SELECT revision_hash FROM call_revisions WHERE hash=? AND revision_id=?",
+        [.text(hash), .text(revisionID)]
+      )
+    }
+    guard let revisionHash = try revisionRows.first?.string(0) else { return [] }
+    try await ensurePassages(hash: revisionHash)
     let rows = try database.access {
       try database.rows(
         """
-        SELECT t.ordinal,t.turn_id,t.track_id,t.speaker_id,t.start_ms,t.end_ms,t.text,coalesce(g.display_name,n.name),
-          EXISTS(SELECT 1 FROM revision_timing_flags f WHERE f.hash=t.hash AND f.turn_ordinal=t.ordinal)
-        FROM call_revisions r JOIN revision_turns t ON t.hash=r.revision_hash
+        SELECT p.ordinal,t.turn_id,t.track_id,t.speaker_id,p.start_ms,p.end_ms,p.text,coalesce(g.display_name,n.name),
+          p.approximate,p.first_word_ordinal
+        FROM call_revisions r JOIN revision_passages p ON p.hash=r.revision_hash
+        JOIN revision_turns t ON t.hash=p.hash AND t.ordinal=p.turn_ordinal
         LEFT JOIN speaker_names n ON n.hash=r.hash AND n.revision_id=r.revision_id AND n.speaker_id=t.speaker_id
         LEFT JOIN call_group_members m ON m.hash=r.hash AND m.revision_id=r.revision_id AND m.speaker_id=t.speaker_id
         LEFT JOIN call_speaker_groups g ON g.hash=m.hash AND g.group_id=m.group_id
-        WHERE r.hash=? AND r.revision_id=? AND t.ordinal>? ORDER BY t.ordinal LIMIT ?
+        WHERE r.hash=? AND r.revision_id=? AND p.ordinal>? ORDER BY p.ordinal LIMIT ?
         """,
         [.text(hash), .text(revisionID), .int(ordinal), .int(limit)]
       )
@@ -265,7 +274,8 @@ public final class LocalRepository: Sendable {
           endMs: $0.int(5),
           text: $0.string(6),
           speakerName: $0.optionalString(7),
-          hasApproximateTiming: $0.int(8) == 1
+          hasApproximateTiming: $0.int(8) == 1,
+          firstWordOrdinal: $0.int(9)
         )
       }
   }
@@ -451,6 +461,8 @@ public struct LocalTurn: Sendable, Equatable {
   public let text: String
   public let speakerName: String?
   public let hasApproximateTiming: Bool
+  public let firstWordOrdinal: Int
+  public var passageID: String { firstWordOrdinal == 0 ? turnID : "\(turnID):\(firstWordOrdinal)" }
 
   public init(
     ordinal: Int,
@@ -461,7 +473,8 @@ public struct LocalTurn: Sendable, Equatable {
     endMs: Int,
     text: String,
     speakerName: String?,
-    hasApproximateTiming: Bool = false
+    hasApproximateTiming: Bool = false,
+    firstWordOrdinal: Int = 0
   ) {
     self.ordinal = ordinal
     self.turnID = turnID
@@ -472,6 +485,7 @@ public struct LocalTurn: Sendable, Equatable {
     self.text = text
     self.speakerName = speakerName
     self.hasApproximateTiming = hasApproximateTiming
+    self.firstWordOrdinal = firstWordOrdinal
   }
 }
 
