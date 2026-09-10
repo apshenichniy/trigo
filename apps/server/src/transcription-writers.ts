@@ -102,7 +102,7 @@ export const admitRawWriter = Effect.fn("TranscriptionWriter.admitRaw")(function
   env: MasterUploadEnvironment,
   operation: TranscriptionRow,
   attempt: AttemptRow,
-  submission: SubmissionRow,
+  submission: Pick<SubmissionRow, "raw_key">,
 ) {
   const writerId = yield* newTranscriptionIdentity();
   const now = yield* transcriptionTimestamp();

@@ -62,19 +62,30 @@ operations, raw results and canonical documents are not rewritten.
    Only validated channel/model/language/source evidence publishes a revision.
    Confirmed no-speech produces an empty result; zero-duration masters bypass ASR.
 
+A raw checksum can commit before its R2 PUT. If that PUT is missing or uncertain,
+recovery allocates a fresh raw key under the same submission and refetches the same
+provider job. The old writer stays enumerable as possible late-write debt. A
+truncated GET similarly retains its diagnostic prefix and refetches into a fresh
+key. Neither case repeats an uncertain PUT or admits another transcription.
+
 Known provider failures may use the original-plus-one replacement ceiling.
 Successful sibling intervals are reused. Authorization, funds, unsupported input
 and invalid evidence require correction. Unknown admission stays recoverable and
 does not consume a replacement. Retained-normalization repair reads only stored
 bytes and cannot upload, submit or poll.
 
-Cleanup deletes only provider IDs owned by this operation after retaining its
-result/diagnostic bytes. A known job cancelled by owner rotation, supersession or
+Cleanup deletes only provider IDs owned by this operation after retaining a
+complete completed/error response with matching job and upload identity. A
+diagnostic prefix, undecodable response or oversized result does not authorize
+deletion; the provider copy remains pending operator correction when the retention
+bound prevents a full download. A job cancelled by owner rotation, supersession or
 call deletion can be deleted without retaining cancelled content. The cleanup step
 has ten retries; a failed deletion leaves durable debt and an errored Workflow.
 Available transcript bytes remain readable. Replaying the available operation's
-same command can restart cleanup without paid work. Unknown upload/POST identities
-cannot be safely deleted by guess; preserve their admission records for recovery.
+same command can restart cleanup without paid work. After cancellation, cleanup
+may resolve an unknown ID by the exact owned upload URL and delete the matching
+job, without fetching its transcript or submitting new work. Unresolved identities
+retain their admission records and cleanup debt; no identifier is guessed.
 
 ## Configuration and validation
 

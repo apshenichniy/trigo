@@ -203,6 +203,27 @@ export const submitAssemblyAISubmission = Effect.fn("AssemblyAI.submitInterval")
   yield* rememberAdmission(env, submission.submission_id, submitted.success.id);
 });
 
+const renewRawWriter = Effect.fn("AssemblyAI.renewRawWriter")(function* (
+  env: TranscriptionEnvironment,
+  operation: TranscriptionRow,
+  submission: SubmissionRow,
+  previousKey: string,
+) {
+  const attempt = yield* requireCurrentAttempt(env.CATALOG, submission.attempt_id);
+  const rawKey = `archives/${operation.archive_id}/calls/${operation.call_id}/transcriptions/${operation.revision_id}/raw/${yield* newTranscriptionIdentity()}.json`;
+  const writer = yield* admitRawWriter(env, operation, attempt, { raw_key: rawKey });
+  const rebound = yield* executeTranscriptionSQL(
+    env.CATALOG,
+    `UPDATE trigo_asr_submissions SET raw_key=? WHERE submission_id=? AND raw_key=? AND state='admitted'
+     AND EXISTS (SELECT 1 FROM trigo_transcription_attempts a WHERE a.attempt_id=? AND ${currentAttemptFence})`,
+    [rawKey, submission.submission_id, previousKey, submission.attempt_id],
+  );
+  if (rebound.meta.changes !== 1) {
+    return yield* transcriptionError("asr_storage_unavailable", "retryable", 503);
+  }
+  return { rawKey, writer };
+});
+
 /** Retained bytes are authoritative. Polling can recover a provider ID or result, but has
  * no paid POST capability. Failed-normalization recovery passes allowProvider=false. */
 export const recoverAssemblyAISubmission = Effect.fn("AssemblyAI.recoverInterval")(function* (
@@ -234,22 +255,30 @@ export const recoverAssemblyAISubmission = Effect.fn("AssemblyAI.recoverInterval
   }
   const extraction = yield* decodeExtraction(submission);
   let job = yield* readJob(env, submission.submission_id);
-  const [writer] = yield* transcriptionRows(
+  let rawKey = submission.raw_key;
+  let [writer] = yield* transcriptionRows(
     env.CATALOG,
     TranscriptionWriterRow,
     "SELECT * FROM trigo_transcription_writers WHERE object_key=? AND attempt_id=? AND kind='raw'",
-    [submission.raw_key, submission.attempt_id],
+    [rawKey, submission.attempt_id],
   );
   if (!writer) {
     return yield* transcriptionError("asr_submission_uncertain", "retryable", 503);
   }
-  let raw = yield* transcriptionStorage(() => env.ARCHIVE.get(submission.raw_key));
+  let raw = yield* transcriptionStorage(() => env.ARCHIVE.get(rawKey));
   if (!raw || !("body" in raw)) {
-    if (writer.sha256 !== null) {
-      return yield* transcriptionError("asr_storage_unavailable", "retryable", 503);
-    }
     if (!allowProvider) {
       return yield* transcriptionError("asr_result_invalid");
+    }
+    if (writer.sha256 !== null) {
+      if (writer.state === "stored") {
+        return yield* transcriptionError("asr_storage_unavailable", "retryable", 503);
+      }
+      // The checksum is committed before PUT. If that write is missing/uncertain,
+      // refetch the same job into a fresh immutable key; never repeat its old PUT.
+      const renewed = yield* renewRawWriter(env, operation, submission, rawKey);
+      rawKey = renewed.rawKey;
+      writer = renewed.writer;
     }
     if (job.phase === "rejected") {
       return yield* transcriptionError(
@@ -317,12 +346,7 @@ export const recoverAssemblyAISubmission = Effect.fn("AssemblyAI.recoverInterval
         responseBodyComplete: response.complete,
       }),
     });
-    yield* executeTranscriptionSQL(
-      env.CATALOG,
-      "UPDATE trigo_assemblyai_jobs SET cleanup_state='pending' WHERE submission_id=? AND cleanup_state='not_ready'",
-      [submission.submission_id],
-    );
-    raw = yield* transcriptionStorage(() => env.ARCHIVE.get(submission.raw_key));
+    raw = yield* transcriptionStorage(() => env.ARCHIVE.get(rawKey));
   }
   const [retainedWriter] = yield* transcriptionRows(
     env.CATALOG,
@@ -341,7 +365,7 @@ export const recoverAssemblyAISubmission = Effect.fn("AssemblyAI.recoverInterval
   }
   if (
     !objectMatches(raw, {
-      object_key: submission.raw_key,
+      object_key: rawKey,
       sha256: retainedWriter.sha256,
       byte_length: retainedWriter.byte_length,
     }) ||
@@ -359,11 +383,16 @@ export const recoverAssemblyAISubmission = Effect.fn("AssemblyAI.recoverInterval
     raw.customMetadata?.trigo,
   ).pipe(Effect.mapError(() => transcriptionError("asr_result_invalid")));
   if (!metadata.responseBodyComplete) {
-    return yield* transcriptionError(
-      bytes.byteLength === assemblyAIStereoProfile.maxRawResponseBytes
-        ? "asr_result_too_large"
-        : "asr_result_invalid",
-    );
+    if (bytes.byteLength === assemblyAIStereoProfile.maxRawResponseBytes) {
+      return yield* transcriptionError("asr_result_too_large");
+    }
+    if (!allowProvider) {
+      return yield* transcriptionError("asr_result_invalid");
+    }
+    // Keep the interrupted prefix for diagnosis, but retain a full response from
+    // the same provider job before publishing or authorizing provider deletion.
+    yield* renewRawWriter(env, operation, submission, rawKey);
+    return yield* transcriptionError("asr_provider_processing", "retryable", 503);
   }
   if (
     metadata.submissionId !== submission.submission_id ||
@@ -395,6 +424,15 @@ export const recoverAssemblyAISubmission = Effect.fn("AssemblyAI.recoverInterval
   ) {
     return yield* transcriptionError("asr_result_invalid");
   }
+  if (status.status !== "completed" && status.status !== "error") {
+    return yield* transcriptionError("asr_result_invalid");
+  }
+  yield* executeTranscriptionSQL(
+    env.CATALOG,
+    `UPDATE trigo_assemblyai_jobs SET cleanup_state='pending' WHERE submission_id=? AND cleanup_state='not_ready'
+     AND EXISTS (SELECT 1 FROM trigo_asr_submissions s WHERE s.submission_id=trigo_assemblyai_jobs.submission_id AND s.raw_key=?)`,
+    [submission.submission_id, rawKey],
+  );
   if (status.status === "error") {
     return yield* transcriptionError("asr_provider_failed", "retryable", 503);
   }
@@ -404,27 +442,31 @@ export const recoverAssemblyAISubmission = Effect.fn("AssemblyAI.recoverInterval
     language: operation.requested_language,
   });
   yield* reconcileTranscriptionWriter(env, retainedWriter);
-  yield* executeTranscriptionSQL(
+  const retained = yield* executeTranscriptionSQL(
     env.CATALOG,
-    "UPDATE trigo_asr_submissions SET state='retained',raw_sha256=?,raw_byte_length=?,transport=?,provider_request_id=?,valid=1 WHERE submission_id=? AND state IN ('admitted','retained')",
+    "UPDATE trigo_asr_submissions SET state='retained',raw_sha256=?,raw_byte_length=?,transport=?,provider_request_id=?,valid=1 WHERE submission_id=? AND raw_key=? AND state IN ('admitted','retained')",
     [
       retainedWriter.sha256,
       bytes.byteLength,
       yield* transcriptionJSON(transport),
       metadata.providerId,
       submission.submission_id,
+      rawKey,
     ],
   );
+  if (retained.meta.changes !== 1) {
+    return yield* transcriptionError("asr_storage_unavailable", "retryable", 503);
+  }
   return {
     extraction,
-    rawArtifactKey: submission.raw_key,
+    rawArtifactKey: rawKey,
     rawBytes: bytes,
     providerRequestId: metadata.providerId,
     transport,
   };
 });
 
-/** Delete this operation's known jobs after retaining the complete/diagnostic response, or
+/** Delete this operation's known jobs after retaining its complete completed/error response, or
  * after its owner/deletion fence cancels processing. Failed DELETE remains safe to retry. */
 export const cleanupAssemblyAIResults = Effect.fn("AssemblyAI.cleanupResults")(function* (
   env: TranscriptionEnvironment,
@@ -435,8 +477,8 @@ export const cleanupAssemblyAIResults = Effect.fn("AssemblyAI.cleanupResults")(f
     JobRow,
     `SELECT j.* FROM trigo_assemblyai_jobs j JOIN trigo_asr_submissions s USING (submission_id)
      JOIN trigo_transcription_attempts a USING (attempt_id)
-     WHERE a.operation_id=? AND j.provider_id IS NOT NULL AND j.cleanup_state!='deleted'
-     AND (EXISTS (SELECT 1 FROM trigo_transcription_writers w WHERE w.object_key=s.raw_key AND w.state='stored')
+     WHERE a.operation_id=? AND (j.provider_id IS NOT NULL OR j.phase='submitting') AND j.cleanup_state!='deleted'
+     AND ((j.cleanup_state='pending' AND EXISTS (SELECT 1 FROM trigo_transcription_writers w WHERE w.object_key=s.raw_key AND w.state='stored'))
        OR EXISTS (SELECT 1 FROM trigo_transcription_operations o WHERE o.operation_id=a.operation_id AND o.state='failed'
          AND o.failure_code IN ('asr_owner_changed','asr_superseded','call_deleted')))`,
     [operationId],
@@ -446,14 +488,21 @@ export const cleanupAssemblyAIResults = Effect.fn("AssemblyAI.cleanupResults")(f
   }
   const client = yield* provider(env);
   for (const job of jobs) {
-    if (job.provider_id === null) {
-      continue;
+    let providerId = job.provider_id;
+    if (providerId === null && job.upload_url !== null) {
+      providerId = yield* client.find(job.upload_url);
+      if (providerId !== null) {
+        yield* rememberAdmission(env, job.submission_id, providerId);
+      }
     }
-    yield* client.delete(job.provider_id);
+    if (providerId === null) {
+      return yield* transcriptionError("asr_cleanup_pending", "retryable", 503);
+    }
+    yield* client.delete(providerId);
     yield* executeTranscriptionSQL(
       env.CATALOG,
       "UPDATE trigo_assemblyai_jobs SET cleanup_state='deleted' WHERE submission_id=? AND provider_id=?",
-      [job.submission_id, job.provider_id],
+      [job.submission_id, providerId],
     );
   }
 });

@@ -4,6 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 import { validateDocument } from "@trigo/contracts";
 
+import { assemblyAIStereoProfile } from "../../../packages/contracts/src/asr-profile.ts";
 import { cleanupAssemblyAIResults } from "../src/assemblyai-submissions.ts";
 import { assemblyAIWorkflow } from "../src/assemblyai-workflow.ts";
 import {
@@ -32,6 +33,44 @@ import {
 import { createVirtualLongCall } from "./transcription-long-fixture.ts";
 
 beforeEach(resetTranscriptionFixture);
+
+it("retries an interrupted response GET before deleting the complete provider result", async () => {
+  const { client, runtime, command } = await started();
+  client.get.mockReturnValueOnce(
+    Effect.succeed({ bytes: new TextEncoder().encode('{"id":"provider-1"'), complete: false }),
+  );
+  expect(
+    await Effect.runPromise(assemblyAIWorkflow(runtime, command.operationId, steps().step)),
+  ).toMatchObject({ state: "result_available" });
+  expect(client.get).toHaveBeenCalledTimes(2);
+  expect(client.submit).toHaveBeenCalledTimes(1);
+  expect(client.delete).toHaveBeenCalledExactlyOnceWith("provider-1");
+  const writers = await Effect.runPromise(
+    inspectTranscriptionWriters(runtime, command.operationId),
+  );
+  expect(
+    writers.filter((writer) => writer.kind === "raw" && writer.state === "stored"),
+  ).toHaveLength(2);
+});
+
+it("keeps the provider copy when the result cannot fit the raw retention bound", async () => {
+  const { client, runtime, command } = await started();
+  client.get.mockReturnValue(
+    Effect.succeed({
+      bytes: new Uint8Array(assemblyAIStereoProfile.maxRawResponseBytes).fill(32),
+      complete: false,
+    }),
+  );
+  expect(
+    await Effect.runPromise(assemblyAIWorkflow(runtime, command.operationId, steps().step)),
+  ).toMatchObject({ state: "failed" });
+  expect(
+    await Effect.runPromise(readTranscription(runtime.CATALOG, command.operationId)),
+  ).toMatchObject({ failure_code: "asr_result_too_large" });
+  expect(client.get).toHaveBeenCalledTimes(1);
+  expect(client.submit).toHaveBeenCalledTimes(1);
+  expect(client.delete).not.toHaveBeenCalled();
+});
 
 it("reuses a retained two-hour interval and replaces only the failed final hour", async () => {
   const { client, runtime } = assemblyAIFixture();
@@ -95,6 +134,38 @@ function steps() {
   const step: TranscriptionWorkflowStep = { do: (_name, _config, callback) => callback(), sleep };
   return { step, sleep };
 }
+
+it("recovers a result whose raw checksum committed before its R2 write", async () => {
+  const { client, runtime, command, attempt } = await started();
+  const put = runtime.ARCHIVE.put.bind(runtime.ARCHIVE);
+  let reject = true;
+  vi.spyOn(runtime.ARCHIVE, "put").mockImplementation((key, value, options) => {
+    if (reject && key.includes("/raw/")) {
+      reject = false;
+      return Promise.reject(new Error("R2 rejected the raw write after its checksum commit"));
+    }
+    return put(key, value, options);
+  });
+  await Effect.runPromise(executeTranscriptionAttempt(runtime, attempt.attempt_id));
+  await Effect.runPromise(executeTranscriptionAttempt(runtime, attempt.attempt_id));
+  const before = await Effect.runPromise(inspectTranscriptionWriters(runtime, command.operationId));
+  expect(before).toHaveLength(1);
+  expect(before[0]).toMatchObject({ state: "uncertain", kind: "raw" });
+  expect(before[0]?.sha256).not.toBeNull();
+  expect(await Effect.runPromise(recoverTranscriptionAttempt(runtime, attempt.attempt_id))).toEqual(
+    { state: "result_available" },
+  );
+  const after = await Effect.runPromise(inspectTranscriptionWriters(runtime, command.operationId));
+  const raw = after.filter((writer) => writer.kind === "raw");
+  expect(raw).toHaveLength(2);
+  expect(new Set(raw.map((writer) => writer.object_key)).size).toBe(2);
+  expect(raw.filter((writer) => writer.state === "stored")).toHaveLength(1);
+  expect(client.get).toHaveBeenCalledTimes(2);
+  expect(client.submit).toHaveBeenCalledTimes(1);
+  expect(client.upload).toHaveBeenCalledTimes(1);
+  await Effect.runPromise(cleanupAssemblyAIResults(runtime, command.operationId));
+  expect(client.delete).toHaveBeenCalledTimes(1);
+});
 
 it("retains and publishes one stereo result and replays without another upload or POST", async () => {
   const { client, runtime, call, command, attempt } = await started();
@@ -209,7 +280,7 @@ it("retains malformed provider evidence before refusing publication and cleanup"
   expect(writers).toHaveLength(1);
   expect(writers[0]).toMatchObject({ kind: "raw", state: "stored", byte_length: 11 });
   await Effect.runPromise(cleanupAssemblyAIResults(runtime, command.operationId));
-  expect(client.delete).toHaveBeenCalledTimes(1);
+  expect(client.delete).not.toHaveBeenCalled();
 });
 
 it("repairs failed normalization from retained bytes with no provider access", async () => {
@@ -347,6 +418,24 @@ it("cleans up a known provider job cancelled by an owner fence before result ret
     await Effect.runPromise(assemblyAIWorkflow(runtime, command.operationId, steps().step)),
   ).toMatchObject({ state: "failed" });
   expect(client.submit).toHaveBeenCalledTimes(1);
+  expect(client.get).not.toHaveBeenCalled();
+  expect(client.delete).toHaveBeenCalledExactlyOnceWith("provider-1");
+});
+
+it("reconciles a lost admission only for cleanup after the owner fence cancels processing", async () => {
+  const { client, runtime, command } = await started();
+  client.submit.mockImplementation(() =>
+    Effect.promise(() =>
+      runtime.CATALOG.prepare(
+        "UPDATE trigo_owner_credential_state SET generation=generation+1",
+      ).run(),
+    ).pipe(Effect.flatMap(() => Effect.fail(transcriptionError("asr_admission_uncertain")))),
+  );
+  expect(
+    await Effect.runPromise(assemblyAIWorkflow(runtime, command.operationId, steps().step)),
+  ).toMatchObject({ state: "failed" });
+  expect(client.submit).toHaveBeenCalledTimes(1);
+  expect(client.find).toHaveBeenCalledExactlyOnceWith(assemblyAIResponse().audio_url);
   expect(client.get).not.toHaveBeenCalled();
   expect(client.delete).toHaveBeenCalledExactlyOnceWith("provider-1");
 });
