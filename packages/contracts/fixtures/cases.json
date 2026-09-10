@@ -570,5 +570,12 @@
     "document": "approximate-outlier-speaker-order.json",
     "references": {},
     "expected": null
+  },
+  {
+    "name": "valid-assemblyai-revision",
+    "kind": "TranscriptRevision",
+    "document": "valid-assemblyai-revision.json",
+    "references": {},
+    "expected": null
   }
 ]

@@ -149,7 +149,7 @@ struct DailyUseAdmittedSync: CanonicalSyncTransport {
     guard callID == plan.callID,
       request.operationId == plan.transcriptionOperationID && request.revisionId == plan.revisionID,
       request.requestedLanguage == "en",
-      request.profileId == "nova3-wav-s16le-16000-stereo-stream-v1"
+      request.profileId == "assemblyai-u2-wav-s16le-16000-stereo-v1"
     else { throw CanonicalSyncError.remote(code: "acceptance_call_not_admitted", retry: .never) }
     try await journal.record(
       .init(event: "automatic_transcription_requested", operationID: request.operationId)

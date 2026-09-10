@@ -2,6 +2,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import { Effect } from "effect";
 
 import { type AsrProbeEnvironment, AsrProbeError, asrProbeResponse } from "./asr-probe.ts";
+import { assemblyAIClient } from "./assemblyai-client.ts";
 import { hostedAsrProbeResponse } from "./hosted-asr-probe.ts";
 import { hostedMasterProbeResponse } from "./hosted-master-probe.ts";
 import { errorResponse, ownerErrorResponses } from "./http-errors.ts";
@@ -20,6 +21,7 @@ export interface CloudEnvironmentProbe extends AsrProbeEnvironment {
   readonly ARCHIVE_WORKFLOW: TranscriptionWorkflowBinding;
   readonly DEPLOYMENT_STAGE: "dev" | "personal";
   readonly DEPLOYMENT_IDENTITY: string;
+  readonly ASSEMBLYAI_API_KEY?: string;
 }
 
 export class PendingArchiveWorkflow extends WorkflowEntrypoint<
@@ -28,7 +30,11 @@ export class PendingArchiveWorkflow extends WorkflowEntrypoint<
 > {
   run(event: WorkflowEvent<PendingArchiveWorkflowInput>, step: WorkflowStep) {
     return runTranscriptionWorkflow(
-      { ...this.env, TRANSCRIPTION_MODE: "hosted" },
+      {
+        ...this.env,
+        TRANSCRIPTION_MODE: "hosted",
+        ASSEMBLYAI: assemblyAIClient(this.env.ASSEMBLYAI_API_KEY),
+      },
       event.payload.operationId,
       step,
     );
@@ -43,6 +49,7 @@ const infrastructureResponse = Effect.fn("CloudWorker.infrastructure")((
     catalog: typeof env.CATALOG.prepare === "function" ? "configured" : "missing",
     workflow: typeof env.ARCHIVE_WORKFLOW.create === "function" ? "configured" : "missing",
     workersAi: typeof env.AI.run === "function" ? "configured-not-verified" : "missing",
+    assemblyAi: env.ASSEMBLYAI_API_KEY?.trim() ? "configured-not-verified" : "missing",
   } as const;
   const configured = Object.values(bindings).every((value) => value !== "missing");
   return Effect.succeed(
@@ -93,6 +100,7 @@ export default {
         ...env,
         TRANSCRIPTION_WORKFLOW: env.ARCHIVE_WORKFLOW,
         TRANSCRIPTION_MODE: "hosted",
+        ASSEMBLYAI: assemblyAIClient(env.ASSEMBLYAI_API_KEY),
       });
     }
     if (request.method !== "GET") {

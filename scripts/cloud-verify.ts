@@ -245,6 +245,7 @@ const expectedBindings = {
   catalog: "configured",
   workflow: "configured",
   workersAi: "configured-not-verified",
+  assemblyAi: "configured-not-verified",
 } as const;
 
 export const inspectCloudInfrastructure = Effect.fn("CloudVerifier.inspect")(function* (

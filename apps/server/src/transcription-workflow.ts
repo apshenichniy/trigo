@@ -1,6 +1,7 @@
-import { type WorkflowStep } from "cloudflare:workers";
 import { Effect } from "effect";
 
+import { assemblyAIStereoProfile } from "../../../packages/contracts/src/asr-profile.ts";
+import { assemblyAIWorkflow } from "./assemblyai-workflow.ts";
 import {
   admitTranscriptionAttempt,
   executeTranscriptionAttempt,
@@ -10,21 +11,21 @@ import {
 import { AttemptRow, readTranscription, transcriptionRows } from "./transcription-catalog.ts";
 import { transcriptionError } from "./transcription-errors.ts";
 import { type TranscriptionExecutionEnvironment } from "./transcription-submissions.ts";
-
-const storageStep = {
-  retries: { limit: 3, delay: "2 seconds", backoff: "exponential" },
-  timeout: "15 minutes",
-} satisfies Parameters<WorkflowStep["do"]>[1];
-const providerStep = {
-  retries: { limit: 0, delay: "1 second", backoff: "constant" },
-  timeout: "15 minutes",
-} satisfies Parameters<WorkflowStep["do"]>[1];
+import {
+  transcriptionStorageStep as storageStep,
+  transcriptionProviderStep as providerStep,
+  type TranscriptionWorkflowStep,
+} from "./transcription-workflow-steps.ts";
 
 const workflowProgram = Effect.fn("Transcription.workflow")(function* (
   env: TranscriptionExecutionEnvironment,
   operationId: string,
-  step: WorkflowStep,
+  step: TranscriptionWorkflowStep,
 ) {
+  const selected = yield* readTranscription(env.CATALOG, operationId);
+  if (env.TRANSCRIPTION_MODE === "hosted" && selected.profile_id === assemblyAIStereoProfile.id) {
+    return yield* assemblyAIWorkflow(env, operationId, step);
+  }
   const run = Effect.runPromiseWith(yield* Effect.context<never>());
   // restart() clears Workflow history. The latest D1 attempt remains authoritative;
   // revisiting a superseded original would stop before its admitted replacement.
@@ -79,6 +80,9 @@ const workflowProgram = Effect.fn("Transcription.workflow")(function* (
     if (recovered.state === "result_available") {
       break;
     }
+    if (recovered.state === "pending") {
+      return yield* transcriptionError("asr_provider_processing", "retryable", 503);
+    }
     const terminal = index === 1 || recovered.retry !== "retryable";
     yield* Effect.tryPromise({
       try: () =>
@@ -99,7 +103,7 @@ const workflowProgram = Effect.fn("Transcription.workflow")(function* (
 export function runTranscriptionWorkflow(
   env: TranscriptionExecutionEnvironment,
   operationId: string,
-  step: WorkflowStep,
+  step: TranscriptionWorkflowStep,
 ) {
   return Effect.runPromise(workflowProgram(env, operationId, step));
 }

@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-import { Nova3StreamProfileId } from "./asr-profile.ts";
+import { TranscriptionProfileId } from "./asr-profile.ts";
 import { CaptureMasterProfile } from "./capture-master-profile.ts";
 import { MediaProfile, MediaSourceRole } from "./media-profile.ts";
 
@@ -135,7 +135,7 @@ export const ProviderOption = Schema.Union([
 export const ASRMetadata = Schema.Struct({
   adapter: Schema.String,
   model: Schema.String,
-  profileId: Schema.Union([MediaProfile.fields.id, Nova3StreamProfileId]),
+  profileId: Schema.Union([MediaProfile.fields.id, TranscriptionProfileId]),
   requestedLanguage: Schema.String,
   detectedLanguages: Schema.Array(Schema.String),
   effectiveOptions: Schema.Record(Schema.String, ProviderOption),

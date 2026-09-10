@@ -8,6 +8,7 @@ import { storedByteHash, validateDocument } from "@trigo/contracts";
 import ownerMigration from "../migrations/0001_owner_identity.sql?raw";
 import uploadMigration from "../migrations/0002_master_uploads.sql?raw";
 import transcriptionMigration from "../migrations/0003_transcriptions.sql?raw";
+import assemblyAIMigration from "../migrations/0006_assemblyai_jobs.sql?raw";
 import { type Nova3Runner } from "../src/asr-probe.ts";
 import { fakeTranscriptionRunner } from "../src/fake-transcription.ts";
 import { MasterUploads, masterUploadsLayer } from "../src/master-uploads.ts";
@@ -29,6 +30,7 @@ export const owner = { archiveId: transcriptionArchiveId, credentialGeneration: 
 export async function resetTranscriptionFixture() {
   vi.restoreAllMocks();
   const tables = [
+    "trigo_assemblyai_jobs",
     "trigo_transcription_writers",
     "trigo_transcription_attempt_submissions",
     "trigo_asr_submissions",
@@ -46,7 +48,8 @@ export async function resetTranscriptionFixture() {
     tables.map((table) => `DROP TABLE IF EXISTS ${table};`).join("\n") +
     ownerMigration +
     uploadMigration +
-    transcriptionMigration;
+    transcriptionMigration +
+    assemblyAIMigration;
   await env.CATALOG.batch(
     sql
       .split(";")

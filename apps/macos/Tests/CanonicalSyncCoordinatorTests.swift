@@ -39,6 +39,18 @@ actor CanonicalSyncTestServer: CanonicalSyncTransport {
   func loseNextPublication() { losePublish = true }
   func loseNextRequest() { loseRequest = true }
   func holdResult() { completeOnPoll = false }
+  func expireWait(code: String) throws {
+    guard var value = operationValue else { throw CanonicalSyncError.invalidResult }
+    value.state = "running"
+    value.attemptCount = 1
+    value.failure = .init(
+      code: code,
+      retry: code == "asr_admission_uncertain" ? "after_correction" : "retryable",
+      message: "Resume the existing provider job."
+    )
+    operationValue = value
+    sequence += 1
+  }
   func delete() {
     marker = .init(callId: callID, markedAt: "2026-09-08T12:01:00.000Z", phase: "draining")
     sequence += 1
@@ -241,6 +253,7 @@ actor CanonicalSyncTestServer: CanonicalSyncTransport {
     await server.loseNextRequest()
     #expect(try await client.runPass().failures[callID]?.retry == .retryable)
     let request = try #require(try reopened.automaticTranscription(callID: callID)?.request)
+    #expect(request.profileId == "assemblyai-u2-wav-s16le-16000-stereo-v1")
     #expect(try await reopened.isCallSavedOnMacAndServer(callID: callID) == false)
     #expect(try await client.runPass().failures.isEmpty)
     #expect(try await client.runPass().importedRevisionIDs == [request.revisionId])
@@ -359,5 +372,31 @@ actor CanonicalSyncTestServer: CanonicalSyncTransport {
     #expect(await server.transcriptionRequests.count == 1)
     #expect(try await fixture.repository.lifecycle(callID: callID)?.transcription.state == .failed)
     #expect(try await fixture.repository.isCallSavedOnMacAndServer(callID: callID) == false)
+  }
+
+  @Test(arguments: ["asr_processing_timeout", "asr_admission_uncertain"])
+  func waitingRecoveryReusesTheSameRequestAndBoundsAutomaticResumes(_ code: String) async throws {
+    let fixture = try await uploadedSyncFixture()
+    defer { try? FileManager.default.removeItem(at: fixture.root) }
+    let callID = fixture.session.callID
+    let server = try await CanonicalSyncTestServer(
+      contents: syncReplicaContents(fixture.repository, callID: callID)
+    )
+    await server.holdResult()
+    let client = CanonicalSyncCoordinator(
+      repository: fixture.repository,
+      transport: server,
+      language: { "uk" }
+    )
+    _ = try await client.runPass()
+    let original = try #require(await server.transcriptionRequests.first)
+    #expect(original.requestedLanguage == "uk")
+    try await server.expireWait(code: code)
+    for _ in 0..<3 { _ = try await client.runPass(retryAfterCorrection: false) }
+    let automaticCount = code == "asr_processing_timeout" ? 2 : 1
+    #expect(await server.transcriptionRequests.count == automaticCount)
+    _ = try await client.runPass(retryAfterCorrection: true)
+    #expect(await server.transcriptionRequests.count == automaticCount + 1)
+    #expect(await server.transcriptionRequests.allSatisfy { $0 == original })
   }
 }

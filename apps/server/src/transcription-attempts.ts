@@ -133,6 +133,13 @@ export const recoverTranscriptionAttempt = Effect.fn("Transcription.recoverAttem
     return { state: "result_available" as const };
   }
   const failure = recovered.failure;
+  if (
+    failure.code === "asr_provider_processing" ||
+    failure.code === "asr_provider_unavailable" ||
+    failure.code === "asr_admission_uncertain"
+  ) {
+    return { state: "pending" as const };
+  }
   if (failure.code === "asr_storage_unavailable") {
     return yield* failure;
   }

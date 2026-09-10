@@ -35,7 +35,7 @@ export default Stack(
       target.resources.workflow,
       {
         className: "PendingArchiveWorkflow",
-        limits: { steps: 16 },
+        limits: { steps: 4096 },
       },
     );
     const api = yield* Cloudflare.Worker("Api", {
@@ -48,6 +48,7 @@ export default Stack(
         CATALOG: catalog,
         ARCHIVE_WORKFLOW: workflow,
         AI: Cloudflare.Workers.AI(),
+        ASSEMBLYAI_API_KEY: Config.redacted("ASSEMBLYAI_API_KEY"),
         DEPLOYMENT_STAGE: stage,
         DEPLOYMENT_IDENTITY: cloudDeploymentIdentity(target, accountId),
       },

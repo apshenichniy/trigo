@@ -10,12 +10,30 @@ struct DailyUseProviderReceipt: Decodable {
     let deliveredByteLength: Int?
     let responseBodyComplete: Bool?
     let providerHttpStatus: Int?
+    let uploadedByteLength: Int?
+    let inputSHA256: String?
+    let uploadHttpStatus: Int?
+    let uploadURL: String?
   }
   let transport: Transport
   let providerRequestId: String?
   let reportedDurationSeconds: Double?
 
-  func validate(byteLength: Int, frameCount: Int) throws {
+  func validate(byteLength: Int, frameCount: Int, inputSHA256: String? = nil) throws {
+    if transport.deliveryWitness == "http-upload-ack-v1" {
+      try requireDailyUse(
+        transport.uploadedByteLength == byteLength && transport.uploadHttpStatus == 200
+          && inputSHA256 != nil && transport.inputSHA256 == inputSHA256
+          && transport.uploadURL.flatMap { URL(string: $0) }?.scheme == "https"
+          && transport.uploadURL.flatMap { URL(string: $0) }?.host?.hasSuffix(".assemblyai.com")
+            == true
+          && providerRequestId?.isEmpty == false
+          && reportedDurationSeconds.map { abs($0 * 16_000 - Double(frameCount)) <= 16_000 }
+            == true,
+        "ASR submission lacks a matching upload acknowledgment or coarse provider duration."
+      )
+      return
+    }
     try requireDailyUse(
       transport.deliveryWitness == "consumer-eof-v1"
         && transport.deliveredByteLength == byteLength && transport.responseBodyComplete == true
@@ -80,7 +98,8 @@ private struct DailyUseProvenance: Decodable {
   let revisionId: String
   let profileId: String
   let providerInvoked: Bool
-  let allConsumerEOFVerified: Bool
+  let allConsumerEOFVerified: Bool?
+  let allUploadsAcknowledged: Bool?
   let sourceStatesSHA256: String
   let masterReceiptId: String
   let master: Master
@@ -99,7 +118,7 @@ func verifyDailyUseProvenance(
   let master = value.master
   try requireDailyUse(
     value.schemaVersion == 1 && value.callId == plan.callID && value.revisionId == plan.revisionID
-      && value.profileId == "nova3-wav-s16le-16000-stereo-stream-v1"
+      && value.profileId == "assemblyai-u2-wav-s16le-16000-stereo-v1"
       && value.providerInvoked == !local && value.sourceStatesSHA256 == plan.sourceStatesSHA256
       && value.masterReceiptId == receipt.receiptId
       && master.callId == plan.callID && master.masterId == plan.masterID
@@ -122,9 +141,9 @@ func verifyDailyUseProvenance(
     )
   } else {
     try requireDailyUse(
-      revision.asr.adapter == "cloudflare-workers-ai" && revision.asr.model == "@cf/deepgram/nova-3"
-        && value.allConsumerEOFVerified && !revision.asr.providerRequestIds.isEmpty,
-      "Hosted acceptance lacks actual Nova-3 consumer EOF evidence."
+      revision.asr.adapter == "assemblyai" && revision.asr.model == "universal-2"
+        && value.allUploadsAcknowledged == true && !revision.asr.providerRequestIds.isEmpty,
+      "Hosted acceptance lacks actual AssemblyAI upload acknowledgment evidence."
     )
   }
   let count = (plan.durationMs + 7_199_999) / 7_200_000
@@ -157,12 +176,20 @@ func verifyDailyUseProvenance(
       "ASR extraction \(index) did not preserve the complete planned frames, source channels or bytes."
     )
     if !local {
+      try requireDailyUse(
+        submission.transport.deliveryWitness == "http-upload-ack-v1",
+        "AssemblyAI acceptance requires an HTTP upload acknowledgment."
+      )
       try DailyUseProviderReceipt(
         transport: submission.transport,
         providerRequestId: submission.providerRequestId,
         reportedDurationSeconds: submission.reportedDurationSeconds
       )
-      .validate(byteLength: byteLength, frameCount: (end - cursor) * 16)
+      .validate(
+        byteLength: byteLength,
+        frameCount: (end - cursor) * 16,
+        inputSHA256: extraction.sha256
+      )
     }
     cursor = end
   }
@@ -171,7 +198,8 @@ func verifyDailyUseProvenance(
   return [
     "providerInvoked": value.providerInvoked, "submissionCount": count,
     "completeFrameCount": master.frameCount, "completeByteLength": master.byteLength,
-    "allConsumerEOFVerified": value.allConsumerEOFVerified,
+    "allConsumerEOFVerified": value.allConsumerEOFVerified ?? false,
+    "allUploadsAcknowledged": value.allUploadsAcknowledged ?? false,
     "sourceChannels": 2, "markerCoverage": markerProof,
     "reportedDurationsSeconds": value.submissions.map {
       $0.reportedDurationSeconds.map { $0 as Any } ?? NSNull()
