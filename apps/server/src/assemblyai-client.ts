@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect";
+import { Clock, Effect, Schema } from "effect";
 
 import type { AsrProbeLanguageCode } from "@trigo/contracts";
 
@@ -29,6 +29,19 @@ export interface AssemblyAIClient {
   readonly delete: (providerId: string) => Effect.Effect<void, TranscriptionError>;
 }
 type Fetch = (url: string, init: RequestInit) => Promise<Response>;
+export interface AssemblyAIUploadEvent {
+  readonly stage:
+    | "start"
+    | "request"
+    | "body_complete"
+    | "body_failed"
+    | "response"
+    | "aborted"
+    | "transport_complete";
+  readonly elapsedMs: number;
+  readonly expectedBytes: number;
+  readonly status?: number;
+}
 const UploadResponse = Schema.Struct({
   upload_url: Schema.NonEmptyString.check(Schema.isMaxLength(2048)),
 });
@@ -58,6 +71,7 @@ function responseFailure(status: number, paid: boolean): TranscriptionError {
 export function assemblyAIClient(
   apiKey: string | undefined,
   fetcher: Fetch = fetch,
+  observeUpload?: (event: AssemblyAIUploadEvent) => void,
 ): AssemblyAIClient {
   const headers = (json = true) => ({
     authorization: apiKey ?? "",
@@ -79,7 +93,7 @@ export function assemblyAIClient(
           headers: headers(),
           ...(body === undefined ? {} : { body }),
           signal,
-          redirect: "error",
+          redirect: "manual",
         }),
       catch: () =>
         transcriptionError(
@@ -111,43 +125,90 @@ export function assemblyAIClient(
       ) {
         return yield* transcriptionError("asr_input_rejected");
       }
+      const clock = yield* Clock.Clock;
       const response = yield* Effect.tryPromise({
         // oxlint-disable-next-line effecttsgo/async-function -- FixedLengthStream and fetch share one native abort/lifetime boundary in workerd.
         try: async (signal) => {
+          const started = clock.monotonicTimeNanosUnsafe();
+          const report = (stage: AssemblyAIUploadEvent["stage"], status?: number) => {
+            try {
+              observeUpload?.({
+                stage,
+                elapsedMs: Number(clock.monotonicTimeNanosUnsafe() - started) / 1_000_000,
+                expectedBytes: byteLength,
+                ...(status === undefined ? {} : { status }),
+              });
+            } catch {
+              // Diagnostic observers must not change upload or paid-admission behavior.
+            }
+          };
+          report("start");
           const controller = new AbortController();
-          const abort = () => controller.abort();
+          const fixed = new FixedLengthStream(byteLength);
+          const reader = body.getReader();
+          const writer = fixed.writable.getWriter();
+          const abort = () => {
+            report("aborted");
+            controller.abort();
+            // Own the source reader: pipeTo waits for a blocked destination write before
+            // cancelling its source, which can deadlock when fetch rejects the body.
+            void reader.cancel().catch(() => {});
+            void writer.abort().catch(() => {});
+            if (!fixed.readable.locked) {
+              void fixed.readable.cancel().catch(() => {});
+            }
+          };
           signal.addEventListener("abort", abort, { once: true });
           if (signal.aborted) {
-            controller.abort();
+            abort();
           }
-          const fixed = new FixedLengthStream(byteLength);
-          const copied = body.pipeTo(fixed.writable, { signal: controller.signal }).then(
-            () => true,
-            () => false,
-          );
+          // oxlint-disable-next-line effecttsgo/async-function -- Native reader and FixedLengthStream writer share the fetch lifetime.
+          const copied = (async () => {
+            try {
+              while (!controller.signal.aborted) {
+                const chunk = await reader.read();
+                if (chunk.done) {
+                  await writer.close();
+                  report("body_complete");
+                  return true;
+                }
+                await writer.write(chunk.value);
+              }
+            } catch {
+              // The original transport failure remains the caller's error.
+            }
+            report("body_failed");
+            abort();
+            return false;
+          })();
           let finished = false;
           try {
+            report("request");
             const response = await fetcher(`${assemblyAIStereoProfile.apiBase}/upload`, {
               method: "POST",
               headers: headers(false),
               body: fixed.readable,
               signal: controller.signal,
-              redirect: "error",
+              redirect: "manual",
             });
+            report("response", response.status);
             if (response.status !== 200) {
-              controller.abort();
+              abort();
+              return response;
             }
             const complete = await copied;
-            if (response.status === 200 && !complete) {
+            if (!complete) {
               throw new Error("Incomplete upload");
             }
             finished = true;
+            report("transport_complete", response.status);
             return response;
           } finally {
             if (!finished) {
-              controller.abort();
+              abort();
             }
-            await copied;
+            // Do not join a destination write after transport failure. Source cancellation
+            // is independent and copied handles its own eventual rejection.
             signal.removeEventListener("abort", abort);
           }
         },
