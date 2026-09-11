@@ -9,7 +9,7 @@ it("uploads the exact bounded stream to EU and submits only explicit stereo opti
   const response = assemblyAIResponse();
   const fetcher = vi.fn(async (url: string, init: RequestInit) => {
     expect(init.headers).toMatchObject({ authorization: "fixture-secret" });
-    expect(init.redirect).toBe("error");
+    expect(init.redirect).toBe("manual");
     if (url.endsWith("/upload")) {
       expect(new Uint8Array(await new Response(init.body).arrayBuffer())).toEqual(
         new Uint8Array(64),
